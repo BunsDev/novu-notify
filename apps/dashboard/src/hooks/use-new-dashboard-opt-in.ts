@@ -1,4 +1,4 @@
-import { LEGACY_DASHBOARD_URL, NEW_DASHBOARD_FEEDBACK_FORM_URL } from '@/config';
+import { LEGACY_DASHBOARD_URL } from '@/config';
 import { useTelemetry } from '@/hooks/use-telemetry';
 import { TelemetryEvent } from '@/utils/telemetry';
 import { useUser } from '@clerk/clerk-react';
@@ -43,18 +43,14 @@ export function useNewDashboardOptIn() {
   };
 
   const redirectToLegacyDashboard = () => {
-    window.location.href = LEGACY_DASHBOARD_URL || window.location.origin + '/legacy/workflows';
+    window.location.href = `${LEGACY_DASHBOARD_URL}${window.location.pathname}${window.location.search}`;
   };
 
   const optOut = async () => {
     track(TelemetryEvent.NEW_DASHBOARD_OPT_OUT);
     await updateUserOptInStatus(NewDashboardOptInStatusEnum.OPTED_OUT);
 
-    if (NEW_DASHBOARD_FEEDBACK_FORM_URL) {
-      window.open(NEW_DASHBOARD_FEEDBACK_FORM_URL, '_blank');
-    }
-
-    redirectToLegacyDashboard();
+    window.location.href = LEGACY_DASHBOARD_URL;
   };
 
   const optIn = async () => {
