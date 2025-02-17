@@ -44,8 +44,6 @@ export const RootNavMenu: React.FC = () => {
   const [isLocalStudioModalOpen, toggleLocalStudioModalOpen] = useToggle();
   const { navigateToLocalStudio } = useNavigateToLocalStudio({ fallbackFn: toggleLocalStudioModalOpen });
 
-  console.log({ IS_SELF_HOSTED, IS_EE_AUTH_ENABLED });
-
   return (
     <NavMenu variant="root">
       <NavMenuSection>

@@ -68,7 +68,8 @@ export const WEBHOOK_URL = isPlaywright
 export const MAIL_SERVER_DOMAIN =
   window._env_.REACT_APP_MAIL_SERVER_DOMAIN || process.env.REACT_APP_MAIL_SERVER_DOMAIN || 'dev.inbound-mail.novu.co';
 
-export const LAUNCH_DARKLY_CLIENT_SIDE_ID = '64708935336dd81236770db7';
+export const LAUNCH_DARKLY_CLIENT_SIDE_ID =
+  window._env_.REACT_APP_LAUNCH_DARKLY_CLIENT_SIDE_ID || process.env.REACT_APP_LAUNCH_DARKLY_CLIENT_SIDE_ID;
 
 export const FEATURE_FLAGS = Object.values(FeatureFlagsKeysEnum).reduce(
   (prev, key) => {
@@ -80,15 +81,20 @@ export const FEATURE_FLAGS = Object.values(FeatureFlagsKeysEnum).reduce(
   {} as Record<FeatureFlagsKeysEnum, string | undefined>
 );
 
+export const HUBSPOT_PORTAL_ID = window._env_.REACT_APP_HUBSPOT_EMBED || process.env.REACT_APP_HUBSPOT_EMBED;
+
 export const IS_EU_ENV = (ENV === 'production' || ENV === 'prod') && API_ROOT.includes('eu.api.novu.co');
 
-export const IS_EE_AUTH_ENABLED = true;
+export const IS_EE_AUTH_ENABLED =
+  window._env_.REACT_APP_IS_EE_AUTH_ENABLED === 'true' || process.env.REACT_APP_IS_EE_AUTH_ENABLED === 'true';
 
-export const CLERK_PUBLISHABLE_KEY = 'pk_test_Zmlyc3QtYmFib29uLTUwLmNsZXJrLmFjY291bnRzLmRldiQ';
+export const CLERK_PUBLISHABLE_KEY =
+  window._env_.REACT_APP_CLERK_PUBLISHABLE_KEY || process.env.REACT_APP_CLERK_PUBLISHABLE_KEY || '';
 
-export const WEB_APP_URL = 'http://localhost:4200';
+export const WEB_APP_URL =
+  window._env_.REACT_APP_WEB_APP_URL || process.env.REACT_APP_WEB_APP_URL || window.location.origin;
 
-export const NEW_DASHBOARD_URL = 'http://localhost:4201';
+export const NEW_DASHBOARD_URL = window._env_.REACT_APP_NEW_DASHBOARD_URL || process.env.REACT_APP_NEW_DASHBOARD_URL;
 
 if (IS_EE_AUTH_ENABLED && !CLERK_PUBLISHABLE_KEY) {
   throw new Error('Missing Clerk Publishable Key');
