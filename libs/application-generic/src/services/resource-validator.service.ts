@@ -1,10 +1,5 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
-import {
-  EnvironmentEntity,
-  EnvironmentRepository,
-  NotificationTemplateRepository,
-  OrganizationRepository,
-} from '@novu/dal';
+import { CommunityOrganizationRepository, EnvironmentRepository, NotificationTemplateRepository } from '@novu/dal';
 import { FeatureFlagsKeysEnum } from '@novu/shared';
 
 import { NotificationStep } from '../usecases';
@@ -18,17 +13,17 @@ export class ResourceValidatorService {
 
   constructor(
     private notificationTemplateRepository: NotificationTemplateRepository,
-    private organizationRepository: OrganizationRepository,
+    private organizationRepository: CommunityOrganizationRepository,
     private environmentRepository: EnvironmentRepository,
     private featureFlagService: FeatureFlagsService
   ) {}
 
-  async validateStepsLimit(environmentId: string, steps: NotificationStep[]) {
+  async validateStepsLimit(environmentId: string, steps: NotificationStep[]): Promise<void> {
     const environment = await this.getEnvironment(environmentId);
 
     const isMaxStepsPerWorkflowEnabled = await this.featureFlagService.getFlag({
       key: FeatureFlagsKeysEnum.IS_MAX_STEPS_PER_WORKFLOW_ENABLED,
-      environment: { _id: environment._id } as EnvironmentEntity,
+      environment: { _id: environment._id },
       defaultValue: false,
     });
 
@@ -45,7 +40,7 @@ export class ResourceValidatorService {
     }
   }
 
-  async validateWorkflowLimit(environmentId: string) {
+  async validateWorkflowLimit(environmentId: string): Promise<void> {
     const workflowsCount = await this.notificationTemplateRepository.count({
       _environmentId: environmentId,
     });
@@ -54,8 +49,8 @@ export class ResourceValidatorService {
       return;
     }
 
-    const organization = await this.getOrganization(environmentId);
     const environment = await this.getEnvironment(environmentId);
+    const organization = await this.getOrganization(environment._organizationId);
 
     const maxWorkflowLimit = await this.featureFlagService.getFlag({
       key: FeatureFlagsKeysEnum.MAX_WORKFLOW_LIMIT_NUMBER,
@@ -91,10 +86,8 @@ export class ResourceValidatorService {
     return environment;
   }
 
-  private async getOrganization(environmentId: string) {
-    const organization = await this.organizationRepository.findOne({
-      _environmentId: environmentId,
-    });
+  private async getOrganization(organizationId: string) {
+    const organization = await this.organizationRepository.findById(organizationId);
 
     if (!organization) {
       throw new BadRequestException({
