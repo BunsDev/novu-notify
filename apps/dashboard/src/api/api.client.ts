@@ -1,6 +1,7 @@
 import { getToken } from '@/utils/auth';
 import { API_HOSTNAME } from '@/config';
 import type { IEnvironment } from '@novu/shared';
+import { Novu } from '@novu/api';
 
 export class NovuApiError extends Error {
   constructor(
@@ -93,6 +94,7 @@ export const delV2 = <T>(endpoint: string, { environment, signal }: RequestOptio
   request<T>(endpoint, { version: 'v2', method: 'DELETE', environment, signal });
 export const patchV2 = <T>(endpoint: string, options: RequestOptions) =>
   request<T>(endpoint, { version: 'v2', method: 'PATCH', ...options });
+export const createDsl = () => new Novu();
 
 function parseErrorMessage(errorData: any): string {
   const DEFAULT_ERROR = 'Novu API error';
