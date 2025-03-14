@@ -3,31 +3,22 @@ import { NovuCore } from '@novu/api/core';
 import { UserSession } from '@novu/testing';
 import { expect } from 'chai';
 import { ErrorDto, ValidationErrorDto } from '@novu/api/models/errors';
-import { SDKOptions } from '@novu/api/lib/config';
 
 export function initNovuClassSdk(session: UserSession, shouldRetry: boolean = false): Novu {
-  const options: SDKOptions = {
+  return new Novu({
     security: { secretKey: session.apiKey },
     serverURL: session.serverUrl,
+    retryConfig: !shouldRetry ? { strategy: 'none' } : undefined,
     // debugLogger: console,
-  };
-  if (!shouldRetry) {
-    options.retryConfig = { strategy: 'none' };
-  }
-
-  return new Novu(options);
+  });
 }
 export function initNovuClassSdkInternalAuth(session: UserSession, shouldRetry: boolean = false): Novu {
-  const options: SDKOptions = {
+  return new Novu({
     security: { bearerAuth: session.token },
     serverURL: session.serverUrl,
-    debugLogger: console,
-  };
-  if (!shouldRetry) {
-    options.retryConfig = { strategy: 'none' };
-  }
-
-  return new Novu(options);
+    retryConfig: !shouldRetry ? { strategy: 'none' } : undefined,
+    // debugLogger: console,
+  });
 }
 export function initNovuFunctionSdk(session: UserSession): NovuCore {
   return new NovuCore({ security: { secretKey: session.apiKey }, serverURL: session.serverUrl });
