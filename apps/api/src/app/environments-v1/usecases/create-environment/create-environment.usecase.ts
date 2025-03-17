@@ -1,6 +1,5 @@
 import { BadRequestException, Injectable, UnprocessableEntityException } from '@nestjs/common';
 import { createHash } from 'crypto';
-import { nanoid } from 'nanoid';
 
 import { encryptApiKey } from '@novu/application-generic';
 import { EnvironmentEntity, EnvironmentRepository, NotificationGroupRepository } from '@novu/dal';
@@ -61,7 +60,7 @@ export class CreateEnvironment {
     const environment = await this.environmentRepository.create({
       _organizationId: command.organizationId,
       name: normalizedName,
-      identifier: nanoid(12),
+      identifier: await this.generateId(),
       _parentId: command.parentEnvironmentId,
       color,
       apiKeys: [
@@ -138,5 +137,11 @@ export class CreateEnvironment {
     if (name === EnvironmentEnum.PRODUCTION) return '#7e52f4';
 
     return commandColor;
+  }
+
+  private async generateId() {
+    const { nanoid } = await import('nanoid');
+
+    return nanoid(12);
   }
 }

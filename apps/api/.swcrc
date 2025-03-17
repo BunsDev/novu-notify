@@ -6,11 +6,13 @@
       "syntax": "typescript",
       "tsx": true,
       "decorators": true,
-      "dynamicImport": true
+      "dynamicImport": true,
+      "decoratorsBeforeExport": true
     }
   },
   "module": {
-    "type": "commonjs"
+    "type": "nodenext",
+    "resolveFully": true
   },
   "sourceMaps": "inline"
 }

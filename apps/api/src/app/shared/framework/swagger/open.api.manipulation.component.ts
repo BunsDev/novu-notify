@@ -1,14 +1,48 @@
-import Nimma from 'nimma';
+/* eslint-disable no-inner-declarations */
 import { OpenAPIObject } from '@nestjs/swagger';
 import { API_KEY_SWAGGER_SECURITY_NAME } from '@novu/application-generic';
 import { OperationObject, PathItemObject, PathsObject } from '@nestjs/swagger/dist/interfaces/open-api-spec.interface';
 
-const jpath = '$.paths..responses["200","201"].content["application/json"]';
+// Custom JSON path query implementation
+function jsonPathQuery(obj: any, path: string, callback: (scope: any) => void) {
+  // Simple implementation to match the specific use case in the original code
+  if (path === '$.paths..responses["200","201"].content["application/json"]') {
+    // Recursively traverse paths
+    function traversePaths(currentObj: any) {
+      if (typeof currentObj !== 'object' || currentObj === null) return;
+
+      if (currentObj.paths) {
+        Object.values(currentObj.paths).forEach((pathItem) => {
+          if (typeof pathItem === 'object' && pathItem !== null) {
+            Object.values(pathItem).forEach((operation) => {
+              if (operation && operation.responses) {
+                ['200', '201'].forEach((responseCode) => {
+                  if (
+                    operation.responses[responseCode] &&
+                    operation.responses[responseCode].content &&
+                    operation.responses[responseCode].content['application/json']
+                  ) {
+                    const scope = {
+                      value: operation.responses[responseCode].content['application/json'],
+                    };
+                    callback(scope);
+                  }
+                });
+              }
+            });
+          }
+        });
+      }
+    }
+
+    traversePaths(obj);
+  }
+}
 
 /**
- * @param {import("nimma").EmittedScope} scope
+ * @param {Object} scope
  */
-function liftDataProperty(scope) {
+function liftDataProperty(scope: any) {
   if (
     typeof scope.value !== 'object' ||
     !scope.value ||
@@ -70,13 +104,13 @@ export function removeEndpointsWithoutApiKey<T>(openApiDocument: T): T {
 }
 
 function unwrapDataAttribute(inputDocument: OpenAPIObject) {
-  Nimma.query(inputDocument, {
-    [jpath]: liftDataProperty,
-  });
+  const jpath = '$.paths..responses["200","201"].content["application/json"]';
+
+  // Use custom JSON path query instead of Nimma
+  jsonPathQuery(inputDocument, jpath, liftDataProperty);
 }
 
 function filterBearerOnlyIfExternal(isForInternalSdk: boolean, inputDocument: OpenAPIObject) {
-  let openAPIObject: OpenAPIObject;
   if (isForInternalSdk) {
     return inputDocument;
   } else {
@@ -130,6 +164,7 @@ export function addIdempotencyKeyHeader<T>(openApiDocument: T): T {
 
   return parsedDocument;
 }
+
 export function sortOpenAPIDocument(openApiDoc: OpenAPIObject): OpenAPIObject {
   // Create a deep copy of the original document
   const sortedDoc: OpenAPIObject = JSON.parse(JSON.stringify(openApiDoc));
