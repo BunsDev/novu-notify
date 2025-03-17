@@ -48,7 +48,7 @@ import {
 
 import { isClerkEnabled, JobTopicNameEnum } from '@novu/shared';
 import { JwtModule } from '@nestjs/jwt';
-import packageJson from '../../../package.json';
+import packageJson from '../../../package.json' assert { type: 'json' };
 
 function getDynamicAuthProviders() {
   if (isClerkEnabled()) {

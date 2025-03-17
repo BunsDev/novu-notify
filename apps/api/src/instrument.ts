@@ -1,7 +1,7 @@
 import './config/env.config';
 import 'newrelic';
 import { init } from '@sentry/nestjs';
-import { version } from '../package.json';
+import { version } from '../package.json' assert { type: 'json' };
 
 if (process.env.SENTRY_DSN) {
   init({

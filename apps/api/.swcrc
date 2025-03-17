@@ -2,6 +2,10 @@
   "$schema": "https://swc.rs/schema.json",
   "jsc": {
     "target": "es5",
+    "experimental": {
+      "keepImportAssertions": true,
+      "emitAssertForImportAttributes": true
+    },
     "parser": {
       "syntax": "typescript",
       "tsx": true,

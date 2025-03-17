@@ -9,7 +9,7 @@ import {
 
 import { Body, Post } from '@nestjs/common/decorators';
 import { ApiExcludeController } from '@nestjs/swagger';
-import { version } from '../../../package.json';
+import { version } from '../../../package.json' assert { type: 'json' };
 import { DocumentationIgnore, SdkMethodName } from '../shared/framework/swagger/sdk.decorators';
 import { UserAuthentication } from '../shared/framework/swagger/api.key.security';
 import {

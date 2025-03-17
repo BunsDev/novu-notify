@@ -10,7 +10,7 @@ import { isClerkEnabled } from '@novu/shared';
 import { SentryModule } from '@sentry/nestjs/setup';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { usageLimitsWorkflow } from '@novu/notifications';
-import packageJson from '../package.json';
+import packageJson from '../package.json' assert { type: 'json' };
 import { SharedModule } from './app/shared/shared.module';
 import { UserModule } from './app/user/user.module';
 import { AuthModule } from './app/auth/auth.module';

@@ -1,10 +1,15 @@
-import { ArgumentsHost, ExceptionFilter, HttpException, HttpStatus } from '@nestjs/common';
+import {
+  ArgumentsHost,
+  ExceptionFilter,
+  HttpException,
+  HttpStatus,
+  InternalServerErrorException,
+} from '@nestjs/common';
 import { Response } from 'express';
 import { CommandValidationException, PinoLogger } from '@novu/application-generic';
 import { randomUUID } from 'node:crypto';
 import { captureException } from '@sentry/node';
 import { ZodError } from 'zod';
-import { InternalServerErrorException } from '@nestjs/common/exceptions/internal-server-error.exception';
 import { ErrorDto, ValidationErrorDto } from './error-dto';
 
 const ERROR_MSG_500 = `Internal server error, contact support and provide them with the errorId`;
