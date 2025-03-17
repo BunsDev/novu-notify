@@ -1,8 +1,7 @@
-/* eslint-disable global-require */
 import { Body, Controller, Logger, Post } from '@nestjs/common';
 import { ApiExcludeController } from '@nestjs/swagger';
 import { format } from 'date-fns';
-import i18next from 'i18next';
+import i18next, { i18n } from 'i18next';
 import { ModuleRef } from '@nestjs/core';
 import {
   ApiException,
@@ -148,18 +147,24 @@ export class ContentTemplatesController {
     );
   }
 
-  protected async initiateTranslations(environmentId: string, organizationId: string, locale: string | undefined) {
+  async initiateTranslations(
+    environmentId: string,
+    organizationId: string,
+    locale: string | undefined
+  ): Promise<i18n | undefined> {
     try {
       if (process.env.NOVU_ENTERPRISE === 'true' || process.env.CI_EE_TEST === 'true') {
+        // eslint-disable-next-line global-require
         if (!require('@novu/ee-shared-services')?.TranslationsService) {
           throw new ApiException('Translation module is not loaded');
         }
+        // eslint-disable-next-line global-require
         const service = this.moduleRef.get(require('@novu/ee-shared-services')?.TranslationsService, { strict: false });
         const { namespaces, resources, defaultLocale } = await service.getTranslationsList(
           environmentId,
           organizationId
         );
-        const instance = i18next.createInstance();
+        const instance: i18n = i18next.createInstance();
         await instance.init({
           resources,
           ns: namespaces,
@@ -184,6 +189,7 @@ export class ContentTemplatesController {
       }
     } catch (e) {
       Logger.error(e, `Unexpected error while importing enterprise modules`, 'TranslationsService');
+      throw e;
     }
   }
 }
