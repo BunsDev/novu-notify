@@ -48,8 +48,8 @@ import { UpsertWorkflowCommand, UpsertWorkflowDataCommand } from './upsert-workf
 export class UpsertWorkflowUseCase {
   constructor(
     private createWorkflowGenericUsecase: CreateWorkflowGeneric,
-    private updateWorkflowGenericUsecase: UpdateWorkflowGeneric,
     private notificationGroupRepository: NotificationGroupRepository,
+    private updateWorkflowGenericUsecase: UpdateWorkflowGeneric,
     private getWorkflowByIdsUseCase: GetWorkflowByIdsUseCase,
     private getWorkflowUseCase: GetWorkflowUseCase,
     private buildStepIssuesUsecase: BuildStepIssuesUsecase,
