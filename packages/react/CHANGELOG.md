@@ -1,3 +1,42 @@
+# 3.0.0 (2025-03-17)
+
+### 🚀 Features
+
+- **react,nextjs:** better dist folders structure and tsup config improvements ([#7914](https://github.com/novuhq/novu/pull/7914))
+- **js,react:** inbox subject, body render props ([#7886](https://github.com/novuhq/novu/pull/7886))
+- **js:** Inbox retheme ([#7759](https://github.com/novuhq/novu/pull/7759))
+
+### 🧱 Updated Dependencies
+
+- Updated @novu/js to 3.0.0
+
+### ❤️ Thank You
+
+- GalTidhar @tatarco
+- George Desipris @desiprisg
+- Paweł Tymczuk @LetItRock
+
+## 2.6.6 (2025-02-25)
+
+### 🚀 Features
+
+- **api-service:** system limits & update pricing pages ([#7718](https://github.com/novuhq/novu/pull/7718))
+- **root:** add no only github action ([#7692](https://github.com/novuhq/novu/pull/7692))
+
+### 🩹 Fixes
+
+- **root:** unhandled promise reject and undefined ff kind ([#7732](https://github.com/novuhq/novu/pull/7732))
+- **api-service:** remove only on e2e ([#7691](https://github.com/novuhq/novu/pull/7691))
+
+### 🧱 Updated Dependencies
+
+- Updated @novu/js to 2.6.6
+
+### ❤️ Thank You
+
+- GalTidhar @tatarco
+- George Djabarov @djabarovgeorge
+
 ## 2.6.5 (2025-02-07)
 
 ### 🚀 Features
@@ -41,7 +80,6 @@
 - Paweł Tymczuk @LetItRock
 - Sokratis Vidros @SokratisVidros
 
-
 ## 2.6.3 (2024-12-24)
 
 ### 🧱 Updated Dependencies
@@ -54,7 +92,6 @@
 - George Desipris @desiprisg
 - George Djabarov @djabarovgeorge
 - Pawan Jain
-
 
 ## 2.6.2 (2024-11-26)
 
@@ -74,7 +111,7 @@
 
 - Updated @novu/js to 2.6.3
 
-### ❤️  Thank You
+### ❤️ Thank You
 
 - Biswajeet Das @BiswaViraj
 - George Desipris @desiprisg
@@ -107,7 +144,7 @@
 - **js,react:** inbox custom bell unread count not updating ([#6362](https://github.com/novuhq/novu/pull/6362))
 - **react:** fixed the sourcemaps ([485861181](https://github.com/novuhq/novu/commit/485861181))
 
-### ❤️  Thank You
+### ❤️ Thank You
 
 - Biswajeet Das
 - Dima Grossman

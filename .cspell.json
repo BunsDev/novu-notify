@@ -6,8 +6,10 @@
     "ABNF",
     "ORGANISATION",
     "EQAs",
+    "Lookback",
     "analagous",
     "addrs",
+    "Tiering",
     "subscriberpayloaddto",
     "adresses",
     "APIJSON",
@@ -727,7 +729,8 @@
     "liquified",
     "autoload",
     "novugo",
-    "titleize"
+    "titleize",
+    "oklch"
   ],
   "flagWords": [],
   "patterns": [

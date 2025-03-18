@@ -5,26 +5,21 @@ import { ModuleRef } from '@nestjs/core';
 import { NotificationGroupEntity, NotificationGroupRepository, NotificationTemplateRepository } from '@novu/dal';
 import {
   ChangeEntityTypeEnum,
+  DEFAULT_WORKFLOW_PREFERENCES,
   INotificationTemplateStep,
   INotificationTrigger,
   isBridgeWorkflow,
   IStepVariant,
+  slugify,
   TriggerTypeEnum,
   WorkflowOriginEnum,
   WorkflowTypeEnum,
-  slugify,
-  DEFAULT_WORKFLOW_PREFERENCES,
 } from '@novu/shared';
 
 import { PinoLogger } from 'nestjs-pino';
 import { CreateWorkflowCommand, NotificationStep, NotificationStepVariantCommand } from './create-workflow.command';
 import { CreateChange, CreateChangeCommand } from '../create-change';
-import {
-  AnalyticsService,
-  buildNotificationTemplateIdentifierKey,
-  buildNotificationTemplateKey,
-  InvalidateCacheService,
-} from '../../services';
+import { AnalyticsService } from '../../services';
 import { ContentService } from '../../services/content.service';
 import { isVariantEmpty } from '../../utils/variants';
 import { CreateMessageTemplate, CreateMessageTemplateCommand } from '../message-template';
@@ -36,7 +31,7 @@ import {
   UpsertWorkflowPreferencesCommand,
 } from '../upsert-preferences';
 import { GetPreferences } from '../get-preferences';
-import { GetWorkflowByIdsCommand, WorkflowInternalResponseDto, GetWorkflowByIdsUseCase } from '../workflow';
+import { GetWorkflowByIdsCommand, GetWorkflowByIdsUseCase, WorkflowInternalResponseDto } from '../workflow';
 import { Instrument, InstrumentUsecase } from '../../instrumentation';
 import { ResourceValidatorService } from '../../services/resource-validator.service';
 
@@ -47,14 +42,12 @@ import { ResourceValidatorService } from '../../services/resource-validator.serv
 export class CreateWorkflow {
   constructor(
     private notificationTemplateRepository: NotificationTemplateRepository,
-    private createMessageTemplate: CreateMessageTemplate,
     private notificationGroupRepository: NotificationGroupRepository,
+    private createMessageTemplate: CreateMessageTemplate,
     private createChange: CreateChange,
     @Inject(forwardRef(() => AnalyticsService))
     private analyticsService: AnalyticsService,
     private logger: PinoLogger,
-    @Inject(forwardRef(() => InvalidateCacheService))
-    private invalidateCache: InvalidateCacheService,
     protected moduleRef: ModuleRef,
     @Inject(forwardRef(() => UpsertPreferences))
     private upsertPreferences: UpsertPreferences,
@@ -143,7 +136,11 @@ export class CreateWorkflow {
 
   private async validatePayload(command: CreateWorkflowCommand) {
     if (command.steps) {
-      await this.resourceValidatorService.validateStepsLimit(command.environmentId, command.steps);
+      await this.resourceValidatorService.validateStepsLimit(
+        command.environmentId,
+        command.organizationId,
+        command.steps
+      );
     }
 
     const variants = command.steps ? command.steps?.flatMap((step) => step.variants || []) : [];
@@ -307,19 +304,6 @@ export class CreateWorkflow {
         })
       );
     }
-
-    await this.invalidateCache.invalidateByKey({
-      key: buildNotificationTemplateIdentifierKey({
-        templateIdentifier: savedWorkflow.triggers[0].identifier,
-        _environmentId: command.environmentId,
-      }),
-    });
-    await this.invalidateCache.invalidateByKey({
-      key: buildNotificationTemplateKey({
-        _id: savedWorkflow._id,
-        _environmentId: command.environmentId,
-      }),
-    });
 
     const item = await this.notificationTemplateRepository.findById(savedWorkflow._id, command.environmentId);
     if (!item) throw new NotFoundException(`Workflow ${savedWorkflow._id} is not found`);

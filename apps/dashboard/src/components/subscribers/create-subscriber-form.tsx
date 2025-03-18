@@ -23,6 +23,7 @@ import TruncatedText from '../truncated-text';
 import { LocaleSelect } from './locale-select';
 import { CreateSubscriberFormSchema } from './schema';
 import { TimezoneSelect } from './timezone-select';
+import { useSubscribersNavigate } from '@/components/subscribers/hooks/use-subscribers-navigate';
 
 const extensions = [loadLanguage('json')?.extension ?? []];
 const basicSetup = { lineNumbers: true, defaultKeymap: true };
@@ -38,9 +39,9 @@ type CreateSubscriberFormProps = {
 };
 
 export const CreateSubscriberForm = (props: CreateSubscriberFormProps) => {
-  const track = useTelemetry();
   const { onSuccess } = props;
-
+  const track = useTelemetry();
+  const { navigateToSubscribersFirstPage } = useSubscribersNavigate();
   const form = useForm<z.infer<typeof CreateSubscriberFormSchema>>({
     defaultValues: {
       data: '',
@@ -58,11 +59,12 @@ export const CreateSubscriberForm = (props: CreateSubscriberFormProps) => {
     mode: 'onBlur',
   });
 
-  const { createSubscriber } = useCreateSubscriber({
+  const { createSubscriber, isPending } = useCreateSubscriber({
     onSuccess: () => {
       showSuccessToast('Created subscriber successfully', undefined, toastOptions);
       onSuccess?.();
       track(TelemetryEvent.SUBSCRIBER_CREATED);
+      navigateToSubscribersFirstPage();
     },
     onError: (error) => {
       const errMsg = error instanceof Error ? error.message : 'Failed to create subscriber';
@@ -75,10 +77,12 @@ export const CreateSubscriberForm = (props: CreateSubscriberFormProps) => {
 
     const dirtyPayload = Object.keys(dirtyFields).reduce<Partial<typeof formData>>((acc, key) => {
       const typedKey = key as keyof typeof formData;
+
       if (typedKey === 'data') {
         const data = JSON.parse(JSON.stringify(formData.data));
         return { ...acc, data: data === '' ? {} : data };
       }
+
       return { ...acc, [typedKey]: formData[typedKey]?.trim() };
     }, {});
 
@@ -382,7 +386,7 @@ export const CreateSubscriberForm = (props: CreateSubscriberFormProps) => {
                 </span>
               </div>
 
-              <Button variant="secondary" type="submit">
+              <Button variant="secondary" type="submit" disabled={isPending} isLoading={isPending}>
                 Create subscriber
               </Button>
             </div>
