@@ -19,8 +19,6 @@ export enum ROUTES {
   TENANTS = '/tenants',
   TENANTS_CREATE = '/tenants/create',
   DASHBOARD_WELCOME = '/welcome',
-  DASHBOARD_ONBOARDING = '/onboarding',
-  DASHBOARD_PLAYGROUND = '/playground',
   ACTIVITIES = '/activities',
   INTEGRATIONS = '/integrations',
   INTEGRATIONS_CREATE = '/integrations/create',

@@ -19,17 +19,6 @@ export function useNewDashboardOptIn() {
     });
   };
 
-  const updateNewDashboardFirstVisit = (firstVisit: boolean) => {
-    if (!user) return;
-
-    user.update({
-      unsafeMetadata: {
-        ...user.unsafeMetadata,
-        newDashboardFirstVisit: firstVisit,
-      },
-    });
-  };
-
   const getCurrentOptInStatus = () => {
     if (!user) return null;
 
@@ -63,7 +52,6 @@ export function useNewDashboardOptIn() {
     optIn,
     status: getCurrentOptInStatus(),
     isFirstVisit: getNewDashboardFirstVisit(),
-    updateNewDashboardFirstVisit,
     redirectToLegacyDashboard,
   };
 }
