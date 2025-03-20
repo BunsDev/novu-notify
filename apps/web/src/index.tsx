@@ -10,6 +10,11 @@ import './index.css';
 import '@novu/novui/styles.css';
 
 (async () => {
+  console.log('INITIALIZING APP');
+  console.log('INITIALIZING APP');
+  console.log('INITIALIZING APP');
+  console.log('INITIALIZING APP');
+
   initializeApp();
 
   let FeatureFlagsProvider = ({ children }) => <>{children}</>;
