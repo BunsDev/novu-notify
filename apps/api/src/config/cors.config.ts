@@ -15,11 +15,9 @@ export const corsOptionsDelegate: Parameters<INestApplication['enableCors']>[0] 
   } else {
     corsOptions.origin = [];
 
-    // Enable preview deployments in staging environment for Netlify and Vercel
-    const isDevNodeEnv = process.env.NODE_ENV === 'dev';
     const requestOrigin = origin(req);
     const isAllowedOrigin = new RegExp(process.env.FRONT_BASE_URL).test(requestOrigin);
-    if (isAllowedOrigin || isDevNodeEnv) {
+    if (isAllowedOrigin) {
       corsOptions.origin.push(requestOrigin);
     }
     if (process.env.WIDGET_BASE_URL) {
