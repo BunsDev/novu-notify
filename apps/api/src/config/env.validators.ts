@@ -12,7 +12,7 @@ export const envValidators = {
   TZ: str({ default: 'UTC' }),
   NODE_ENV: str({ choices: ['dev', 'test', 'production', 'ci', 'local'], default: 'local' }),
   PORT: port(),
-  FRONT_BASE_URL: url(),
+  FRONT_BASE_URL: str(),
   DISABLE_USER_REGISTRATION: bool({ default: false }),
   REDIS_HOST: str(),
   REDIS_PORT: port(),
