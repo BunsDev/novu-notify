@@ -53,8 +53,8 @@ describe('Resource Limiting #novu-v2', () => {
           expect(response.status).to.equal(402);
           expect(response.body.status).to.equal(402);
           expect(response.body.error).to.equal('Payment required');
-          expect(response.body.message).to.match(
-            /You have exceeded the number of allowed requests for this resource. Please visit Novu Dashboard to upgrade your subscription./
+          expect(response.body.message).to.equal(
+            'You have exceeded the number of allowed requests for this resource. Please visit https://dashboard.novu.co to upgrade your subscription.'
           );
         });
       });
