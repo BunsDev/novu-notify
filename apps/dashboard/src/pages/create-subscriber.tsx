@@ -96,7 +96,13 @@ export function CreateSubscriberPage() {
                   </Link>
                 </span>
               </div>
-              <Button variant="secondary" type="submit" disabled={isPending} isLoading={isPending}>
+              <Button
+                variant="secondary"
+                type="submit"
+                disabled={isPending}
+                isLoading={isPending}
+                form="create-subscriber-form"
+              >
                 Create subscriber
               </Button>
             </div>

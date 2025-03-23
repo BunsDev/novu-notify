@@ -72,6 +72,7 @@ export const CreateSubscriberForm = (props: CreateSubscriberFormProps) => {
     <div className="flex h-full flex-col">
       <Form {...form}>
         <FormRoot
+          id="create-subscriber-form"
           autoComplete="off"
           noValidate
           onSubmit={form.handleSubmit(onSubmit)}
