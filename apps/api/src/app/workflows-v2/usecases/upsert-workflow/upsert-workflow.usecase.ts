@@ -14,7 +14,7 @@ import {
   UpdateWorkflowCommand,
   UpsertControlValuesCommand,
   UpsertControlValuesUseCase,
-  WorkflowInternalResponseDto,
+  WorkflowWithPreferencesResponseDto,
 } from '@novu/application-generic';
 import {
   ControlValuesRepository,
@@ -75,7 +75,7 @@ export class UpsertWorkflowUseCase {
   }
 
   @Instrument()
-  private async queryWorkflow(command: UpsertWorkflowCommand): Promise<WorkflowInternalResponseDto | null> {
+  private async queryWorkflow(command: UpsertWorkflowCommand): Promise<NotificationTemplateEntity | null> {
     if (!command.workflowIdOrInternalId) {
       return null;
     }
@@ -84,7 +84,6 @@ export class UpsertWorkflowUseCase {
       GetWorkflowByIdsCommand.create({
         environmentId: command.user.environmentId,
         organizationId: command.user.organizationId,
-        userId: command.user._id,
         workflowIdOrInternalId: command.workflowIdOrInternalId,
       })
     );
@@ -94,7 +93,7 @@ export class UpsertWorkflowUseCase {
   private async createOrUpdateWorkflow(
     existingWorkflow: NotificationTemplateEntity | null,
     command: UpsertWorkflowCommand
-  ): Promise<WorkflowInternalResponseDto> {
+  ): Promise<WorkflowWithPreferencesResponseDto> {
     if (existingWorkflow && isWorkflowUpdateDto(command.workflowDto, command.workflowIdOrInternalId)) {
       this.updateMixPanel(command, 'Workflow Update - [API]');
 

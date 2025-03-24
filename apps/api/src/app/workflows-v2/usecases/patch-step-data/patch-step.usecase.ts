@@ -8,7 +8,7 @@ import {
   NotificationTemplateRepository,
 } from '@novu/dal';
 import {
-  GetWorkflowByIdsUseCase,
+  GetWorkflowWithPreferencesUseCase,
   UpsertControlValuesCommand,
   UpsertControlValuesUseCase,
 } from '@novu/application-generic';
@@ -22,7 +22,7 @@ type ValidNotificationWorkflow = {
 @Injectable()
 export class PatchStepUsecase {
   constructor(
-    private getWorkflowByIdsUseCase: GetWorkflowByIdsUseCase,
+    private getWorkflowWithPreferencesUseCase: GetWorkflowWithPreferencesUseCase,
     private buildStepDataUsecase: BuildStepDataUsecase,
     private notificationTemplateRepository: NotificationTemplateRepository,
     private upsertControlValuesUseCase: UpsertControlValuesUseCase,
@@ -85,11 +85,10 @@ export class PatchStepUsecase {
   }
 
   private async fetchWorkflow(command: PatchStepCommand) {
-    return await this.getWorkflowByIdsUseCase.execute({
+    return await this.getWorkflowWithPreferencesUseCase.execute({
       workflowIdOrInternalId: command.workflowIdOrInternalId,
       environmentId: command.user.environmentId,
       organizationId: command.user.organizationId,
-      userId: command.user._id,
     });
   }
 

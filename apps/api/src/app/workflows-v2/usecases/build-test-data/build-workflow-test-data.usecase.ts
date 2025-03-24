@@ -1,12 +1,6 @@
 import { Injectable } from '@nestjs/common';
-import { ControlValuesRepository, NotificationStepEntity, NotificationTemplateEntity } from '@novu/dal';
-import {
-  ControlValuesLevelEnum,
-  JSONSchemaDto,
-  StepTypeEnum,
-  UserSessionData,
-  WorkflowTestDataResponseDto,
-} from '@novu/shared';
+import { NotificationStepEntity, NotificationTemplateEntity } from '@novu/dal';
+import { JSONSchemaDto, StepTypeEnum, UserSessionData, WorkflowTestDataResponseDto } from '@novu/shared';
 import {
   GetWorkflowByIdsCommand,
   GetWorkflowByIdsUseCase,
@@ -75,7 +69,6 @@ export class BuildWorkflowTestDataUseCase {
       GetWorkflowByIdsCommand.create({
         environmentId: command.user.environmentId,
         organizationId: command.user.organizationId,
-        userId: command.user._id,
         workflowIdOrInternalId: command.workflowIdOrInternalId,
       })
     );

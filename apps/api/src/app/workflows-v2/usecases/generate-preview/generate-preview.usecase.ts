@@ -3,6 +3,7 @@ import _ from 'lodash';
 import Ajv, { ErrorObject } from 'ajv';
 import addFormats from 'ajv-formats';
 import { captureException } from '@sentry/node';
+import { NotificationTemplateEntity } from '@novu/dal';
 
 import {
   ChannelTypeEnum,
@@ -17,7 +18,6 @@ import {
 import {
   GetWorkflowByIdsCommand,
   GetWorkflowByIdsUseCase,
-  WorkflowInternalResponseDto,
   Instrument,
   InstrumentUsecase,
   PinoLogger,
@@ -176,7 +176,7 @@ export class GeneratePreviewUsecase {
   }
 
   private mergeVariablesExample(
-    workflow: WorkflowInternalResponseDto,
+    workflow: NotificationTemplateEntity,
     previewTemplateData: { variablesExample: {}; controlValues: {} },
     commandVariablesExample: PreviewPayload | undefined
   ) {
@@ -242,7 +242,6 @@ export class GeneratePreviewUsecase {
         workflowIdOrInternalId: command.workflowIdOrInternalId,
         environmentId: command.user.environmentId,
         organizationId: command.user.organizationId,
-        userId: command.user._id,
       })
     );
   }
