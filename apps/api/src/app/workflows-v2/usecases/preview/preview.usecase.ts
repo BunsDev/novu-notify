@@ -1,5 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import _ from 'lodash';
+import get from 'lodash/get';
 import Ajv, { ErrorObject } from 'ajv';
 import addFormats from 'ajv-formats';
 import { captureException } from '@sentry/node';
@@ -28,10 +29,10 @@ import { JSONContent as MailyJSONContent } from '@maily-to/render';
 import { PreviewStep, PreviewStepCommand } from '../../../bridge/usecases/preview-step';
 import { FrameworkPreviousStepsOutputState } from '../../../bridge/usecases/preview-step/preview-step.command';
 import { BuildStepDataUsecase } from '../build-step-data';
-import { GeneratePreviewCommand } from './generate-preview.command';
+import { PreviewCommand } from './preview.command';
 import { ExtractVariablesCommand } from '../extract-variables/extract-variables.command';
 import { ExtractVariables } from '../extract-variables/extract-variables.usecase';
-import { Variable } from '../../util/template-parser/liquid-parser';
+import { buildLiquidParser, Variable } from '../../util/template-parser/liquid-parser';
 import { buildVariables } from '../../util/build-variables';
 import { keysToObject, mergeCommonObjectKeys, multiplyArrayItems } from '../../util/utils';
 import { buildVariablesSchema } from '../../util/create-schema';
@@ -40,7 +41,7 @@ import { isObjectMailyJSONContent } from '../../../environments-v1/usecases/outp
 const LOG_CONTEXT = 'GeneratePreviewUsecase';
 
 @Injectable()
-export class GeneratePreviewUsecase {
+export class PreviewUsecase {
   constructor(
     private previewStepUsecase: PreviewStep,
     private buildStepDataUsecase: BuildStepDataUsecase,
@@ -50,7 +51,7 @@ export class GeneratePreviewUsecase {
   ) {}
 
   @InstrumentUsecase()
-  async execute(command: GeneratePreviewCommand): Promise<GeneratePreviewResponseDto> {
+  async execute(command: PreviewCommand): Promise<GeneratePreviewResponseDto> {
     try {
       const {
         stepData,
@@ -83,7 +84,20 @@ export class GeneratePreviewUsecase {
 
       for (const [controlKey, controlValue] of Object.entries(sanitizedValidatedControls || {})) {
         const variables = buildVariables(variableSchema, controlValue, this.logger);
-        const processedControlValues = this.fixControlValueInvalidVariables(controlValue, variables.invalidVariables);
+
+        const controlValueWithFixedVariables = this.fixControlValueInvalidVariables(
+          controlValue,
+          variables.invalidVariables
+        );
+
+        /*
+         * Sanitize control values after fixing (by fixControlValueInvalidVariables) invalid variables,
+         * to avoid defaulting (by previewControlValueDefault) all values
+         */
+        const processedControlValues = this.sanitizeControlValuesByLiquidCompilationFailure(
+          controlKey,
+          controlValueWithFixedVariables
+        );
         const showIfVariables: string[] = this.findShowIfVariables(processedControlValues);
         const validVariableNames = variables.validVariables.map((variable) => variable.name);
         const variablesExampleResult = keysToObject(validVariableNames, showIfVariables);
@@ -146,7 +160,7 @@ export class GeneratePreviewUsecase {
    * Extracts showIf variables from TipTap nodes to transform template variables
    * (e.g. {{payload.foo}}) into true - for preview purposes
    */
-  private findShowIfVariables(processedControlValues: Record<string, unknown>) {
+  private findShowIfVariables(processedControlValues: unknown) {
     const showIfVariables: string[] = [];
     if (typeof processedControlValues === 'string') {
       try {
@@ -171,8 +185,9 @@ export class GeneratePreviewUsecase {
 
   private sanitizeControlsForPreview(initialControlValues: Record<string, unknown>, stepData: StepResponseDto) {
     const sanitizedValues = dashboardSanitizeControlValues(this.logger, initialControlValues, stepData.type);
+    const sanitizedByOutputSchema = sanitizeControlValuesByOutputSchema(sanitizedValues || {}, stepData.type);
 
-    return sanitizeControlValuesByOutputSchema(sanitizedValues || {}, stepData.type);
+    return sanitizedByOutputSchema;
   }
 
   private mergeVariablesExample(
@@ -202,7 +217,7 @@ export class GeneratePreviewUsecase {
     return variablesExample;
   }
 
-  private async initializePreviewContext(command: GeneratePreviewCommand) {
+  private async initializePreviewContext(command: PreviewCommand) {
     const stepData = await this.getStepData(command);
     const controlValues = command.generatePreviewRequestDto.controlValues || stepData.controls.values || {};
     const workflow = await this.findWorkflow(command);
@@ -214,7 +229,7 @@ export class GeneratePreviewUsecase {
   @Instrument()
   private async buildVariablesSchema(
     variables: Record<string, unknown>,
-    command: GeneratePreviewCommand,
+    command: PreviewCommand,
     controlValues: Record<string, unknown>
   ) {
     const { payload } = await this.extractVariables.execute(
@@ -236,7 +251,7 @@ export class GeneratePreviewUsecase {
   }
 
   @Instrument()
-  private async findWorkflow(command: GeneratePreviewCommand) {
+  private async findWorkflow(command: PreviewCommand) {
     return await this.getWorkflowByIdsUseCase.execute(
       GetWorkflowByIdsCommand.create({
         workflowIdOrInternalId: command.workflowIdOrInternalId,
@@ -248,7 +263,7 @@ export class GeneratePreviewUsecase {
   }
 
   @Instrument()
-  private async getStepData(command: GeneratePreviewCommand) {
+  private async getStepData(command: PreviewCommand) {
     return await this.buildStepDataUsecase.execute({
       workflowIdOrInternalId: command.workflowIdOrInternalId,
       stepIdOrInternalId: command.stepIdOrInternalId,
@@ -262,7 +277,7 @@ export class GeneratePreviewUsecase {
 
   @Instrument()
   private async executePreviewUsecase(
-    command: GeneratePreviewCommand,
+    command: PreviewCommand,
     stepData: StepResponseDto,
     hydratedPayload: PreviewPayload,
     controlValues: Record<string, unknown>
@@ -292,10 +307,7 @@ export class GeneratePreviewUsecase {
     }
   }
 
-  private fixControlValueInvalidVariables(
-    controlValues: unknown,
-    invalidVariables: Variable[]
-  ): Record<string, unknown> {
+  private fixControlValueInvalidVariables(controlValues: unknown, invalidVariables: Variable[]): unknown {
     try {
       let controlValuesString = JSON.stringify(controlValues);
 
@@ -308,13 +320,24 @@ export class GeneratePreviewUsecase {
         controlValuesString = replaceAll(controlValuesString, invalidVariable.output, EMPTY_STRING);
       }
 
-      return JSON.parse(controlValuesString) as Record<string, unknown>;
+      return JSON.parse(controlValuesString);
     } catch (error) {
-      return controlValues as Record<string, unknown>;
+      return controlValues;
+    }
+  }
+
+  private sanitizeControlValuesByLiquidCompilationFailure(key: string, value: unknown): unknown {
+    const parserEngine = buildLiquidParser();
+
+    try {
+      parserEngine.parse(JSON.stringify(value));
+
+      return value;
+    } catch (error) {
+      return get(previewControlValueDefault, key);
     }
   }
 }
-
 function buildState(steps: Record<string, unknown> | undefined): FrameworkPreviousStepsOutputState[] {
   const outputArray: FrameworkPreviousStepsOutputState[] = [];
   for (const [stepId, value] of Object.entries(steps || {})) {
