@@ -21,20 +21,14 @@ import {
   NotificationGroupRepository,
   NotificationStepEntity,
   NotificationTemplateEntity,
-  NotificationTemplateRepository,
 } from '@novu/dal';
 import {
-  ControlSchemas,
   ControlValuesLevelEnum,
   DEFAULT_WORKFLOW_PREFERENCES,
   slugify,
-  StepCreateDto,
-  StepIssuesDto,
-  StepUpdateDto,
   UserSessionData,
   WorkflowCreationSourceEnum,
   WorkflowOriginEnum,
-  WorkflowResponseDto,
   WorkflowTypeEnum,
 } from '@novu/shared';
 
@@ -43,6 +37,11 @@ import { computeWorkflowStatus } from '../../shared/compute-workflow-status';
 import { BuildStepIssuesUsecase } from '../build-step-issues/build-step-issues.usecase';
 import { GetWorkflowCommand, GetWorkflowUseCase } from '../get-workflow';
 import { UpsertWorkflowCommand, UpsertWorkflowDataCommand } from './upsert-workflow.command';
+import { WorkflowResponseDto } from '../../dtos/worfklow-response.dto';
+import { StepCreateDto } from '../../dtos/create-step.dto';
+import { StepUpdateDto } from '../../dtos/step-update.dto';
+import { StepIssuesDto } from '../../dtos/step-issues.dto';
+import { ControlSchemasDto } from '../../dtos/control-schemas.dto';
 
 @Injectable()
 export class UpsertWorkflowUseCase {
@@ -55,8 +54,7 @@ export class UpsertWorkflowUseCase {
     private buildStepIssuesUsecase: BuildStepIssuesUsecase,
     private controlValuesRepository: ControlValuesRepository,
     private upsertControlValuesUseCase: UpsertControlValuesUseCase,
-    private analyticsService: AnalyticsService,
-    private notificationTemplateRepository: NotificationTemplateRepository
+    private analyticsService: AnalyticsService
   ) {}
 
   @InstrumentUsecase()
@@ -232,7 +230,8 @@ export class UpsertWorkflowUseCase {
     step: StepUpdateDto | StepCreateDto
   ): Promise<NotificationStep> {
     const foundPersistedStep = this.getPersistedStepIfFound(persistedWorkflow, step);
-    const controlSchemas: ControlSchemas = foundPersistedStep?.template?.controls || stepTypeToControlSchema[step.type];
+    const controlSchemas: ControlSchemasDto =
+      foundPersistedStep?.template?.controls || stepTypeToControlSchema[step.type];
     const issues: StepIssuesDto = await this.buildStepIssuesUsecase.execute({
       workflowOrigin,
       user,
@@ -363,13 +362,6 @@ export class UpsertWorkflowUseCase {
 
       return stepRequest.name === step.name;
     })?.controlValues;
-  }
-
-  private async countWorkflows(command: UpsertWorkflowCommand): Promise<number> {
-    return this.notificationTemplateRepository.count({
-      _environmentId: command.user.environmentId,
-      _organizationId: command.user.organizationId,
-    });
   }
 }
 

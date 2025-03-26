@@ -24,6 +24,12 @@ import * as operations from "../models/operations/index.js";
 import { APICall, APIPromise } from "../types/async.js";
 import { Result } from "../types/fp.js";
 
+/**
+ * Delete a workflow
+ *
+ * @remarks
+ * Removes a specific workflow
+ */
 export function workflowsDelete(
   client: NovuCore,
   workflowId: string,
@@ -120,7 +126,7 @@ async function $do(
   const context = {
     baseURL: options?.serverURL ?? client._baseURL ?? "",
     operationID: "WorkflowController_removeWorkflow",
-    oAuth2Scopes: [],
+    oAuth2Scopes: null,
 
     resolvedSecurity: requestSecurity,
 

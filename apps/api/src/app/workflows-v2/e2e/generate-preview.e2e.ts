@@ -1,33 +1,31 @@
 import { expect } from 'chai';
-import {
-  slugify,
-  createWorkflowClient,
-  CreateWorkflowDto,
-  WorkflowCreationSourceEnum,
-  WorkflowResponseDto,
-  StepTypeEnum,
-  RedirectTargetEnum,
-  WorkflowOriginEnum,
-} from '@novu/shared';
 import { UserSession } from '@novu/testing';
 import { EnvironmentRepository, NotificationTemplateEntity, NotificationTemplateRepository } from '@novu/dal';
+import { Novu } from '@novu/api';
+import {
+  CreateWorkflowDto,
+  PreviewPayloadDto,
+  RedirectTargetEnum,
+  StepTypeEnum,
+  WorkflowCreationSourceEnum,
+  WorkflowOriginEnum,
+  WorkflowResponseDto,
+} from '@novu/api/models/components';
+import { slugify } from '@novu/shared';
+import { initNovuClassSdk } from '../../shared/helpers/e2e/sdk/e2e-sdk.helper';
 
 const TEST_WORKFLOW_NAME = 'Test Workflow Name';
 
 describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v2', () => {
   let session: UserSession;
-  let workflowsClient: ReturnType<typeof createWorkflowClient>;
   const notificationTemplateRepository = new NotificationTemplateRepository();
   const environmentRepository = new EnvironmentRepository();
+  let novuClient: Novu;
 
   beforeEach(async () => {
     session = new UserSession();
     await session.initialize();
-
-    workflowsClient = createWorkflowClient(session.serverUrl, {
-      Authorization: session.token,
-      'Novu-Environment-Id': session.environment._id,
-    });
+    novuClient = initNovuClassSdk(session);
   });
 
   it('should generate preview for in-app init page - no variables example in dto body, stored empty payload schema', async () => {
@@ -39,7 +37,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       },
     });
 
-    const stepId = workflow.steps[0]._id;
+    const stepId = workflow.steps[0].id;
     const controlValues = {
       subject: 'Welcome {{subscriber.firstName}}',
       body: 'Hello {{subscriber.firstName}} {{subscriber.lastName}}, Welcome to {{payload.organizationName | upcase}}!',
@@ -47,13 +45,16 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
     const previewPayload = {
       // empty previewPayload
     };
-    const { status, body } = await session.testAgent.post(`/v2/workflows/${workflow._id}/step/${stepId}/preview`).send({
-      controlValues,
-      previewPayload,
+    const { result } = await novuClient.workflows.steps.generatePreview({
+      generatePreviewRequestDto: {
+        controlValues,
+        previewPayload,
+      },
+      stepId,
+      workflowId: workflow.id,
     });
 
-    expect(status).to.equal(201);
-    expect(body).to.deep.equal({
+    expect(result).to.deep.equal({
       data: {
         result: {
           preview: {
@@ -79,7 +80,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
   it('should generate preview for in-app init page - no variables example in dto body', async () => {
     const workflow = await createWorkflow();
 
-    const stepId = workflow.steps[0]._id;
+    const stepId = workflow.steps[0].id;
     const controlValues = {
       subject: `{{subscriber.firstName}} Hello, World! `,
       body: `Hello, World! {{payload.placeholder.body}} {{payload.placeholder.random}}`,
@@ -87,14 +88,14 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       primaryAction: {
         label: '{{payload.primaryUrlLabel}}',
         redirect: {
-          target: RedirectTargetEnum.BLANK,
+          target: RedirectTargetEnum.Blank,
           url: '/home/primary-action',
         },
       },
       secondaryAction: {
         label: 'Secondary Action',
         redirect: {
-          target: RedirectTargetEnum.BLANK,
+          target: RedirectTargetEnum.Blank,
           url: '/home/secondary-action',
         },
       },
@@ -102,20 +103,23 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
         key: 'value',
       },
       redirect: {
-        target: RedirectTargetEnum.BLANK,
+        target: RedirectTargetEnum.Blank,
         url: 'https://www.example.com/redirect',
       },
     };
     const previewPayload = {
       // empty previewPayload
     };
-    const { status, body } = await session.testAgent.post(`/v2/workflows/${workflow._id}/step/${stepId}/preview`).send({
-      controlValues,
-      previewPayload,
+    const { result } = await novuClient.workflows.steps.generatePreview({
+      generatePreviewRequestDto: {
+        controlValues,
+        previewPayload,
+      },
+      stepId,
+      workflowId: workflow.id,
     });
 
-    expect(status).to.equal(201);
-    expect(body.data).to.deep.equal({
+    expect(result).to.deep.equal({
       result: {
         preview: {
           subject: '{{subscriber.firstName}} Hello, World! ',
@@ -163,7 +167,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
   it('should generate preview for in-app step', async () => {
     const workflow = await createWorkflow();
 
-    const stepId = workflow.steps[0]._id;
+    const stepId = workflow.steps[0].id;
     const controlValues = {
       subject: `{{subscriber.firstName}} Hello, World! `,
       body: `Hello, World! {{payload.placeholder.body}}`,
@@ -171,14 +175,14 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       primaryAction: {
         label: '{{payload.primaryUrlLabel}}',
         redirect: {
-          target: RedirectTargetEnum.BLANK,
+          target: RedirectTargetEnum.Blank,
           url: '/home/primary-action',
         },
       },
       secondaryAction: {
         label: 'Secondary Action',
         redirect: {
-          target: RedirectTargetEnum.BLANK,
+          target: RedirectTargetEnum.Blank,
           url: '/home/secondary-action',
         },
       },
@@ -186,11 +190,11 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
         key: 'value',
       },
       redirect: {
-        target: RedirectTargetEnum.BLANK,
+        target: RedirectTargetEnum.Blank,
         url: 'https://www.example.com/redirect',
       },
     };
-    const previewPayload = {
+    const previewPayload: PreviewPayloadDto = {
       subscriber: {
         firstName: 'John',
       },
@@ -201,13 +205,14 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
         primaryUrlLabel: 'https://example.com',
       },
     };
-    const { status, body } = await session.testAgent.post(`/v2/workflows/${workflow._id}/step/${stepId}/preview`).send({
-      controlValues,
-      previewPayload,
+
+    const { result } = await novuClient.workflows.steps.generatePreview({
+      workflowId: workflow.id,
+      stepId,
+      generatePreviewRequestDto: { controlValues, previewPayload },
     });
 
-    expect(status).to.equal(201);
-    expect(body.data).to.deep.equal({
+    expect(result).to.deep.equal({
       result: {
         preview: {
           subject: 'John Hello, World! ',
@@ -278,9 +283,9 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       },
     };
     const workflow = await createWorkflow({ payloadSchema });
-    await emulateExternalOrigin(workflow._id);
+    await emulateExternalOrigin(workflow.id);
 
-    const stepId = workflow.steps[0]._id;
+    const stepId = workflow.steps[0].id;
     const controlValues = {
       subject: `{{subscriber.firstName}} Hello, World! `,
       body: `Hello, World! {{payload.placeholder.body}} {{payload.placeholder.random}}`,
@@ -288,14 +293,14 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       primaryAction: {
         label: '{{payload.primaryUrlLabel}}',
         redirect: {
-          target: RedirectTargetEnum.BLANK,
+          target: RedirectTargetEnum.Blank,
           url: '/home/primary-action',
         },
       },
       secondaryAction: {
         label: 'Secondary Action',
         redirect: {
-          target: RedirectTargetEnum.BLANK,
+          target: RedirectTargetEnum.Blank,
           url: '/home/secondary-action',
         },
       },
@@ -303,7 +308,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
         key: 'value',
       },
       redirect: {
-        target: RedirectTargetEnum.BLANK,
+        target: RedirectTargetEnum.Blank,
         url: 'https://www.example.com/redirect',
       },
     };
@@ -315,13 +320,16 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
         primaryUrlLabel: 'New Click Here',
       },
     };
-    const { status, body } = await session.testAgent.post(`/v2/workflows/${workflow._id}/step/${stepId}/preview`).send({
-      controlValues,
-      previewPayload: clientVariablesExample,
+    const { result } = await novuClient.workflows.steps.generatePreview({
+      generatePreviewRequestDto: {
+        controlValues,
+        previewPayload: clientVariablesExample,
+      },
+      stepId,
+      workflowId: workflow.id,
     });
 
-    expect(status).to.equal(201);
-    expect(body.data).to.deep.equal({
+    expect(result).to.deep.equal({
       result: {
         preview: {
           subject: 'First Name Hello, World! ',
@@ -385,25 +393,28 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       },
     };
     const workflow = await createWorkflow({ payloadSchema: pay });
-    await emulateExternalOrigin(workflow._id);
+    await emulateExternalOrigin(workflow.id);
 
-    const stepId = workflow.steps[0]._id;
+    const stepId = workflow.steps[0].id;
     const controlValues = {
       subject: 'Welcome {{payload.firstName}}',
       body: 'Hello {{payload.firstName}}, your order #{{payload.orderId}} is ready!',
     };
-    const response = await session.testAgent.post(`/v2/workflows/${workflow._id}/step/${stepId}/preview`).send({
-      controlValues,
-      previewPayload: {
-        payload: {
-          firstName: 'John',
-          // orderId is missing
+    const { result } = await novuClient.workflows.steps.generatePreview({
+      generatePreviewRequestDto: {
+        controlValues,
+        previewPayload: {
+          payload: {
+            firstName: 'John',
+            // orderId is missing
+          },
         },
       },
+      stepId,
+      workflowId: workflow.id,
     });
 
-    expect(response.status).to.equal(201);
-    expect(response.body.data).to.deep.equal({
+    expect(result).to.deep.equal({
       result: {
         preview: {
           subject: 'Welcome John',
@@ -422,18 +433,21 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       },
     });
 
-    const response2 = await session.testAgent.post(`/v2/workflows/${workflow._id}/step/${stepId}/preview`).send({
-      controlValues,
-      previewPayload: {
-        payload: {
-          firstName: 'John',
-          orderId: '123456', // orderId is will override the variable example that driven by workflow payload schema
+    const { result: result2 } = await novuClient.workflows.steps.generatePreview({
+      generatePreviewRequestDto: {
+        controlValues,
+        previewPayload: {
+          payload: {
+            firstName: 'John',
+            orderId: '123456', // orderId is will override the variable example that driven by workflow payload schema
+          },
         },
       },
+      stepId,
+      workflowId: workflow.id,
     });
 
-    expect(response2.status).to.equal(201);
-    expect(response2.body.data).to.deep.equal({
+    expect(result2).to.deep.equal({
       result: {
         preview: {
           subject: 'Welcome John',
@@ -470,16 +484,16 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
     const workflow = await createWorkflow({ payloadSchema: pay });
 
     const nonExistentWorkflowId = 'non-existent-id';
-    const stepId = workflow.steps[0]._id;
-
-    const response = await session.testAgent
-      .post(`/v2/workflows/${nonExistentWorkflowId}/step/${stepId}/preview`)
-      .send({
+    const stepId = workflow.steps[0].id;
+    const { result } = await novuClient.workflows.steps.generatePreview({
+      generatePreviewRequestDto: {
         controlValues: {},
-      });
+      },
+      stepId,
+      workflowId: nonExistentWorkflowId,
+    });
 
-    expect(response.status).to.equal(201);
-    expect(response.body.data).to.deep.equal({
+    expect(result).to.deep.equal({
       result: {
         preview: {},
       },
@@ -504,15 +518,15 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
     };
     const workflow = await createWorkflow({ payloadSchema: pay });
     const nonExistentStepId = 'non-existent-step-id';
-
-    const response = await session.testAgent
-      .post(`/v2/workflows/${workflow._id}/step/${nonExistentStepId}/preview`)
-      .send({
+    const { result } = await novuClient.workflows.steps.generatePreview({
+      generatePreviewRequestDto: {
         controlValues: {},
-      });
+      },
+      stepId: nonExistentStepId,
+      workflowId: workflow.id,
+    });
 
-    expect(response.status).to.equal(201);
-    expect(response.body.data).to.deep.equal({
+    expect(result).to.deep.equal({
       result: {
         preview: {},
       },
@@ -522,7 +536,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
 
   async function createWorkflow(overrides: Partial<NotificationTemplateEntity> = {}): Promise<WorkflowResponseDto> {
     const createWorkflowDto: CreateWorkflowDto = {
-      __source: WorkflowCreationSourceEnum.EDITOR,
+      source: WorkflowCreationSourceEnum.Editor,
       name: TEST_WORKFLOW_NAME,
       workflowId: `${slugify(TEST_WORKFLOW_NAME)}`,
       description: 'This is a test workflow',
@@ -530,36 +544,29 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       steps: [
         {
           name: 'In-App Test Step',
-          type: StepTypeEnum.IN_APP,
+          type: StepTypeEnum.InApp,
         },
         {
           name: 'Email Test Step',
-          type: StepTypeEnum.EMAIL,
+          type: StepTypeEnum.Email,
         },
       ],
     };
 
-    const res = await workflowsClient.createWorkflow(createWorkflowDto);
-    if (!res.isSuccessResult()) {
-      throw new Error(res.error!.responseText);
-    }
+    const res = await novuClient.workflows.create(createWorkflowDto);
 
     await notificationTemplateRepository.updateOne(
       {
         _organizationId: session.organization._id,
         _environmentId: session.environment._id,
-        _id: res.value._id,
+        _id: res.result.id,
       },
       {
         ...overrides,
       }
     );
 
-    if (!res.value) {
-      throw new Error('Workflow not found');
-    }
-
-    return res.value;
+    return res.result;
   }
 
   /**
@@ -573,7 +580,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
         _id: _workflowId,
       },
       {
-        origin: WorkflowOriginEnum.EXTERNAL,
+        origin: WorkflowOriginEnum.External,
       }
     );
 

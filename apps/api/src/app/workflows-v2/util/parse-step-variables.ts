@@ -1,4 +1,4 @@
-import type { JSONSchemaDefinition } from '@novu/shared';
+import { JSONSchemaDto, JsonSchemaType } from '../dtos';
 
 export type LiquidVariable = {
   type: 'variable';
@@ -16,14 +16,14 @@ export type ParsedVariables = {
  * @param schema - The JSON Schema to parse.
  * @returns An object containing three arrays: primitives, arrays, and namespaces.
  */
-export function parseStepVariables(schema: JSONSchemaDefinition): ParsedVariables {
+export function parseStepVariables(schema: JSONSchemaDto): ParsedVariables {
   const result: ParsedVariables = {
     primitives: [],
     arrays: [],
     namespaces: [],
   };
 
-  function extractProperties(obj: JSONSchemaDefinition, path = ''): void {
+  function extractProperties(obj: JSONSchemaDto, path = ''): void {
     if (typeof obj === 'boolean') return;
 
     if (obj.type === 'object') {
@@ -47,7 +47,7 @@ export function parseStepVariables(schema: JSONSchemaDefinition): ParsedVariable
               label: fullPath,
             });
             if (value.properties) {
-              extractProperties({ type: 'object', properties: value.properties }, fullPath);
+              extractProperties({ type: JsonSchemaType.OBJECT, properties: value.properties }, fullPath);
             }
             if (value.items) {
               const items = Array.isArray(value.items) ? value.items[0] : value.items;
@@ -68,7 +68,7 @@ export function parseStepVariables(schema: JSONSchemaDefinition): ParsedVariable
     // Handle combinators (allOf, anyOf, oneOf)
     ['allOf', 'anyOf', 'oneOf'].forEach((combiner) => {
       if (Array.isArray(obj[combiner as keyof typeof obj])) {
-        for (const subSchema of obj[combiner as keyof typeof obj] as JSONSchemaDefinition[]) {
+        for (const subSchema of obj[combiner as keyof typeof obj] as JSONSchemaDto[]) {
           extractProperties(subSchema, path);
         }
       }

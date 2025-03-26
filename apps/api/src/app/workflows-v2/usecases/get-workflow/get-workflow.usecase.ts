@@ -1,6 +1,6 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 
-import { StepResponseDto, UserSessionData, WorkflowResponseDto } from '@novu/shared';
+import { UserSessionData } from '@novu/shared';
 import {
   GetWorkflowByIdsCommand,
   GetWorkflowByIdsUseCase,
@@ -11,8 +11,9 @@ import {
 import { NotificationStepEntity } from '@novu/dal';
 import { GetWorkflowCommand } from './get-workflow.command';
 import { toResponseWorkflowDto } from '../../mappers/notification-template-mapper';
-import { BuildStepDataUsecase } from '../build-step-data/build-step-data.usecase';
-import { BuildStepDataCommand } from '../build-step-data/build-step-data.command';
+import { BuildStepDataCommand, BuildStepDataUsecase } from '../build-step-data';
+import { WorkflowResponseDto } from '../../dtos/worfklow-response.dto';
+import { StepResponseDto } from '../../dtos/step.response.dto';
 
 @Injectable()
 export class GetWorkflowUseCase {

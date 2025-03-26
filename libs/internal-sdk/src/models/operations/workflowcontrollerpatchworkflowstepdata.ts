@@ -6,6 +6,7 @@ import * as z from "zod";
 import { remap as remap$ } from "../../lib/primitives.js";
 import { safeParse } from "../../lib/schemas.js";
 import { Result as SafeParseResult } from "../../types/fp.js";
+import * as components from "../components/index.js";
 import { SDKValidationError } from "../errors/sdkvalidationerror.js";
 
 export type WorkflowControllerPatchWorkflowStepDataRequest = {
@@ -15,13 +16,15 @@ export type WorkflowControllerPatchWorkflowStepDataRequest = {
    * A header for idempotency purposes
    */
   idempotencyKey?: string | undefined;
+  /**
+   * Step data patch details
+   */
+  patchStepDataDto: components.PatchStepDataDto;
 };
-
-export type WorkflowControllerPatchWorkflowStepDataResponseBody = {};
 
 export type WorkflowControllerPatchWorkflowStepDataResponse = {
   headers: { [k: string]: Array<string> };
-  result: WorkflowControllerPatchWorkflowStepDataResponseBody;
+  result: components.StepResponseDto;
 };
 
 /** @internal */
@@ -34,9 +37,11 @@ export const WorkflowControllerPatchWorkflowStepDataRequest$inboundSchema:
     workflowId: z.string(),
     stepId: z.string(),
     "idempotency-key": z.string().optional(),
+    PatchStepDataDto: components.PatchStepDataDto$inboundSchema,
   }).transform((v) => {
     return remap$(v, {
       "idempotency-key": "idempotencyKey",
+      "PatchStepDataDto": "patchStepDataDto",
     });
   });
 
@@ -45,6 +50,7 @@ export type WorkflowControllerPatchWorkflowStepDataRequest$Outbound = {
   workflowId: string;
   stepId: string;
   "idempotency-key"?: string | undefined;
+  PatchStepDataDto: components.PatchStepDataDto$Outbound;
 };
 
 /** @internal */
@@ -57,9 +63,11 @@ export const WorkflowControllerPatchWorkflowStepDataRequest$outboundSchema:
     workflowId: z.string(),
     stepId: z.string(),
     idempotencyKey: z.string().optional(),
+    patchStepDataDto: components.PatchStepDataDto$outboundSchema,
   }).transform((v) => {
     return remap$(v, {
       idempotencyKey: "idempotency-key",
+      patchStepDataDto: "PatchStepDataDto",
     });
   });
 
@@ -107,68 +115,6 @@ export function workflowControllerPatchWorkflowStepDataRequestFromJSON(
 }
 
 /** @internal */
-export const WorkflowControllerPatchWorkflowStepDataResponseBody$inboundSchema:
-  z.ZodType<
-    WorkflowControllerPatchWorkflowStepDataResponseBody,
-    z.ZodTypeDef,
-    unknown
-  > = z.object({});
-
-/** @internal */
-export type WorkflowControllerPatchWorkflowStepDataResponseBody$Outbound = {};
-
-/** @internal */
-export const WorkflowControllerPatchWorkflowStepDataResponseBody$outboundSchema:
-  z.ZodType<
-    WorkflowControllerPatchWorkflowStepDataResponseBody$Outbound,
-    z.ZodTypeDef,
-    WorkflowControllerPatchWorkflowStepDataResponseBody
-  > = z.object({});
-
-/**
- * @internal
- * @deprecated This namespace will be removed in future versions. Use schemas and types that are exported directly from this module.
- */
-export namespace WorkflowControllerPatchWorkflowStepDataResponseBody$ {
-  /** @deprecated use `WorkflowControllerPatchWorkflowStepDataResponseBody$inboundSchema` instead. */
-  export const inboundSchema =
-    WorkflowControllerPatchWorkflowStepDataResponseBody$inboundSchema;
-  /** @deprecated use `WorkflowControllerPatchWorkflowStepDataResponseBody$outboundSchema` instead. */
-  export const outboundSchema =
-    WorkflowControllerPatchWorkflowStepDataResponseBody$outboundSchema;
-  /** @deprecated use `WorkflowControllerPatchWorkflowStepDataResponseBody$Outbound` instead. */
-  export type Outbound =
-    WorkflowControllerPatchWorkflowStepDataResponseBody$Outbound;
-}
-
-export function workflowControllerPatchWorkflowStepDataResponseBodyToJSON(
-  workflowControllerPatchWorkflowStepDataResponseBody:
-    WorkflowControllerPatchWorkflowStepDataResponseBody,
-): string {
-  return JSON.stringify(
-    WorkflowControllerPatchWorkflowStepDataResponseBody$outboundSchema.parse(
-      workflowControllerPatchWorkflowStepDataResponseBody,
-    ),
-  );
-}
-
-export function workflowControllerPatchWorkflowStepDataResponseBodyFromJSON(
-  jsonString: string,
-): SafeParseResult<
-  WorkflowControllerPatchWorkflowStepDataResponseBody,
-  SDKValidationError
-> {
-  return safeParse(
-    jsonString,
-    (x) =>
-      WorkflowControllerPatchWorkflowStepDataResponseBody$inboundSchema.parse(
-        JSON.parse(x),
-      ),
-    `Failed to parse 'WorkflowControllerPatchWorkflowStepDataResponseBody' from JSON`,
-  );
-}
-
-/** @internal */
 export const WorkflowControllerPatchWorkflowStepDataResponse$inboundSchema:
   z.ZodType<
     WorkflowControllerPatchWorkflowStepDataResponse,
@@ -176,9 +122,7 @@ export const WorkflowControllerPatchWorkflowStepDataResponse$inboundSchema:
     unknown
   > = z.object({
     Headers: z.record(z.array(z.string())),
-    Result: z.lazy(() =>
-      WorkflowControllerPatchWorkflowStepDataResponseBody$inboundSchema
-    ),
+    Result: components.StepResponseDto$inboundSchema,
   }).transform((v) => {
     return remap$(v, {
       "Headers": "headers",
@@ -189,7 +133,7 @@ export const WorkflowControllerPatchWorkflowStepDataResponse$inboundSchema:
 /** @internal */
 export type WorkflowControllerPatchWorkflowStepDataResponse$Outbound = {
   Headers: { [k: string]: Array<string> };
-  Result: WorkflowControllerPatchWorkflowStepDataResponseBody$Outbound;
+  Result: components.StepResponseDto$Outbound;
 };
 
 /** @internal */
@@ -200,9 +144,7 @@ export const WorkflowControllerPatchWorkflowStepDataResponse$outboundSchema:
     WorkflowControllerPatchWorkflowStepDataResponse
   > = z.object({
     headers: z.record(z.array(z.string())),
-    result: z.lazy(() =>
-      WorkflowControllerPatchWorkflowStepDataResponseBody$outboundSchema
-    ),
+    result: components.StepResponseDto$outboundSchema,
   }).transform((v) => {
     return remap$(v, {
       headers: "Headers",

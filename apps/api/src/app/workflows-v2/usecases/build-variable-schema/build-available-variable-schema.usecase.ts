@@ -1,6 +1,5 @@
 import { Injectable } from '@nestjs/common';
 import { NotificationStepEntity, NotificationTemplateEntity } from '@novu/dal';
-import { JSONSchemaDto } from '@novu/shared';
 import { Instrument } from '@novu/application-generic';
 import { computeResultSchema } from '../../shared';
 import { BuildVariableSchemaCommand } from './build-available-variable-schema.command';
@@ -9,6 +8,7 @@ import { ExtractVariablesCommand } from '../extract-variables/extract-variables.
 import { ExtractVariables } from '../extract-variables/extract-variables.usecase';
 import { emptyJsonSchema } from '../../util/jsonToSchema';
 import { buildVariablesSchema } from '../../util/create-schema';
+import { JSONSchemaDto, JsonSchemaFormat, JsonSchemaType } from '../../dtos';
 
 @Injectable()
 export class BuildVariableSchemaUsecase {
@@ -31,23 +31,23 @@ export class BuildVariableSchemaUsecase {
     );
 
     return {
-      type: 'object',
+      type: JsonSchemaType.OBJECT,
       properties: {
         subscriber: {
-          type: 'object',
+          type: JsonSchemaType.OBJECT,
           description: 'Schema representing the subscriber entity',
           properties: {
-            firstName: { type: 'string', description: "Subscriber's first name" },
-            lastName: { type: 'string', description: "Subscriber's last name" },
-            email: { type: 'string', description: "Subscriber's email address" },
-            phone: { type: 'string', description: "Subscriber's phone number (optional)" },
-            avatar: { type: 'string', description: "URL to the subscriber's avatar image (optional)" },
-            locale: { type: 'string', description: 'Locale for the subscriber (optional)' },
-            subscriberId: { type: 'string', description: 'Unique identifier for the subscriber' },
-            isOnline: { type: 'boolean', description: 'Indicates if the subscriber is online (optional)' },
+            firstName: { type: JsonSchemaType.STRING, description: "Subscriber's first name" },
+            lastName: { type: JsonSchemaType.STRING, description: "Subscriber's last name" },
+            email: { type: JsonSchemaType.STRING, description: "Subscriber's email address" },
+            phone: { type: JsonSchemaType.STRING, description: "Subscriber's phone number (optional)" },
+            avatar: { type: JsonSchemaType.STRING, description: "URL to the subscriber's avatar image (optional)" },
+            locale: { type: JsonSchemaType.STRING, description: 'Locale for the subscriber (optional)' },
+            subscriberId: { type: JsonSchemaType.STRING, description: 'Unique identifier for the subscriber' },
+            isOnline: { type: JsonSchemaType.BOOLEAN, description: 'Indicates if the subscriber is online (optional)' },
             lastOnlineAt: {
-              type: 'string',
-              format: 'date-time',
+              type: JsonSchemaType.STRING,
+              format: JsonSchemaFormat.DATETIME,
               description: 'The last time the subscriber was online (optional)',
             },
             data: buildVariablesSchema(
@@ -71,7 +71,7 @@ export class BuildVariableSchemaUsecase {
   ): Promise<JSONSchemaDto> {
     if (workflow && workflow.steps.length === 0) {
       return {
-        type: 'object',
+        type: JsonSchemaType.OBJECT,
         properties: {},
         additionalProperties: true,
       };
@@ -106,7 +106,7 @@ function buildPreviousStepsSchema(
   payloadSchema?: JSONSchemaDto
 ): JSONSchemaDto {
   return {
-    type: 'object',
+    type: JsonSchemaType.OBJECT,
     properties: buildPreviousStepsProperties(previousSteps, payloadSchema),
     required: [],
     additionalProperties: false,

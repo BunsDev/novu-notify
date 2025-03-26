@@ -1,6 +1,6 @@
 /* eslint-disable no-param-reassign */
 import { BadRequestException, Injectable } from '@nestjs/common';
-import { StepResponseDto, UserSessionData, ControlValuesLevelEnum } from '@novu/shared';
+import { ControlValuesLevelEnum, UserSessionData } from '@novu/shared';
 import {
   ControlValuesRepository,
   NotificationStepEntity,
@@ -14,6 +14,7 @@ import {
 } from '@novu/application-generic';
 import { PatchStepCommand } from './patch-step.command';
 import { BuildStepDataUsecase } from '../build-step-data';
+import { StepResponseDto } from '../../dtos';
 
 type ValidNotificationWorkflow = {
   currentStep: NonNullable<NotificationStepEntity>;

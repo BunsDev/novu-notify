@@ -24,10 +24,16 @@ import * as operations from "../models/operations/index.js";
 import { APICall, APIPromise } from "../types/async.js";
 import { Result } from "../types/fp.js";
 
+/**
+ * Retrieve a workflow
+ *
+ * @remarks
+ * Fetches details of a specific workflow
+ */
 export function workflowsRetrieve(
   client: NovuCore,
   workflowId: string,
-  environmentId: string,
+  environmentId?: string | undefined,
   idempotencyKey?: string | undefined,
   options?: RequestOptions,
 ): APIPromise<
@@ -58,7 +64,7 @@ export function workflowsRetrieve(
 async function $do(
   client: NovuCore,
   workflowId: string,
-  environmentId: string,
+  environmentId?: string | undefined,
   idempotencyKey?: string | undefined,
   options?: RequestOptions,
 ): Promise<
@@ -128,7 +134,7 @@ async function $do(
   const context = {
     baseURL: options?.serverURL ?? client._baseURL ?? "",
     operationID: "WorkflowController_getWorkflow",
-    oAuth2Scopes: [],
+    oAuth2Scopes: null,
 
     resolvedSecurity: requestSecurity,
 

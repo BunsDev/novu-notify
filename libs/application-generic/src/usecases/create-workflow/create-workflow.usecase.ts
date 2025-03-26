@@ -17,14 +17,10 @@ import {
 } from '@novu/shared';
 
 import { PinoLogger } from 'nestjs-pino';
-import { CreateWorkflowCommand, NotificationStep, NotificationStepVariantCommand } from './create-workflow.command';
 import { CreateChange, CreateChangeCommand } from '../create-change';
-import { AnalyticsService } from '../../services';
-import { ContentService } from '../../services/content.service';
-import { isVariantEmpty } from '../../utils/variants';
+import { AnalyticsService, ContentService } from '../../services';
+import { ApiException, isVariantEmpty, PlatformException, shortId } from '../../utils';
 import { CreateMessageTemplate, CreateMessageTemplateCommand } from '../message-template';
-import { ApiException, PlatformException } from '../../utils/exceptions';
-import { shortId } from '../../utils/generate-id';
 import {
   UpsertPreferences,
   UpsertUserWorkflowPreferencesCommand,
@@ -34,6 +30,8 @@ import { GetPreferences } from '../get-preferences';
 import { GetWorkflowByIdsCommand, GetWorkflowByIdsUseCase, WorkflowInternalResponseDto } from '../workflow';
 import { Instrument, InstrumentUsecase } from '../../instrumentation';
 import { ResourceValidatorService } from '../../services/resource-validator.service';
+import { CreateWorkflowCommand } from './create-workflow.command';
+import { NotificationStep, NotificationStepVariantCommand } from '../../value-objects';
 
 /**
  * @deprecated - use `UpsertWorkflow` instead

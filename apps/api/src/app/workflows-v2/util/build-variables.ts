@@ -2,14 +2,15 @@ import _ from 'lodash';
 import { AdditionalOperation, RulesLogic } from 'json-logic-js';
 import { PinoLogger } from '@novu/application-generic';
 
-import { Variable, extractLiquidTemplateVariables, TemplateVariables } from './template-parser/liquid-parser';
+import { extractLiquidTemplateVariables, TemplateVariables, Variable } from './template-parser/liquid-parser';
 import { WrapMailyInLiquidUseCase } from '../../environments-v1/usecases/output-renderers/maily-to-liquid/wrap-maily-in-liquid.usecase';
 import { MAILY_ITERABLE_MARK } from '../../environments-v1/usecases/output-renderers/maily-to-liquid/maily.types';
 import { isStringifiedMailyJSONContent } from '../../environments-v1/usecases/output-renderers/maily-to-liquid/wrap-maily-in-liquid.command';
 import { extractFieldsFromRules, isValidRule } from '../../shared/services/query-parser/query-parser.service';
+import { JSONSchemaDto } from '../dtos';
 
 export function buildVariables(
-  variableSchema: Record<string, unknown> | undefined,
+  variableSchema: JSONSchemaDto | undefined,
   controlValue: unknown | Record<string, unknown>,
   logger?: PinoLogger
 ): TemplateVariables {
@@ -49,7 +50,7 @@ export function buildVariables(
   }
 
   const { validVariables: validSchemaVariables, invalidVariables: invalidSchemaVariables } = identifyUnknownVariables(
-    variableSchema || {},
+    variableSchema,
     validVariables
   );
 
@@ -59,7 +60,7 @@ export function buildVariables(
   };
 }
 
-function isPropertyAllowed(schema: Record<string, unknown>, propertyPath: string) {
+function isPropertyAllowed(schema: JSONSchemaDto, propertyPath: string) {
   let currentSchema = { ...schema };
   if (!currentSchema || typeof currentSchema !== 'object') {
     return false;
@@ -99,10 +100,7 @@ function createInvalidVariable(variable: Variable): Variable {
   };
 }
 
-function identifyUnknownVariables(
-  variableSchema: Record<string, unknown>,
-  validVariables: Variable[]
-): TemplateVariables {
+function identifyUnknownVariables(variableSchema: JSONSchemaDto, validVariables: Variable[]): TemplateVariables {
   const variables = _.cloneDeep(validVariables);
 
   return variables.reduce<TemplateVariables>(

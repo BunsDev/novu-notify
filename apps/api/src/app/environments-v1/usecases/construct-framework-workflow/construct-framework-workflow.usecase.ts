@@ -2,17 +2,17 @@ import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { workflow } from '@novu/framework/express';
 import { ActionStep, ChannelStep, JsonSchema, Step, StepOptions, StepOutput, Workflow } from '@novu/framework/internal';
 import { NotificationStepEntity, NotificationTemplateEntity, NotificationTemplateRepository } from '@novu/dal';
-import { JSONSchemaDefinition, StepTypeEnum, WorkflowOriginEnum } from '@novu/shared';
-import { Instrument, InstrumentUsecase, PinoLogger } from '@novu/application-generic';
+import { StepTypeEnum } from '@novu/shared';
+import { Instrument, InstrumentUsecase, JSONSchema, PinoLogger } from '@novu/application-generic';
 import { AdditionalOperation, RulesLogic } from 'json-logic-js';
 import _ from 'lodash';
 import { ConstructFrameworkWorkflowCommand } from './construct-framework-workflow.command';
 import {
   ChatOutputRendererUsecase,
+  EmailOutputRendererUsecase,
   FullPayloadForRender,
   InAppOutputRendererUsecase,
   PushOutputRendererUsecase,
-  EmailOutputRendererUsecase,
   SmsOutputRendererUsecase,
 } from '../output-renderers';
 import { DelayOutputRendererUsecase } from '../output-renderers/delay-output-renderer.usecase';
@@ -54,7 +54,7 @@ export class ConstructFrameworkWorkflow {
       dbWorkflow.triggers[0].identifier,
       async ({ step, payload, subscriber }) => {
         const fullPayloadForRender: FullPayloadForRender = { payload, subscriber, steps: {} };
-        for await (const staticStep of dbWorkflow.steps) {
+        for (const staticStep of dbWorkflow.steps) {
           fullPayloadForRender.steps[staticStep.stepId || staticStep._templateId] = await this.constructStep(
             step,
             staticStep,
@@ -184,7 +184,7 @@ export class ConstructFrameworkWorkflow {
   ): Required<Parameters<ActionStep>[2]> {
     const stepOptions = this.constructCommonStepOptions(staticStep, fullPayloadForRender);
 
-    let controlSchema = stepOptions.controlSchema as JSONSchemaDefinition;
+    let controlSchema = stepOptions.controlSchema as JSONSchema;
     const stepType = staticStep.template!.type;
 
     /*

@@ -1,10 +1,10 @@
 /* eslint-disable no-param-reassign */
-import { JSONSchemaDto } from '@novu/shared';
 import difference from 'lodash/difference';
 import isArray from 'lodash/isArray';
 import isObject from 'lodash/isObject';
 import reduce from 'lodash/reduce';
 import { MAILY_ITERABLE_MARK } from '../../environments-v1/usecases/output-renderers/maily-to-liquid/maily.types';
+import { JSONSchemaDto } from '../dtos';
 
 export function findMissingKeys(requiredRecord: object, actualRecord: object) {
   const requiredKeys = collectKeys(requiredRecord);
@@ -72,7 +72,7 @@ export function collectKeys(obj, prefix = '') {
  * //   }
  * // }
  */
-export function mockSchemaDefaults(schema: JSONSchemaDto, parentPath = 'payload', depth = 0) {
+export function mockSchemaDefaults(schema: JSONSchemaDto, parentPath = 'payload', depth = 0): JSONSchemaDto {
   const MAX_DEPTH = 10;
 
   if (depth >= MAX_DEPTH) {
