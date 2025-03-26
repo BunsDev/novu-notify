@@ -22,12 +22,11 @@ export class SubscriberResponseDtoOptional {
   })
   lastName?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'The email address of the subscriber.',
     type: String,
-    nullable: true,
   })
-  email?: string | null;
+  email?: string;
 
   @ApiPropertyOptional({
     description: 'The phone number of the subscriber.',
