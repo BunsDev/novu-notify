@@ -1,5 +1,5 @@
-import { IsDefined, IsObject, IsOptional, IsString } from 'class-validator';
-import { TriggerRecipientSubscriber, TriggerTenantContext } from '@novu/shared';
+import { TriggerOverrides, TriggerRecipientSubscriber, TriggerTenantContext } from '@novu/shared';
+import { IsDefined, IsNotEmpty, IsObject, IsOptional, IsString } from 'class-validator';
 
 import { EnvironmentWithUserCommand } from '../../../shared/commands/project.command';
 
@@ -9,7 +9,7 @@ export class TriggerEventToAllCommand extends EnvironmentWithUserCommand {
   identifier: string;
 
   @IsDefined()
-  payload: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  payload: any;
 
   @IsString()
   @IsDefined()
@@ -17,7 +17,7 @@ export class TriggerEventToAllCommand extends EnvironmentWithUserCommand {
 
   @IsObject()
   @IsOptional()
-  overrides: Record<string, Record<string, unknown>>;
+  overrides?: TriggerOverrides;
 
   @IsOptional()
   actor?: TriggerRecipientSubscriber | null;
@@ -28,4 +28,8 @@ export class TriggerEventToAllCommand extends EnvironmentWithUserCommand {
   @IsOptional()
   @IsString()
   bridgeUrl?: string;
+
+  @IsString()
+  @IsNotEmpty()
+  requestId: string;
 }

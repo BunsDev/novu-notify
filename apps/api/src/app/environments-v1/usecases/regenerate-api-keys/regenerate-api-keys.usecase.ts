@@ -1,14 +1,11 @@
-import { createHash } from 'crypto';
-import { Injectable } from '@nestjs/common';
-
-import { EnvironmentRepository } from '@novu/dal';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { decryptApiKey, encryptApiKey } from '@novu/application-generic';
 
-import { ApiException } from '../../../shared/exceptions/api.exception';
+import { EnvironmentRepository } from '@novu/dal';
+import { createHash } from 'crypto';
+import { ApiKeyDto } from '../../dtos/api-key.dto';
 import { GenerateUniqueApiKey } from '../generate-unique-api-key/generate-unique-api-key.usecase';
 import { GetApiKeysCommand } from '../get-api-keys/get-api-keys.command';
-
-import { ApiKeyDto } from '../../dtos/api-key.dto';
 
 @Injectable()
 export class RegenerateApiKeys {
@@ -21,7 +18,7 @@ export class RegenerateApiKeys {
     const environment = await this.environmentRepository.findOne({ _id: command.environmentId });
 
     if (!environment) {
-      throw new ApiException(`Environment id: ${command.environmentId} not found`);
+      throw new BadRequestException(`Environment id: ${command.environmentId} not found`);
     }
 
     const key = await this.generateUniqueApiKey.execute();

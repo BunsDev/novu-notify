@@ -1,8 +1,8 @@
+import { Novu } from '@novu/api';
+import { SubscriberResponseDto } from '@novu/api/models/components';
+import { UserSession } from '@novu/testing';
 import { expect } from 'chai';
 import { randomBytes } from 'crypto';
-import { UserSession } from '@novu/testing';
-import { SubscriberResponseDto } from '@novu/api/models/components';
-import { Novu } from '@novu/api';
 import { expectSdkExceptionGeneric, initNovuClassSdk } from '../../shared/helpers/e2e/sdk/e2e-sdk.helper';
 
 let session: UserSession;
@@ -30,6 +30,20 @@ describe('Get Subscriber - /subscribers/:subscriberId (GET) #novu-v2', () => {
     const { error } = await expectSdkExceptionGeneric(() => novuClient.subscribers.retrieve(invalidSubscriberId));
 
     expect(error?.statusCode).to.equal(404);
+  });
+
+  it('should return null values if subscriber has null or undefined values', async () => {
+    const subscriberId = `test-subscriber-${`${randomBytes(4).toString('hex')}`}`;
+    const payload = {
+      subscriberId,
+    };
+
+    await novuClient.subscribers.create(payload);
+
+    const res = await novuClient.subscribers.retrieve(subscriberId);
+
+    expect(res.result.firstName).to.be.undefined;
+    expect(res.result.lastName).to.be.undefined;
   });
 });
 

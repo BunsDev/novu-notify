@@ -1,4 +1,4 @@
-import { type Page, expect } from '@playwright/test';
+import { expect, type Page } from '@playwright/test';
 
 export class StepConfigSidebar {
   constructor(private page: Page) {}
@@ -36,7 +36,7 @@ export class StepConfigSidebar {
   }
 
   async configureTemplateClick(): Promise<void> {
-    const configureInAppTemplateBtn = this.page.getByRole('link').filter({ hasText: /Configure.* template/ });
+    const configureInAppTemplateBtn = this.page.getByRole('link').filter({ hasText: /Edit.* Step content/ });
     await configureInAppTemplateBtn.click();
   }
 

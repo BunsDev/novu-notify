@@ -1,9 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { ConflictException, Injectable } from '@nestjs/common';
 import { SubscriberEntity, SubscriberRepository } from '@novu/dal';
-import { AnalyticsService, buildSubscriberKey, InvalidateCacheService } from '../../services';
-import { UpdateSubscriber, UpdateSubscriberCommand } from '../update-subscriber';
-import { OAuthHandlerEnum, UpdateSubscriberChannel, UpdateSubscriberChannelCommand } from '../subscribers';
 import { RetryOnError } from '../../decorators/retry-on-error-decorator';
+import { InstrumentUsecase } from '../../instrumentation';
+import { AnalyticsService, buildSubscriberKey, InvalidateCacheService } from '../../services';
+import { OAuthHandlerEnum, UpdateSubscriberChannel, UpdateSubscriberChannelCommand } from '../subscribers';
+import { UpdateSubscriber, UpdateSubscriberCommand } from '../update-subscriber';
 import { CreateOrUpdateSubscriberCommand } from './create-or-update-subscriber.command';
 
 @Injectable()
@@ -20,27 +21,58 @@ export class CreateOrUpdateSubscriberUseCase {
     maxRetries: 3,
     delay: 500,
   })
+  @InstrumentUsecase()
   async execute(command: CreateOrUpdateSubscriberCommand) {
     const persistedSubscriber = await this.getExistingSubscriber(command);
+    if (command.failIfExists && persistedSubscriber) {
+      throw new ConflictException(`Subscriber with id "${command.subscriberId}" already exists`);
+    }
 
     if (persistedSubscriber) {
-      await this.updateSubscriber(command, persistedSubscriber);
+      if (command.allowUpdate) {
+        await this.updateSubscriber(command, persistedSubscriber);
+      }
     } else {
       await this.createSubscriber(command);
     }
 
-    if (command.channels?.length) {
+    if (command.channels?.length && command.allowUpdate) {
       await this.updateCredentials(command);
     }
 
-    return await this.fetchSubscriber({
-      _environmentId: command.environmentId,
-      subscriberId: command.subscriberId,
-    });
+    return persistedSubscriber && !command.allowUpdate
+      ? persistedSubscriber
+      : await this.fetchSubscriber({
+          _environmentId: command.environmentId,
+          subscriberId: command.subscriberId,
+        });
   }
 
   private async updateSubscriber(command: CreateOrUpdateSubscriberCommand, existingSubscriber: SubscriberEntity) {
-    return await this.updateSubscriberUseCase.execute(this.buildUpdateSubscriberCommand(command, existingSubscriber));
+    await this.invalidateCache.invalidateByKey({
+      key: buildSubscriberKey({
+        subscriberId: command.subscriberId,
+        _environmentId: command.environmentId,
+      }),
+    });
+
+    return await this.updateSubscriberUseCase.execute(
+      UpdateSubscriberCommand.create({
+        environmentId: command.environmentId,
+        organizationId: command.organizationId,
+        firstName: command.firstName,
+        lastName: command.lastName,
+        subscriberId: command.subscriberId,
+        email: command.email,
+        phone: command.phone,
+        avatar: command.avatar,
+        locale: command.locale,
+        data: command.data,
+        subscriber: existingSubscriber,
+        channels: command.channels,
+        timezone: command.timezone,
+      })
+    );
   }
 
   private async getExistingSubscriber(command: CreateOrUpdateSubscriberCommand) {
@@ -63,24 +95,6 @@ export class CreateOrUpdateSubscriberUseCase {
       hasLocale: !!command.locale,
       hasData: !!command.data,
       hasCredentials: !!command.channels,
-    });
-  }
-
-  private buildUpdateSubscriberCommand(command: CreateOrUpdateSubscriberCommand, subscriber: SubscriberEntity) {
-    return UpdateSubscriberCommand.create({
-      environmentId: command.environmentId,
-      organizationId: command.organizationId,
-      firstName: command.firstName,
-      lastName: command.lastName,
-      subscriberId: command.subscriberId,
-      email: command.email,
-      phone: command.phone,
-      avatar: command.avatar,
-      locale: command.locale,
-      data: command.data,
-      subscriber,
-      channels: command.channels,
-      timezone: command.timezone,
     });
   }
 

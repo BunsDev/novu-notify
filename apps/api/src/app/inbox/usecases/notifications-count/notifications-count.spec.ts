@@ -1,12 +1,11 @@
-import sinon from 'sinon';
-import { expect } from 'chai';
-import { MessageRepository, SubscriberRepository } from '@novu/dal';
-import { ChannelTypeEnum } from '@novu/shared';
+import { BadRequestException } from '@nestjs/common';
 import { buildMessageCountKey, CachedQuery } from '@novu/application-generic';
-
-import { NotificationsCount } from './notifications-count.usecase';
+import { MessageRepository, OrganizationRepository, SubscriberRepository } from '@novu/dal';
+import { ChannelTypeEnum } from '@novu/shared';
+import { expect } from 'chai';
+import sinon from 'sinon';
 import { NotificationsCountCommand } from './notifications-count.command';
-import { ApiException } from '../../../shared/exceptions/api.exception';
+import { NotificationsCount } from './notifications-count.usecase';
 
 sinon.stub(CachedQuery);
 sinon.stub(buildMessageCountKey);
@@ -19,12 +18,11 @@ describe('NotificationsCount', () => {
   beforeEach(() => {
     messageRepository = sinon.createStubInstance(MessageRepository);
     subscriberRepository = sinon.createStubInstance(SubscriberRepository);
-
     notificationsCount = new NotificationsCount(messageRepository as any, subscriberRepository as any);
   });
 
   describe('execute', () => {
-    it('should throw ApiException if subscriber is not found', async () => {
+    it('should throw BadRequestException if subscriber is not found', async () => {
       subscriberRepository.findBySubscriberId.resolves(null);
 
       const command: NotificationsCountCommand = {
@@ -37,7 +35,7 @@ describe('NotificationsCount', () => {
       try {
         await notificationsCount.execute(command);
       } catch (error) {
-        expect(error).to.be.instanceOf(ApiException);
+        expect(error).to.be.instanceOf(BadRequestException);
         expect(error.message).to.equal(
           `Subscriber ${command.subscriberId} doesn't exist in environment ${command.environmentId}`
         );
@@ -58,7 +56,7 @@ describe('NotificationsCount', () => {
       try {
         await notificationsCount.execute(command);
       } catch (error) {
-        expect(error).to.be.instanceOf(ApiException);
+        expect(error).to.be.instanceOf(BadRequestException);
         expect(error.message).to.equal(`Filtering for unread and archived notifications is not supported.`);
       }
     });
@@ -84,9 +82,18 @@ describe('NotificationsCount', () => {
       expect(subscriberRepository.findBySubscriberId.calledOnce).to.be.true;
       expect(messageRepository.getCount.calledOnce).to.be.true;
       expect(
-        messageRepository.getCount.calledWith(command.environmentId, subscriber._id, ChannelTypeEnum.IN_APP, filter, {
-          limit: 99,
-        })
+        messageRepository.getCount.calledWith(
+          command.environmentId,
+          subscriber._id,
+          ChannelTypeEnum.IN_APP,
+          {
+            ...filter,
+            severity: undefined,
+          },
+          {
+            limit: 99,
+          }
+        )
       ).to.be.true;
     });
 
@@ -110,7 +117,7 @@ describe('NotificationsCount', () => {
           environmentId,
           subscriber._id,
           ChannelTypeEnum.IN_APP,
-          { read: true },
+          { read: true, severity: undefined },
           { limit: 99 }
         )
       ).to.be.true;
@@ -127,7 +134,7 @@ describe('NotificationsCount', () => {
           environmentId,
           subscriber._id,
           ChannelTypeEnum.IN_APP,
-          { read: false },
+          { read: false, severity: undefined },
           { limit: 99 }
         )
       ).to.be.true;
@@ -140,7 +147,13 @@ describe('NotificationsCount', () => {
       });
 
       expect(
-        messageRepository.getCount.calledWith(environmentId, subscriber._id, ChannelTypeEnum.IN_APP, {}, { limit: 99 })
+        messageRepository.getCount.calledWith(
+          environmentId,
+          subscriber._id,
+          ChannelTypeEnum.IN_APP,
+          { severity: undefined },
+          { limit: 99 }
+        )
       ).to.be.true;
 
       await notificationsCount.execute({
@@ -155,7 +168,7 @@ describe('NotificationsCount', () => {
           environmentId,
           subscriber._id,
           ChannelTypeEnum.IN_APP,
-          { archived: true },
+          { archived: true, severity: undefined },
           { limit: 99 }
         )
       ).to.be.true;
@@ -172,7 +185,41 @@ describe('NotificationsCount', () => {
           environmentId,
           subscriber._id,
           ChannelTypeEnum.IN_APP,
-          { archived: false },
+          { archived: false, severity: undefined },
+          { limit: 99 }
+        )
+      ).to.be.true;
+
+      await notificationsCount.execute({
+        organizationId: 'organizationId',
+        environmentId,
+        subscriberId: 'subscriber-id',
+        filters: [{ snoozed: true }],
+      });
+
+      expect(
+        messageRepository.getCount.calledWith(
+          environmentId,
+          subscriber._id,
+          ChannelTypeEnum.IN_APP,
+          { snoozed: true, severity: undefined },
+          { limit: 99 }
+        )
+      ).to.be.true;
+
+      await notificationsCount.execute({
+        organizationId: 'organizationId',
+        environmentId,
+        subscriberId: 'subscriber-id',
+        filters: [{ snoozed: false }],
+      });
+
+      expect(
+        messageRepository.getCount.calledWith(
+          environmentId,
+          subscriber._id,
+          ChannelTypeEnum.IN_APP,
+          { snoozed: false, severity: undefined },
           { limit: 99 }
         )
       ).to.be.true;
@@ -185,7 +232,13 @@ describe('NotificationsCount', () => {
       });
 
       expect(
-        messageRepository.getCount.calledWith(environmentId, subscriber._id, ChannelTypeEnum.IN_APP, {}, { limit: 99 })
+        messageRepository.getCount.calledWith(
+          environmentId,
+          subscriber._id,
+          ChannelTypeEnum.IN_APP,
+          { severity: undefined },
+          { limit: 99 }
+        )
       ).to.be.true;
 
       await notificationsCount.execute({
@@ -200,7 +253,7 @@ describe('NotificationsCount', () => {
           environmentId,
           subscriber._id,
           ChannelTypeEnum.IN_APP,
-          { read: true, archived: true },
+          { read: true, archived: true, severity: undefined },
           { limit: 99 }
         )
       ).to.be.true;

@@ -1,16 +1,15 @@
-import sinon from 'sinon';
-import { expect } from 'chai';
-import { NotFoundException } from '@nestjs/common';
-import { ButtonTypeEnum, ChannelCTATypeEnum, MessageActionStatusEnum } from '@novu/shared';
-import { ChannelTypeEnum, MessageRepository } from '@novu/dal';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { AnalyticsService, buildFeedKey, InvalidateCacheService } from '@novu/application-generic';
+import { ChannelTypeEnum, MessageRepository } from '@novu/dal';
+import { ButtonTypeEnum, ChannelCTATypeEnum, MessageActionStatusEnum } from '@novu/shared';
+import { expect } from 'chai';
+import sinon from 'sinon';
 
 import { GetSubscriber } from '../../../subscribers/usecases/get-subscriber';
-import { UpdateNotificationAction } from './update-notification-action.usecase';
-import type { UpdateNotificationActionCommand } from './update-notification-action.command';
-import { ApiException } from '../../../shared/exceptions/api.exception';
-import { mapToDto } from '../../utils/notification-mapper';
 import { AnalyticsEventsEnum } from '../../utils';
+import { mapToDto } from '../../utils/notification-mapper';
+import type { UpdateNotificationActionCommand } from './update-notification-action.command';
+import { UpdateNotificationAction } from './update-notification-action.usecase';
 
 const mockSubscriber: any = { _id: '123', subscriberId: 'test-mockSubscriber' };
 const mockMessage: any = {
@@ -90,7 +89,7 @@ describe('UpdateNotificationAction', () => {
     try {
       await updateNotificationAction.execute(command);
     } catch (error) {
-      expect(error).to.be.instanceOf(ApiException);
+      expect(error).to.be.instanceOf(BadRequestException);
       expect(error.message).to.equal(`Subscriber with id: ${command.subscriberId} is not found.`);
     }
   });
@@ -132,7 +131,7 @@ describe('UpdateNotificationAction', () => {
     try {
       await updateNotificationAction.execute(command);
     } catch (error) {
-      expect(error).to.be.instanceOf(ApiException);
+      expect(error).to.be.instanceOf(BadRequestException);
       expect(error.message).to.equal(`Could not perform action on the primary button because it does not exist.`);
     }
   });
@@ -153,7 +152,7 @@ describe('UpdateNotificationAction', () => {
     try {
       await updateNotificationAction.execute(command);
     } catch (error) {
-      expect(error).to.be.instanceOf(ApiException);
+      expect(error).to.be.instanceOf(BadRequestException);
       expect(error.message).to.equal(`Could not perform action on the secondary button because it does not exist.`);
     }
   });

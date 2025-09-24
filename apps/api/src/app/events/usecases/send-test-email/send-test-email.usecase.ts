@@ -1,11 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import { addBreadcrumb } from '@sentry/node';
-import { IntegrationEntity, OrganizationRepository } from '@novu/dal';
-import { ChannelTypeEnum, EmailProviderIdEnum, IEmailOptions, WorkflowOriginEnum } from '@novu/shared';
-
 import {
   AnalyticsService,
-  ApiException,
   CompileEmailTemplate,
   CompileEmailTemplateCommand,
   GetNovuProviderCredentials,
@@ -14,8 +9,11 @@ import {
   SelectIntegration,
   SelectIntegrationCommand,
 } from '@novu/application-generic';
-import { SendTestEmailCommand } from './send-test-email.command';
+import { IntegrationEntity, OrganizationRepository } from '@novu/dal';
+import { ChannelTypeEnum, EmailProviderIdEnum, IEmailOptions, ResourceOriginEnum } from '@novu/shared';
+import { addBreadcrumb } from '@sentry/node';
 import { PreviewStep, PreviewStepCommand } from '../../../bridge/usecases/preview-step';
+import { SendTestEmailCommand } from './send-test-email.command';
 
 @Injectable()
 export class SendTestEmail {
@@ -51,7 +49,7 @@ export class SendTestEmail {
     );
 
     if (!integration) {
-      throw new ApiException(`Missing an active email integration`);
+      throw new BadRequestException(`Missing an active email integration`);
     }
 
     if (integration.providerId === EmailProviderIdEnum.Novu) {
@@ -102,12 +100,12 @@ export class SendTestEmail {
           environmentId: command.environmentId,
           organizationId: command.organizationId,
           userId: command.userId,
-          workflowOrigin: WorkflowOriginEnum.EXTERNAL,
+          workflowOrigin: ResourceOriginEnum.EXTERNAL,
         })
       );
 
       if (!data.outputs) {
-        throw new ApiException('Could not retrieve content from edge');
+        throw new BadRequestException('Could not retrieve content from edge');
       }
 
       html = data.outputs.body as string;
@@ -149,13 +147,12 @@ export class SendTestEmail {
         providerId,
       });
     } catch (error) {
-      throw new ApiException(`Unexpected provider error`);
+      throw new BadRequestException(`Unexpected provider error`);
     }
   }
 
   private getSystemVariables(variableType: 'subscriber' | 'step' | 'branding', command: SendTestEmailCommand) {
     const variables = {};
-    // eslint-disable-next-line guard-for-in
     for (const variable in command.payload) {
       const [type, names] = variable.includes('.') ? variable.split('.') : variable;
       if (type === variableType) {

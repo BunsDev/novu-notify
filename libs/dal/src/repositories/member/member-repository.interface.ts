@@ -1,4 +1,4 @@
-import { MemberRoleEnum, MemberStatusEnum, IMemberInvite } from '@novu/shared';
+import { IMemberInvite, MemberRoleEnum, MemberStatusEnum } from '@novu/shared';
 import { Types } from 'mongoose';
 import { MemberEntity } from './member.entity';
 import { IAddMemberData } from './member.repository';
@@ -20,7 +20,7 @@ export interface IMemberRepository extends IMemberRepositoryMongo {
     modified: number;
   }>;
   getOrganizationMembers(organizationId: string): Promise<MemberEntity[]>;
-  getOrganizationAdminAccount(organizationId: string): Promise<MemberEntity | null>;
+  getOrganizationOwnerAccount(organizationId: string): Promise<MemberEntity | null>;
   getOrganizationAdmins(organizationId: string): Promise<
     {
       _userId: any;

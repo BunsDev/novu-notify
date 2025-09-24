@@ -1,10 +1,11 @@
+import { SignUp as SignUpForm } from '@clerk/clerk-react';
+import { useEffect } from 'react';
 import { AuthSideBanner } from '@/components/auth/auth-side-banner';
 import { RegionPicker } from '@/components/auth/region-picker';
 import { PageMeta } from '@/components/page-meta';
 import { clerkSignupAppearance } from '@/utils/clerk-appearance';
 import { ROUTES } from '@/utils/routes';
-import { SignUp as SignUpForm } from '@clerk/clerk-react';
-import { useEffect } from 'react';
+import { IS_SELF_HOSTED } from '../config';
 import { useSegment } from '../context/segment';
 import { TelemetryEvent } from '../utils/telemetry';
 import { getReferrer, getUtmParams } from '../utils/tracking';
@@ -20,8 +21,6 @@ export const SignUpPage = () => {
       ...utmParams,
       referrer,
     });
-
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -38,7 +37,7 @@ export const SignUpPage = () => {
             appearance={clerkSignupAppearance}
             forceRedirectUrl={ROUTES.SIGNUP_ORGANIZATION_LIST}
           />
-          <RegionPicker />
+          {!IS_SELF_HOSTED && <RegionPicker />}
         </div>
       </div>
     </div>

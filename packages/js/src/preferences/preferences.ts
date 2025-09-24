@@ -1,15 +1,20 @@
 import { InboxService } from '../api';
-import { NovuEventEmitter } from '../event-emitter';
 import { BaseModule } from '../base-module';
-import { Preference } from './preference';
-import type { ListPreferencesArgs } from './types';
-import { Result } from '../types';
 import { PreferencesCache } from '../cache/preferences-cache';
+import { ScheduleCache } from '../cache/schedule-cache';
+import { NovuEventEmitter } from '../event-emitter';
+import { Result, WorkflowCriticalityEnum } from '../types';
+import { bulkUpdatePreference, updatePreference } from './helpers';
+import { Preference } from './preference';
+import { PreferenceSchedule } from './preference-schedule';
+import type { BasePreferenceArgs, InstancePreferenceArgs, ListPreferencesArgs, UpdatePreferenceArgs } from './types';
 
 export class Preferences extends BaseModule {
   #useCache: boolean;
 
   readonly cache: PreferencesCache;
+  readonly scheduleCache: ScheduleCache;
+  readonly schedule: PreferenceSchedule;
 
   constructor({
     useCache,
@@ -27,7 +32,16 @@ export class Preferences extends BaseModule {
     this.cache = new PreferencesCache({
       emitterInstance: this._emitter,
     });
+    this.scheduleCache = new ScheduleCache({
+      emitterInstance: this._emitter,
+    });
     this.#useCache = useCache;
+    this.schedule = new PreferenceSchedule({
+      cache: this.scheduleCache,
+      useCache,
+      inboxServiceInstance,
+      eventEmitterInstance,
+    });
   }
 
   async list(args: ListPreferencesArgs = {}): Result<Preference[]> {
@@ -37,13 +51,18 @@ export class Preferences extends BaseModule {
         this._emitter.emit('preferences.list.pending', { args, data });
 
         if (!data) {
-          const response = await this._inboxService.fetchPreferences(args.tags);
+          const response = await this._inboxService.fetchPreferences({
+            tags: args.tags,
+            severity: args.severity,
+            criticality: args.criticality ?? WorkflowCriticalityEnum.NON_CRITICAL,
+          });
           data = response.map(
             (el) =>
               new Preference(el, {
                 emitterInstance: this._emitter,
                 inboxServiceInstance: this._inboxService,
                 cache: this.cache,
+                scheduleCache: this.scheduleCache,
                 useCache: this.#useCache,
               })
           );
@@ -62,5 +81,35 @@ export class Preferences extends BaseModule {
         throw error;
       }
     });
+  }
+
+  async update(args: BasePreferenceArgs): Result<Preference>;
+  async update(args: InstancePreferenceArgs): Result<Preference>;
+  async update(args: UpdatePreferenceArgs): Result<Preference> {
+    return this.callWithSession(() =>
+      updatePreference({
+        emitter: this._emitter,
+        apiService: this._inboxService,
+        cache: this.cache,
+        scheduleCache: this.scheduleCache,
+        useCache: this.#useCache,
+        args,
+      })
+    );
+  }
+
+  async bulkUpdate(args: Array<BasePreferenceArgs>): Result<Preference[]>;
+  async bulkUpdate(args: Array<InstancePreferenceArgs>): Result<Preference[]>;
+  async bulkUpdate(args: Array<UpdatePreferenceArgs>): Result<Preference[]> {
+    return this.callWithSession(() =>
+      bulkUpdatePreference({
+        emitter: this._emitter,
+        apiService: this._inboxService,
+        cache: this.cache,
+        scheduleCache: this.scheduleCache,
+        useCache: this.#useCache,
+        args,
+      })
+    );
   }
 }

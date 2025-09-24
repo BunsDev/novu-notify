@@ -9,21 +9,13 @@ import { SDKValidationError } from "../errors/sdkvalidationerror.js";
 
 export type WorkflowInfoDto = {
   /**
-   * Workflow slug
-   */
-  slug: string;
-  /**
-   * Unique identifier of the workflow
-   */
-  identifier: string;
-  /**
-   * Display name of the workflow
+   * The name of the workflow
    */
   name: string;
   /**
-   * last updated date
+   * The unique identifier of the workflow
    */
-  updatedAt?: string | undefined;
+  workflowId: string;
 };
 
 /** @internal */
@@ -32,18 +24,14 @@ export const WorkflowInfoDto$inboundSchema: z.ZodType<
   z.ZodTypeDef,
   unknown
 > = z.object({
-  slug: z.string(),
-  identifier: z.string(),
   name: z.string(),
-  updatedAt: z.string().optional(),
+  workflowId: z.string(),
 });
 
 /** @internal */
 export type WorkflowInfoDto$Outbound = {
-  slug: string;
-  identifier: string;
   name: string;
-  updatedAt?: string | undefined;
+  workflowId: string;
 };
 
 /** @internal */
@@ -52,10 +40,8 @@ export const WorkflowInfoDto$outboundSchema: z.ZodType<
   z.ZodTypeDef,
   WorkflowInfoDto
 > = z.object({
-  slug: z.string(),
-  identifier: z.string(),
   name: z.string(),
-  updatedAt: z.string().optional(),
+  workflowId: z.string(),
 });
 
 /**

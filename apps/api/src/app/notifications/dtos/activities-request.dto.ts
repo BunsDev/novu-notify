@@ -1,7 +1,8 @@
-import { Type } from 'class-transformer';
-import { IsOptional, IsInt, Max, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { ChannelTypeEnum } from '@novu/shared';
+import { ChannelTypeEnum, SeverityLevelEnum } from '@novu/shared';
+import { Type } from 'class-transformer';
+import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsEnumOrArray } from '../../shared/validators/is-enum-or-array';
 
 export class ActivitiesRequestDto {
   @ApiPropertyOptional({
@@ -46,6 +47,15 @@ export class ActivitiesRequestDto {
   subscriberIds?: string | string[];
 
   @ApiPropertyOptional({
+    type: String,
+    isArray: true,
+    description: 'Array of severity levels or a single severity level',
+  })
+  @IsOptional()
+  @IsEnumOrArray(SeverityLevelEnum)
+  severity?: SeverityLevelEnum[] | SeverityLevelEnum;
+
+  @ApiPropertyOptional({
     type: Number,
     default: 0,
     description: 'Page number for pagination',
@@ -72,10 +82,18 @@ export class ActivitiesRequestDto {
 
   @ApiPropertyOptional({
     type: String,
-    description: 'Transaction ID for filtering',
+    description: 'The transaction ID to filter by',
   })
   @IsOptional()
-  transactionId?: string;
+  transactionId?: string[] | string;
+
+  @ApiPropertyOptional({
+    type: String,
+    description: 'Topic Key for filtering notifications by topic',
+  })
+  @IsOptional()
+  @IsString()
+  topicKey?: string;
 
   @ApiPropertyOptional({
     type: String,

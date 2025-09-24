@@ -4,8 +4,10 @@ import { NovuEventEmitter } from './event-emitter';
 import { Notifications } from './notifications';
 import { Preferences } from './preferences';
 import { Session } from './session';
-import type { NovuOptions } from './types';
-import { Socket } from './ws';
+import type { NovuOptions, Subscriber } from './types';
+import { buildSubscriber } from './ui/internal';
+import { createSocket } from './ws';
+import type { BaseSocketInterface } from './ws/base-socket';
 
 export class Novu implements Pick<NovuEventEmitter, 'on'> {
   #emitter: NovuEventEmitter;
@@ -14,7 +16,7 @@ export class Novu implements Pick<NovuEventEmitter, 'on'> {
 
   public readonly notifications: Notifications;
   public readonly preferences: Preferences;
-  public readonly socket: Socket;
+  public readonly socket: BaseSocketInterface;
 
   public on: <Key extends EventNames>(eventName: Key, listener: EventHandler<Events[Key]>) => () => void;
   /**
@@ -39,13 +41,15 @@ export class Novu implements Pick<NovuEventEmitter, 'on'> {
     this.#emitter = new NovuEventEmitter();
     this.#session = new Session(
       {
-        applicationIdentifier: options.applicationIdentifier,
-        subscriberId: options.subscriberId,
+        applicationIdentifier: options.applicationIdentifier || '',
         subscriberHash: options.subscriberHash,
+        subscriber: buildSubscriber({ subscriberId: options.subscriberId, subscriber: options.subscriber }),
+        defaultSchedule: options.defaultSchedule,
       },
       this.#inboxService,
       this.#emitter
     );
+
     this.#session.initialize();
     this.notifications = new Notifications({
       useCache: options.useCache ?? true,
@@ -57,7 +61,7 @@ export class Novu implements Pick<NovuEventEmitter, 'on'> {
       inboxServiceInstance: this.#inboxService,
       eventEmitterInstance: this.#emitter,
     });
-    this.socket = new Socket({
+    this.socket = createSocket({
       socketUrl: options.socketUrl,
       eventEmitterInstance: this.#emitter,
       inboxServiceInstance: this.#inboxService,
@@ -67,6 +71,7 @@ export class Novu implements Pick<NovuEventEmitter, 'on'> {
       if (this.socket.isSocketEvent(eventName)) {
         this.socket.connect();
       }
+
       const cleanup = this.#emitter.on(eventName, listener);
 
       return () => {
@@ -77,5 +82,13 @@ export class Novu implements Pick<NovuEventEmitter, 'on'> {
     this.off = (eventName, listener) => {
       this.#emitter.off(eventName, listener);
     };
+  }
+
+  public async changeSubscriber(options: { subscriber: Subscriber; subscriberHash?: string }): Promise<void> {
+    await this.#session.initialize({
+      applicationIdentifier: this.#session.applicationIdentifier || '',
+      subscriberHash: options.subscriberHash,
+      subscriber: options.subscriber,
+    });
   }
 }

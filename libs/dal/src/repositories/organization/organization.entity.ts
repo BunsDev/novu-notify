@@ -7,8 +7,7 @@ export class OrganizationEntity implements IOrganizationEntity {
 
   logo?: string;
 
-  // TODO: NV-3067 - Remove optional once all organizations have a service level
-  apiServiceLevel?: ApiServiceLevelEnum;
+  apiServiceLevel: ApiServiceLevelEnum;
 
   branding?: Branding;
 
@@ -16,11 +15,15 @@ export class OrganizationEntity implements IOrganizationEntity {
 
   defaultLocale?: string;
 
+  targetLocales?: string[];
+
   domain?: string;
 
   productUseCases?: ProductUseCases;
 
   language?: string[];
+
+  removeNovuBranding?: boolean;
 
   createdAt: string;
 
@@ -48,7 +51,7 @@ export interface IPartnerConfiguration {
   accessToken: string;
   configurationId: string;
   projectIds?: string[];
-  teamId?: string;
+  teamId: string;
   partnerType: PartnerTypeEnum;
 }
 

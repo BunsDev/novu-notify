@@ -1,0 +1,5 @@
+{
+  "snapshot": "snapshot-20250818-b0a88022-18f9-481d-9b50-a4497236b0f7",
+  "install": "pnpm install:with-ee && pnpm build:agents",
+  "terminals": []
+}

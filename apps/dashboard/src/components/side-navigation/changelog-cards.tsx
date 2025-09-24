@@ -1,34 +1,57 @@
-import { useState, useEffect } from 'react';
+import { useUser } from '@clerk/clerk-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'motion/react';
 import { RiCloseLine } from 'react-icons/ri';
-import { useQuery } from '@tanstack/react-query';
 import { useTelemetry } from '@/hooks/use-telemetry';
 import { TelemetryEvent } from '@/utils/telemetry';
-import { useUser } from '@clerk/clerk-react';
+
+type SanityAsset = {
+  _ref: string;
+  _type: 'reference';
+};
+
+type SanityChangelogPost = {
+  _id: string;
+  _createdAt: string;
+  _updatedAt: string;
+  _type: 'changelogPost';
+  title: string;
+  slug: {
+    _type: 'slug';
+    current: string;
+  };
+  publishedAt: string;
+  cover?: {
+    _type: 'image';
+    asset: SanityAsset;
+  };
+};
 
 type Changelog = {
   id: string;
   date: string;
   title: string;
-  notes?: string;
   version: number;
   imageUrl?: string;
   published: boolean;
+  slug: string;
 };
 
 const CONSTANTS = {
-  CHANGELOG_API_URL: 'https://productlane.com/api/v1/changelogs/f13f1996-c9b0-4fea-8ee7-2c3faf6a832d',
+  SANITY_API_URL: 'https://w2rl2099.api.sanity.io/v2025-02-19/data/query/production',
+  SANITY_CDN_URL: 'https://cdn.sanity.io/images/w2rl2099/production',
   NUMBER_OF_CARDS: 3,
   CARD_OFFSET: 10,
   SCALE_FACTOR: 0.06,
   MAX_DISMISSED_IDS: 15,
   MONTHS_TO_SHOW: 2,
+  QUERY_KEY: ['changelogs'],
 } as const;
 
 export function ChangelogStack() {
-  const [changelogs, setChangelogs] = useState<Changelog[]>([]);
   const track = useTelemetry();
   const { user } = useUser();
+  const queryClient = useQueryClient();
 
   const getDismissedChangelogs = (): string[] => {
     return user?.unsafeMetadata?.dismissed_changelogs ?? [];
@@ -46,34 +69,96 @@ export function ChangelogStack() {
         dismissed_changelogs: updatedDismissed,
       },
     });
+
+    // Update the cache with the new dismissed IDs
+    queryClient.setQueryData(CONSTANTS.QUERY_KEY, (oldData: Changelog[] | undefined) => {
+      if (!oldData) return [];
+      return filterChangelogs(oldData, updatedDismissed);
+    });
+  };
+
+  // Helper function to convert Sanity asset reference to image URL
+  const getImageUrl = (asset?: SanityAsset): string | undefined => {
+    if (!asset?._ref) return undefined;
+
+    // Sanity asset reference format: image-{assetId}-{width}x{height}-{format}
+    // Example: "image-fd1082e513db9f6ebdfaa3a8f90a9a43b2d44462-2096x1080-gif"
+    const ref = asset._ref;
+
+    // Extract the asset ID and format - assetId can be any characters up to the next dash
+    const match = ref.match(/^image-([^-]+)-(\d+x\d+)-(\w+)$/);
+    if (!match) {
+      console.warn('Invalid Sanity asset reference format:', ref);
+      return undefined;
+    }
+
+    const [, assetId, dimensions, format] = match;
+
+    // Use Sanity's CDN URL format with the constant
+    return `${CONSTANTS.SANITY_CDN_URL}/${assetId}-${dimensions}.${format}?w=400&h=300&fit=crop&auto=format`;
+  };
+
+  // Transform Sanity data to our internal format
+  const transformSanityData = (sanityPosts: SanityChangelogPost[]): Changelog[] => {
+    const now = new Date();
+    return sanityPosts.map((post, index) => ({
+      id: post._id,
+      date: post.publishedAt || post._createdAt,
+      title: post.title,
+      version: index + 1, // Since Sanity doesn't have version numbers, we'll use index
+      imageUrl: getImageUrl(post.cover?.asset),
+      published: !!post.publishedAt && new Date(post.publishedAt) <= now,
+      slug: post.slug?.current || '',
+    }));
   };
 
   const fetchChangelogs = async (): Promise<Changelog[]> => {
-    const response = await fetch(CONSTANTS.CHANGELOG_API_URL);
-    const rawData: Changelog[] = await response.json();
+    // Build Sanity query to get published changelog posts with covers, sorted by publishedAt
+    const query = encodeURIComponent(`
+      *[_type == "changelogPost" && defined(cover.asset)] | order(publishedAt desc, _createdAt desc) [0...10] {
+        _id,
+        _createdAt,
+        _updatedAt,
+        _type,
+        title,
+        slug,
+        publishedAt,
+        cover {
+          _type,
+          asset {
+            _ref,
+            _type
+          }
+        }
+      }
+    `);
 
-    return filterChangelogs(rawData, getDismissedChangelogs());
+    const url = `${CONSTANTS.SANITY_API_URL}?query=${query}&perspective=published`;
+    const response = await fetch(url);
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch changelogs from Sanity');
+    }
+
+    const data = await response.json();
+    const sanityPosts: SanityChangelogPost[] = data.result || [];
+
+    const transformedData = transformSanityData(sanityPosts);
+    return filterChangelogs(transformedData, getDismissedChangelogs());
   };
 
-  const { data: fetchedChangelogs } = useQuery({
-    queryKey: ['changelogs'],
+  const { data: changelogs = [] } = useQuery({
+    queryKey: CONSTANTS.QUERY_KEY,
     queryFn: fetchChangelogs,
     // Refetch every hour to ensure users see new changelogs
     staleTime: 60 * 60 * 1000,
   });
 
-  useEffect(() => {
-    if (fetchedChangelogs) {
-      setChangelogs(fetchedChangelogs);
-    }
-  }, [fetchedChangelogs]);
-
   const handleChangelogClick = async (changelog: Changelog) => {
     track(TelemetryEvent.CHANGELOG_ITEM_CLICKED, { title: changelog.title });
-    window.open('https://roadmap.novu.co/changelog/' + changelog.id, '_blank');
+    window.open(`https://novu.co/changelog/${changelog.slug}`, '_blank', 'noopener,noreferrer');
 
     await updateDismissedChangelogs(changelog.id);
-    setChangelogs((prev) => prev.filter((log) => log.id !== changelog.id));
   };
 
   const handleDismiss = async (e: React.MouseEvent, changelog: Changelog) => {
@@ -81,7 +166,6 @@ export function ChangelogStack() {
     track(TelemetryEvent.CHANGELOG_ITEM_DISMISSED, { title: changelog.title });
 
     await updateDismissedChangelogs(changelog.id);
-    setChangelogs((prev) => prev.filter((log) => log.id !== changelog.id));
   };
 
   if (!changelogs.length) {
@@ -89,8 +173,8 @@ export function ChangelogStack() {
   }
 
   return (
-    <div className="mb-2 w-full">
-      <div className="m-full relative h-[175px]">
+    <div className="mb-2 w-full mt-2">
+      <div className="w-full relative h-[175px]">
         {changelogs.map((changelog, index) => (
           <ChangelogCard
             key={changelog.id}
@@ -166,7 +250,11 @@ function ChangelogCard({
               <img
                 src={changelog.imageUrl}
                 alt={changelog.title}
-                className="h-full w-full rounded-[6px] object-cover"
+                className="h-full w-full rounded-[6px] object-cover object-top"
+                onError={(e) => {
+                  // Hide image if it fails to load
+                  e.currentTarget.style.display = 'none';
+                }}
               />
             </div>
           )}

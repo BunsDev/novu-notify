@@ -1,16 +1,17 @@
+import { ResourceOriginEnum, Slug, StepTypeEnum } from '../../types';
+import { RuntimeIssue } from '../../utils/issues';
 import type { JSONSchemaDto } from './json-schema-dto';
-import { Slug, StepTypeEnum, WorkflowOriginEnum } from '../../types';
-import { StepContentIssueEnum, StepIntegrationIssueEnum, StepIssueEnum } from './step-content-issue.enum';
 
 export type StepResponseDto = {
-  controls: ControlsMetadata;
+  controls: Controls;
+  controlValues?: Record<string, unknown>;
   variables: JSONSchemaDto;
   stepId: string;
   _id: string;
   name: string;
   slug: Slug;
   type: StepTypeEnum;
-  origin: WorkflowOriginEnum;
+  origin: ResourceOriginEnum;
   workflowId: string;
   workflowDatabaseId: string;
   issues?: StepIssuesDto;
@@ -18,14 +19,11 @@ export type StepResponseDto = {
 
 export type StepUpdateDto = StepCreateDto & {
   _id: string;
+  stepId: string;
 };
 
 export type StepCreateDto = StepDto & {
-  controlValues?: Record<string, unknown> | null;
-};
-
-export type PatchStepDataDto = {
-  name?: string;
+  // TODO: Rename to controls to align naming with the response DTO
   controlValues?: Record<string, unknown> | null;
 };
 
@@ -34,28 +32,18 @@ export type StepDto = {
   type: StepTypeEnum;
 };
 
-// eslint-disable-next-line @typescript-eslint/naming-convention
-interface Issue<T> {
-  issueType: T;
-  variableName?: string;
-  message: string;
+export class StepIssuesDto {
+  controls?: Record<string, RuntimeIssue[]>;
+  integration?: Record<string, RuntimeIssue[]>;
 }
 
-export class StepIssuesDto {
-  controls?: Record<string, StepContentIssue[]>;
-  integration?: Record<string, StepIntegrationIssue[]>;
-}
+export type StepListResponseDto = {
+  slug: Slug;
+  type: StepTypeEnum;
+  issues?: StepIssuesDto;
+};
 
 export type StepCreateAndUpdateKeys = keyof StepCreateDto | keyof StepUpdateDto;
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export interface StepContentIssue extends Issue<StepContentIssueEnum> {}
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export interface StepIntegrationIssue extends Issue<StepIntegrationIssueEnum> {}
-
-// eslint-disable-next-line @typescript-eslint/naming-convention
-export interface StepIssue extends Issue<StepIssueEnum> {}
 
 export enum UiSchemaGroupEnum {
   IN_APP = 'IN_APP',
@@ -66,10 +54,15 @@ export enum UiSchemaGroupEnum {
   CHAT = 'CHAT',
   PUSH = 'PUSH',
   SKIP = 'SKIP',
+  LAYOUT = 'LAYOUT',
 }
 
 export enum UiComponentEnum {
+  EMAIL_EDITOR_SELECT = 'EMAIL_EDITOR_SELECT',
+  LAYOUT_SELECT = 'LAYOUT_SELECT',
+  /** @deprecated use EMAIL_BODY instead  */
   BLOCK_EDITOR = 'BLOCK_EDITOR',
+  EMAIL_BODY = 'EMAIL_BODY',
   TEXT_FULL_LINE = 'TEXT_FULL_LINE',
   TEXT_INLINE_LABEL = 'TEXT_INLINE_LABEL',
   IN_APP_BODY = 'IN_APP_BODY',
@@ -86,16 +79,20 @@ export enum UiComponentEnum {
   DELAY_TYPE = 'DELAY_TYPE',
   DELAY_AMOUNT = 'DELAY_AMOUNT',
   DELAY_UNIT = 'DELAY_UNIT',
+  EXTEND_TO_SCHEDULE = 'EXTEND_TO_SCHEDULE',
   SMS_BODY = 'SMS_BODY',
   CHAT_BODY = 'CHAT_BODY',
   PUSH_BODY = 'PUSH_BODY',
   PUSH_SUBJECT = 'PUSH_SUBJECT',
   QUERY_EDITOR = 'QUERY_EDITOR',
+  DATA = 'DATA',
+  LAYOUT_EMAIL = 'LAYOUT_EMAIL',
 }
 
 export class UiSchemaProperty {
   placeholder?: unknown;
   component: UiComponentEnum;
+  properties?: Record<string, UiSchemaProperty>;
 }
 
 export class UiSchema {
@@ -103,7 +100,7 @@ export class UiSchema {
   properties?: Record<string, UiSchemaProperty>;
 }
 
-export class ControlsMetadata {
+export class Controls {
   dataSchema?: JSONSchemaDto;
   uiSchema?: UiSchema;
   values: Record<string, unknown>;

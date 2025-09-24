@@ -1,11 +1,11 @@
 import { EmailProviderIdEnum } from '@novu/shared';
 import {
   ChannelTypeEnum,
+  CheckIntegrationResponseEnum,
+  ICheckIntegrationResponse,
   IEmailOptions,
   IEmailProvider,
   ISendMessageSuccessResponse,
-  ICheckIntegrationResponse,
-  CheckIntegrationResponseEnum,
 } from '@novu/stateless';
 import nodemailer, { SendMailOptions, Transporter } from 'nodemailer';
 import DKIM from 'nodemailer/lib/dkim';
@@ -139,6 +139,9 @@ export class NodemailerProvider extends BaseProvider implements IEmailProvider {
         filename: attachment?.name,
         content: attachment.file,
         contentType: attachment.mime,
+        cid: attachment.cid,
+        contentDisposition:
+          (attachment.disposition as 'inline' | 'attachment') ?? (attachment.cid ? 'inline' : undefined),
       })),
       bcc: options.bcc,
     };

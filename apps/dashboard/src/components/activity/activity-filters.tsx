@@ -1,20 +1,23 @@
+import { useOrganization } from '@clerk/clerk-react';
+import { ChannelTypeEnum, SeverityLevelEnum } from '@novu/shared';
+import { CalendarIcon } from 'lucide-react';
+import { useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { Badge } from '@/components/primitives/badge';
 import { Tooltip, TooltipContent, TooltipPortal, TooltipTrigger } from '@/components/primitives/tooltip';
 import { useFetchSubscription } from '@/hooks/use-fetch-subscription';
 import { ActivityFiltersData } from '@/types/activity';
+import { buildActivityDateFilters } from '@/utils/activityFilters';
 import { ROUTES } from '@/utils/routes';
+import { capitalize } from '@/utils/string';
 import { cn } from '@/utils/ui';
-import { useOrganization } from '@clerk/clerk-react';
-import { ChannelTypeEnum } from '@novu/shared';
-import { CalendarIcon } from 'lucide-react';
-import { Badge } from '@/components/primitives/badge';
-import { Link } from 'react-router-dom';
+import { IS_SELF_HOSTED } from '../../config';
 import { useFetchWorkflows } from '../../hooks/use-fetch-workflows';
 import { Button } from '../primitives/button';
 import { FacetedFormFilter } from '../primitives/form/faceted-filter/facated-form-filter';
 import { CHANNEL_OPTIONS } from './constants';
-import { buildActivityDateFilters } from '@/utils/activityFilters';
-import { useMemo } from 'react';
-type Fields = 'dateRange' | 'workflows' | 'channels' | 'transactionId' | 'subscriberId';
+
+type Fields = 'dateRange' | 'workflows' | 'channels' | 'transactionId' | 'subscriberId' | 'topicKey' | 'severity';
 
 export type ActivityFilters = {
   filters: ActivityFiltersData;
@@ -31,7 +34,7 @@ const UpgradeCtaIcon: React.ComponentType<{ className?: string }> = () => {
       <TooltipTrigger asChild>
         <Link
           to={ROUTES.SETTINGS_BILLING + '?utm_source=activity-feed-retention'}
-          className="block transition-all duration-200 hover:scale-110"
+          className="block flex items-center justify-center transition-all duration-200 hover:scale-105"
         >
           <Badge color="purple" size="sm" variant="lighter">
             Upgrade
@@ -58,13 +61,15 @@ export function ActivityFilters({
   const { subscription } = useFetchSubscription();
 
   const maxActivityFeedRetentionOptions = useMemo(() => {
-    if (!organization || !subscription) {
+    const missingSubscription = !subscription && !IS_SELF_HOSTED;
+
+    if (!organization || missingSubscription) {
       return [];
     }
 
     return buildActivityDateFilters({
       organization,
-      subscription,
+      apiServiceLevel: subscription?.apiServiceLevel,
     }).map((option) => ({
       ...option,
       icon: option.disabled ? UpgradeCtaIcon : undefined,
@@ -72,7 +77,7 @@ export function ActivityFilters({
   }, [organization, subscription]);
 
   return (
-    <div className={cn('flex items-center gap-2 p-2 py-[11px]', className)}>
+    <div className={cn('flex items-center gap-2 pb-2.5', className)}>
       {!hide.includes('dateRange') && (
         <FacetedFormFilter
           size="small"
@@ -109,6 +114,7 @@ export function ActivityFilters({
           size="small"
           type="multi"
           title="Channels"
+          hideSearch
           options={CHANNEL_OPTIONS}
           selected={filters.channels}
           onSelect={(values) => onFiltersChange({ ...filters, channels: values as ChannelTypeEnum[] })}
@@ -122,7 +128,7 @@ export function ActivityFilters({
           title="Transaction ID"
           value={filters.transactionId}
           onChange={(value) => onFiltersChange({ ...filters, transactionId: value })}
-          placeholder="Search by Transaction ID"
+          placeholder="Search by full Transaction ID"
         />
       )}
 
@@ -133,7 +139,33 @@ export function ActivityFilters({
           title="Subscriber ID"
           value={filters.subscriberId}
           onChange={(value) => onFiltersChange({ ...filters, subscriberId: value })}
-          placeholder="Search by Subscriber ID"
+          placeholder="Search by full Subscriber ID"
+        />
+      )}
+
+      {!hide.includes('topicKey') && (
+        <FacetedFormFilter
+          type="text"
+          size="small"
+          title="Topic Key"
+          value={filters.topicKey}
+          onChange={(value) => onFiltersChange({ ...filters, topicKey: value })}
+          placeholder="Search by full Topic Key"
+        />
+      )}
+
+      {!hide.includes('severity') && (
+        <FacetedFormFilter
+          size="small"
+          type="multi"
+          title="Severity"
+          hideSearch
+          options={Object.values(SeverityLevelEnum).map((severity) => ({
+            label: capitalize(severity),
+            value: severity,
+          }))}
+          selected={filters.severity}
+          onSelect={(values) => onFiltersChange({ ...filters, severity: values as SeverityLevelEnum[] })}
         />
       )}
 

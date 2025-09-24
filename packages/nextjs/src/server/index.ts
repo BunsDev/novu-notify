@@ -1,28 +1,18 @@
-/* eslint-disable no-restricted-imports */
-
-export type {
-  BaseProps,
-  DefaultInboxProps,
-  DefaultProps,
-  NoRendererProps,
-  NotificationRendererProps,
-  SubjectBodyRendererProps,
-  WithChildrenProps,
-  BellRenderer,
-  BodyRenderer,
-  NotificationsRenderer,
-  Notification,
-} from '@novu/react';
+export type * from '@novu/react';
 
 export {
+  Bell,
   Inbox,
   InboxContent,
   Notifications,
-  Preferences,
-  Bell,
   NovuProvider,
-  useNovu,
+  PreferenceLevel,
+  Preferences,
+  SeverityLevelEnum,
   useCounts,
   useNotifications,
+  useNovu,
   usePreferences,
+  useSchedule,
+  WorkflowCriticalityEnum,
 } from '@novu/react/server';

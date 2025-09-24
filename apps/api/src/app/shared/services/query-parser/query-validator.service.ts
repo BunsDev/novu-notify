@@ -27,6 +27,12 @@ export class QueryValidatorService {
   private isInvalidFieldValue(field: unknown) {
     const fieldValue = (field as { var: string })?.var ?? '';
 
+    // Special case: allow 'subscriber.data' specifically as we want the user to check for null values
+    if (fieldValue === 'subscriber.data') {
+      return false;
+    }
+
+    // Check if field is within allowed namespaces (nested properties only)
     const isWithinAllowedPrefixes = this.allowedNamespaces.some(
       (prefix) => fieldValue.startsWith(prefix) && fieldValue.length > prefix.length
     );
@@ -111,7 +117,9 @@ export class QueryValidatorService {
           continue;
         }
 
-        value.forEach((item, index) => this.validateNode({ node: item, issues, path: [...path, index] }));
+        value.forEach((item, index) => {
+          this.validateNode({ node: item, issues, path: [...path, index] });
+        });
         continue;
       }
 
@@ -149,8 +157,6 @@ export class QueryValidatorService {
             type: QueryIssueTypeEnum.MISSING_VALUE,
           });
         }
-
-        continue;
       }
     }
   }

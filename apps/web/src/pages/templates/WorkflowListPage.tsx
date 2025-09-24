@@ -75,7 +75,7 @@ const columns: IExtendedColumn<INotificationTemplateExtended>[] = [
             position="top"
           >
             <div>
-              {/* eslint-disable-next-line no-nested-ternary */}
+              {}
               {original.workflowIntegrationStatus?.hasActiveIntegrations &&
               original.workflowIntegrationStatus?.hasPrimaryIntegrations !== false ? (
                 !original.bridge ? (
@@ -252,6 +252,7 @@ function WorkflowListPage() {
 
       return;
     }
+
     setSearchValue(value);
     debouncedSearchChange(value);
   };
@@ -332,11 +333,7 @@ function WorkflowListPage() {
             })}
           >
             To create a workflow in this environment, you need to create a workflow using the @novu/framework and sync
-            it using the {readonly ? 'production' : 'development'} secret key. Follow{' '}
-            <Link className={css({ textDecoration: 'underline' })} to={ROUTES.GET_STARTED}>
-              this guide
-            </Link>{' '}
-            to get started.
+            it using the {readonly ? 'production' : 'development'} secret key.
           </div>
         </When>
 

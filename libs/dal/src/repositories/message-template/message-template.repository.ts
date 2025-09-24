@@ -7,7 +7,6 @@ import { MessageTemplateDBModel, MessageTemplateEntity } from './message-templat
 import { MessageTemplate } from './message-template.schema';
 
 type MessageTemplateQuery = FilterQuery<MessageTemplateDBModel>;
-// eslint-disable-next-line @typescript-eslint/naming-convention
 export interface DeleteMsgByIdQuery {
   _id: string;
   _environmentId: string;
@@ -42,34 +41,16 @@ export class MessageTemplateRepository extends BaseRepository<
   }
 
   async delete(query: MessageTemplateQuery) {
-    const messageTemplate = await this.findOne({
+    return await this.messageTemplate.delete({
       _id: query._id,
       _environmentId: query._environmentId,
-    });
-
-    if (!messageTemplate) {
-      throw new DalException(`Could not find a message template with id ${query._id}`);
-    }
-
-    return await this.messageTemplate.delete({
-      _id: messageTemplate._id,
-      _environmentId: messageTemplate._environmentId,
     });
   }
 
   async deleteById(query: DeleteMsgByIdQuery) {
-    const messageTemplate = await this.findOne({
+    return await this.messageTemplate.delete({
       _id: query._id,
       _environmentId: query._environmentId,
-    });
-
-    if (!messageTemplate) {
-      throw new DalException(`Could not find a message template with id ${query._id}`);
-    }
-
-    return await this.messageTemplate.delete({
-      _id: messageTemplate._id,
-      _environmentId: messageTemplate._environmentId,
     });
   }
 

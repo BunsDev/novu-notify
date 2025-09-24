@@ -15,6 +15,7 @@ import {
   IDigestTimedMetadata,
   IWorkflowStepMetadata,
   ProvidersIdEnum,
+  SeverityLevelEnum,
   StepTypeEnum,
 } from '@novu/shared';
 import { MessageTemplateDto } from '../../../shared/dtos/message.template.dto';
@@ -66,17 +67,23 @@ export function mapFeedItemToDto(entity: NotificationFeedItemEntity): ActivityNo
     _organizationId: entity._organizationId,
     _subscriberId: entity._subscriberId,
     _templateId: entity._templateId,
+    topics: entity.topics?.map((topic) => ({
+      _topicId: topic._topicId,
+      topicKey: topic.topicKey,
+    })),
     channels: entity.channels,
     createdAt: entity.createdAt,
     jobs: entity.jobs.map(mapJobToDto),
     tags: entity.tags,
     transactionId: entity.transactionId,
     updatedAt: entity.updatedAt,
-    controls: entity.controls,
-    payload: entity.payload,
-    to: entity.to,
+    controls: entity.controls as Record<string, unknown>,
+    payload: entity.payload as Record<string, unknown>,
+    to: entity.to as Record<string, unknown>,
     subscriber: entity.subscriber ? buildSubscriberDto(entity.subscriber) : undefined,
     template: entity.template ? buildTemplate(entity.template) : undefined,
+    severity: entity.severity ?? SeverityLevelEnum.NONE,
+    critical: entity.critical,
   };
 }
 
@@ -185,14 +192,31 @@ function isDigestTimedMetadata(item: IWorkflowStepMetadata): item is IDigestTime
   return item.type === DigestTypeEnum.TIMED;
 }
 
-function mapDigest(
-  digestItem?: IWorkflowStepMetadata & {
-    events?: any[];
-  }
+export function mapDigest(
+  digestData?:
+    | (IWorkflowStepMetadata & {
+        events?: any[];
+      })
+    | string
+    | null
 ): DigestMetadataDto | undefined {
+  if (!digestData) {
+    return undefined;
+  }
+
+  const digestItem =
+    typeof digestData === 'string'
+      ? (JSON.parse(digestData) as IWorkflowStepMetadata & {
+          events?: any[];
+        })
+      : (digestData as IWorkflowStepMetadata & {
+          events?: any[];
+        });
+
   if (!digestItem) {
     return undefined;
   }
+
   // Type guarding and mapping based on the type of item
   if (isDigestRegularMetadata(digestItem)) {
     // If it's IDigestRegularMetadata
@@ -242,6 +266,7 @@ function mapJobToDto(item: JobFeedItem): ActivityNotificationJobResponseDto {
     providerId: item.providerId as ProvidersIdEnum,
     status: item.status,
     updatedAt: item.updatedAt,
+    scheduleExtensionsCount: item.scheduleExtensionsCount,
   };
 }
 

@@ -1,21 +1,22 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { EnvironmentRepository } from '@novu/dal';
-import { ChannelTypeEnum, InAppProviderIdEnum } from '@novu/shared';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AnalyticsService,
-  createHash,
   CreateOrUpdateSubscriberCommand,
   CreateOrUpdateSubscriberUseCase,
+  createHash,
   decryptApiKey,
+  InstrumentUsecase,
   LogDecorator,
   SelectIntegration,
   SelectIntegrationCommand,
 } from '@novu/application-generic';
+import { EnvironmentRepository } from '@novu/dal';
+import { ChannelTypeEnum, InAppProviderIdEnum } from '@novu/shared';
 import { AuthService } from '../../../auth/services/auth.service';
-import { ApiException } from '../../../shared/exceptions/api.exception';
-import { InitializeSessionCommand } from './initialize-session.command';
+import { isHmacValid } from '../../../shared/helpers/is-valid-hmac';
 
 import { SessionInitializeResponseDto } from '../../dtos/session-initialize-response.dto';
+import { InitializeSessionCommand } from './initialize-session.command';
 
 @Injectable()
 export class InitializeSession {
@@ -28,11 +29,12 @@ export class InitializeSession {
   ) {}
 
   @LogDecorator()
+  @InstrumentUsecase()
   async execute(command: InitializeSessionCommand): Promise<SessionInitializeResponseDto> {
     const environment = await this.environmentRepository.findEnvironmentByIdentifier(command.applicationIdentifier);
 
     if (!environment) {
-      throw new ApiException('Please provide a valid app identifier');
+      throw new BadRequestException('Please provide a valid app identifier');
     }
 
     const inAppIntegration = await this.selectIntegration.execute(
@@ -53,16 +55,18 @@ export class InitializeSession {
       validateNotificationCenterEncryption(environment, command);
     }
 
-    const commandos = CreateOrUpdateSubscriberCommand.create({
-      environmentId: environment._id,
-      organizationId: environment._organizationId,
-      subscriberId: command.subscriberId,
-      firstName: command.firstName,
-      lastName: command.lastName,
-      email: command.email,
-      phone: command.phone,
-    });
-    const subscriber = await this.createOrUpdateSubscriberUsecase.execute(commandos);
+    const subscriber = await this.createOrUpdateSubscriberUsecase.execute(
+      CreateOrUpdateSubscriberCommand.create({
+        environmentId: environment._id,
+        organizationId: environment._organizationId,
+        subscriberId: command.subscriberId,
+        firstName: command.firstName,
+        lastName: command.lastName,
+        email: command.email,
+        phone: command.phone,
+        allowUpdate: isHmacValid(environment.apiKeys[0].key, command.subscriberId, command.hmacHash),
+      })
+    );
 
     this.analyticsService.mixpanelTrack('Initialize Widget Session - [Notification Center]', '', {
       _organization: environment._organizationId,
@@ -83,9 +87,7 @@ export class InitializeSession {
 }
 
 function validateNotificationCenterEncryption(environment, command: InitializeSessionCommand) {
-  const key = decryptApiKey(environment.apiKeys[0].key);
-  const hmacHash = createHash(key, command.subscriberId);
-  if (hmacHash !== command.hmacHash) {
-    throw new ApiException('Please provide a valid HMAC hash');
+  if (!isHmacValid(environment.apiKeys[0].key, command.subscriberId, command.hmacHash)) {
+    throw new BadRequestException('Please provide a valid HMAC hash');
   }
 }

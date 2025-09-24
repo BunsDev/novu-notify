@@ -1,7 +1,7 @@
 # Novu's React SDK for building custom inbox notification experiences.
 
 Novu provides the `@novu/react` a React library that helps to add a fully functioning Inbox to your web application in minutes. Let's do a quick recap on how you can easily use it in your application.
-See full documentation [here](https://docs.novu.co/inbox/react/get-started).
+Refer to the Novu documentation for the complete [React quickstart guide](https://docs.novu.co/platform/quickstart/react).
 
 ## Installation
 
@@ -11,9 +11,22 @@ See full documentation [here](https://docs.novu.co/inbox/react/get-started).
 npm install @novu/react
 ```
 
-## Getting Started
+## Try it instantly (Keyless mode)
 
-- Add the below code in the app.tsx file
+The keyless mode is designed for local testing and experimentation, letting you use Novu's Inbox component without any configuration. Just import and render.
+
+```jsx
+import React from 'react';
+import { Inbox } from '@novu/react';
+
+export function App() {
+  return <Inbox />;
+}
+```
+
+## Connect to real subscribers 
+
+To connect the Inbox component with your Novu environment and real subscribers, set the `applicationIdentifier` and `subscriberId`
 
 ```jsx
 import { Inbox } from '@novu/react';
@@ -22,7 +35,7 @@ function Novu() {
   return (
     <Inbox
       options={{
-        subscriberId: 'SUBSCRIBER_ID',
+        subscriber: 'SUBSCRIBER_ID',
         applicationIdentifier: 'APPLICATION_IDENTIFIER',
       }}
     />
@@ -43,7 +56,7 @@ function Novu() {
       options={{
         backendUrl: 'YOUR_BACKEND_URL',
         socketUrl: 'YOUR_SOCKET_URL',
-        subscriberId: 'SUBSCRIBER_ID',
+        subscriber: 'SUBSCRIBER_ID',
         applicationIdentifier: 'APPLICATION_IDENTIFIER',
       }}
     />
@@ -65,7 +78,7 @@ function Novu() {
     <div>
       <Inbox
         options={{
-          subscriberId: 'SUBSCRIBER_ID',
+          subscriber: 'SUBSCRIBER_ID',
           applicationIdentifier: 'APPLICATION_IDENTIFIER',
         }}
         open={isOpen}
@@ -88,7 +101,7 @@ function Novu() {
   return (
     <Inbox
       options={{
-        subscriberId: 'SUBSCRIBER_ID',
+        subscriber: 'SUBSCRIBER_ID',
         applicationIdentifier: 'APPLICATION_IDENTIFIER',
       }}
       localization={{
@@ -109,7 +122,7 @@ function Novu() {
 
 ## HMAC Encryption
 
-When Novu's user adds the Inbox to their application they are required to pass a `subscriberId` which identifies the user's end-customer, and the application Identifier which is acted as a public key to communicate with the notification feed API.
+When Novu's user adds the Inbox component to their application, developers need to provide a subscriber prop with the value of their customer's subscriberId, along with an application identifier that serves as a public key for API communication.
 
 A malicious actor can access the user feed by accessing the API and passing another `subscriberId` using the public application identifier.
 
@@ -119,9 +132,9 @@ HMAC encryption will make sure that a `subscriberId` is encrypted using the se
 
 In order to enable Hash-Based Message Authentication Codes, you need to visit the admin panel In-App settings page and enable HMAC encryption for your environment.
 
-<Frame caption="How to enable HMAC encryption for In-App Inbox">
+<!-- <Frame caption="How to enable HMAC encryption for In-App Inbox">
   <img src="/images/notification-center/client/react/get-started/hmac-encryption-enable.png" />
-</Frame>
+</Frame> -->
 
 1. Next step would be to generate an HMAC encrypted subscriberId on your backend:
 
@@ -135,7 +148,7 @@ const hmacHash = createHmac('sha256', process.env.NOVU_API_KEY).update(subscribe
 
 ```jsx
 <Inbox
-  subscriberId={'SUBSCRIBER_ID_PLAIN_VALUE'}
+  subscriber={'SUBSCRIBER_ID_PLAIN_VALUE'}
   subscriberHash={'SUBSCRIBER_ID_HASH_VALUE'}
   applicationIdentifier={'APPLICATION_IDENTIFIER'}
 />

@@ -1,11 +1,11 @@
 import { EmailProviderIdEnum } from '@novu/shared';
 import {
   ChannelTypeEnum,
+  CheckIntegrationResponseEnum,
+  ICheckIntegrationResponse,
   IEmailOptions,
   IEmailProvider,
   ISendMessageSuccessResponse,
-  ICheckIntegrationResponse,
-  CheckIntegrationResponseEnum,
 } from '@novu/stateless';
 import nodemailer, { SendMailOptions, Transporter } from 'nodemailer';
 import { BaseProvider, CasingEnum } from '../../../base.provider';
@@ -83,9 +83,12 @@ export class Outlook365Provider extends BaseProvider implements IEmailProvider {
       html: options.html,
       text: options.text,
       attachments: options.attachments?.map((attachment) => ({
-        filename: attachment?.name,
+        filename: attachment.name,
         content: attachment.file,
         contentType: attachment.mime,
+        cid: attachment.cid,
+        contentDisposition:
+          (attachment.disposition as 'inline' | 'attachment') ?? (attachment.cid ? 'inline' : undefined),
       })),
     };
 

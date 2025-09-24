@@ -4,6 +4,7 @@
 
 import { integrationsCreate } from "../funcs/integrationsCreate.js";
 import { integrationsDelete } from "../funcs/integrationsDelete.js";
+import { integrationsIntegrationsControllerAutoConfigureIntegration } from "../funcs/integrationsIntegrationsControllerAutoConfigureIntegration.js";
 import { integrationsList } from "../funcs/integrationsList.js";
 import { integrationsListActive } from "../funcs/integrationsListActive.js";
 import { integrationsSetAsPrimary } from "../funcs/integrationsSetAsPrimary.js";
@@ -12,19 +13,13 @@ import { ClientSDK, RequestOptions } from "../lib/sdks.js";
 import * as components from "../models/components/index.js";
 import * as operations from "../models/operations/index.js";
 import { unwrapAsync } from "../types/fp.js";
-import { Webhooks } from "./webhooks.js";
 
 export class Integrations extends ClientSDK {
-  private _webhooks?: Webhooks;
-  get webhooks(): Webhooks {
-    return (this._webhooks ??= new Webhooks(this._options));
-  }
-
   /**
-   * Get integrations
+   * List all integrations
    *
    * @remarks
-   * Return all the integrations the user has created for that organization. Review v.0.17.0 changelog for a breaking change
+   * List all the channels integrations created in the organization
    */
   async list(
     idempotencyKey?: string | undefined,
@@ -38,10 +33,11 @@ export class Integrations extends ClientSDK {
   }
 
   /**
-   * Create integration
+   * Create an integration
    *
    * @remarks
-   * Create an integration for the current environment the user is based on the API key provided
+   * Create an integration for the current environment the user is based on the API key provided.
+   *     Each provider supports different credentials, check the provider documentation for more details.
    */
   async create(
     createIntegrationRequestDto: components.CreateIntegrationRequestDto,
@@ -57,7 +53,11 @@ export class Integrations extends ClientSDK {
   }
 
   /**
-   * Update integration
+   * Update an integration
+   *
+   * @remarks
+   * Update an integration by its unique key identifier **integrationId**.
+   *     Each provider supports different credentials, check the provider documentation for more details.
    */
   async update(
     updateIntegrationRequestDto: components.UpdateIntegrationRequestDto,
@@ -75,7 +75,11 @@ export class Integrations extends ClientSDK {
   }
 
   /**
-   * Delete integration
+   * Delete an integration
+   *
+   * @remarks
+   * Delete an integration by its unique key identifier **integrationId**.
+   *     This action is irreversible.
    */
   async delete(
     integrationId: string,
@@ -91,7 +95,36 @@ export class Integrations extends ClientSDK {
   }
 
   /**
-   * Set integration as primary
+   * Auto-configure an integration for inbound webhooks
+   *
+   * @remarks
+   * Auto-configure an integration by its unique key identifier **integrationId** for inbound webhook support.
+   *     This will automatically generate required webhook signing keys and configure webhook endpoints.
+   */
+  async integrationsControllerAutoConfigureIntegration(
+    integrationId: string,
+    idempotencyKey?: string | undefined,
+    options?: RequestOptions,
+  ): Promise<
+    operations.IntegrationsControllerAutoConfigureIntegrationResponse
+  > {
+    return unwrapAsync(
+      integrationsIntegrationsControllerAutoConfigureIntegration(
+        this,
+        integrationId,
+        idempotencyKey,
+        options,
+      ),
+    );
+  }
+
+  /**
+   * Update integration as primary
+   *
+   * @remarks
+   * Update an integration as **primary** by its unique key identifier **integrationId**.
+   *     This API will set the integration as primary for that channel in the current environment.
+   *     Primary integration is used to deliver notification for sms and email channels in the workflow.
    */
   async setAsPrimary(
     integrationId: string,
@@ -107,10 +140,10 @@ export class Integrations extends ClientSDK {
   }
 
   /**
-   * Get active integrations
+   * List active integrations
    *
    * @remarks
-   * Return all the active integrations the user has created for that organization. Review v.0.17.0 changelog for a breaking change
+   * List all the active integrations created in the organization
    */
   async listActive(
     idempotencyKey?: string | undefined,

@@ -18,17 +18,19 @@ import {
   UnexpectedClientError,
 } from "../models/errors/httpclienterrors.js";
 import * as errors from "../models/errors/index.js";
-import { SDKError } from "../models/errors/sdkerror.js";
+import { NovuError } from "../models/errors/novuerror.js";
+import { ResponseValidationError } from "../models/errors/responsevalidationerror.js";
 import { SDKValidationError } from "../models/errors/sdkvalidationerror.js";
 import * as operations from "../models/operations/index.js";
 import { APICall, APIPromise } from "../types/async.js";
 import { Result } from "../types/fp.js";
 
 /**
- * Delete message
+ * Delete a message
  *
  * @remarks
- * Deletes a message entity from the Novu platform
+ * Delete a message entity from the Novu platform by **messageId**.
+ *     This action is irreversible. **messageId** is required and of mongodbId type.
  */
 export function messagesDelete(
   client: NovuCore,
@@ -39,16 +41,15 @@ export function messagesDelete(
   Result<
     operations.MessagesControllerDeleteMessageResponse,
     | errors.ErrorDto
-    | errors.ErrorDto
     | errors.ValidationErrorDto
-    | errors.ErrorDto
-    | SDKError
-    | SDKValidationError
-    | UnexpectedClientError
-    | InvalidRequestError
+    | NovuError
+    | ResponseValidationError
+    | ConnectionError
     | RequestAbortedError
     | RequestTimeoutError
-    | ConnectionError
+    | InvalidRequestError
+    | UnexpectedClientError
+    | SDKValidationError
   >
 > {
   return new APIPromise($do(
@@ -69,16 +70,15 @@ async function $do(
     Result<
       operations.MessagesControllerDeleteMessageResponse,
       | errors.ErrorDto
-      | errors.ErrorDto
       | errors.ValidationErrorDto
-      | errors.ErrorDto
-      | SDKError
-      | SDKValidationError
-      | UnexpectedClientError
-      | InvalidRequestError
+      | NovuError
+      | ResponseValidationError
+      | ConnectionError
       | RequestAbortedError
       | RequestTimeoutError
-      | ConnectionError
+      | InvalidRequestError
+      | UnexpectedClientError
+      | SDKValidationError
     >,
     APICall,
   ]
@@ -124,6 +124,7 @@ async function $do(
   const requestSecurity = resolveGlobalSecurity(securityInput);
 
   const context = {
+    options: client._options,
     baseURL: options?.serverURL ?? client._baseURL ?? "",
     operationID: "MessagesController_deleteMessage",
     oAuth2Scopes: [],
@@ -154,6 +155,7 @@ async function $do(
     path: path,
     headers: headers,
     body: body,
+    userAgent: client._options.userAgent,
     timeoutMs: options?.timeoutMs || client._options.timeoutMs || -1,
   }, options);
   if (!requestRes.ok) {
@@ -195,16 +197,15 @@ async function $do(
   const [result] = await M.match<
     operations.MessagesControllerDeleteMessageResponse,
     | errors.ErrorDto
-    | errors.ErrorDto
     | errors.ValidationErrorDto
-    | errors.ErrorDto
-    | SDKError
-    | SDKValidationError
-    | UnexpectedClientError
-    | InvalidRequestError
+    | NovuError
+    | ResponseValidationError
+    | ConnectionError
     | RequestAbortedError
     | RequestTimeoutError
-    | ConnectionError
+    | InvalidRequestError
+    | UnexpectedClientError
+    | SDKValidationError
   >(
     M.json(
       200,
@@ -223,7 +224,7 @@ async function $do(
     M.fail(503),
     M.fail("4XX"),
     M.fail("5XX"),
-  )(response, { extraFields: responseFields });
+  )(response, req, { extraFields: responseFields });
   if (!result.ok) {
     return [result, { status: "complete", request: req, response }];
   }

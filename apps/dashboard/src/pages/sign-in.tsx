@@ -1,10 +1,11 @@
-import { clerkSignupAppearance } from '@/utils/clerk-appearance';
-import { ROUTES } from '@/utils/routes';
 import { SignIn as SignInForm } from '@clerk/clerk-react';
 import { useEffect } from 'react';
+import { clerkSignupAppearance } from '@/utils/clerk-appearance';
+import { ROUTES } from '@/utils/routes';
 import { AuthSideBanner } from '../components/auth/auth-side-banner';
 import { RegionPicker } from '../components/auth/region-picker';
 import { PageMeta } from '../components/page-meta';
+import { IS_SELF_HOSTED } from '../config';
 import { useSegment } from '../context/segment';
 import { TelemetryEvent } from '../utils/telemetry';
 import { getReferrer, getUtmParams } from '../utils/tracking';
@@ -20,7 +21,6 @@ export const SignInPage = () => {
       ...utmParams,
       referrer,
     });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -32,7 +32,7 @@ export const SignInPage = () => {
       <div className="flex flex-1 justify-end px-4 py-8 md:items-center md:px-0 md:py-0">
         <div className="flex w-full max-w-[400px] flex-col items-start justify-start gap-[18px]">
           <SignInForm path={ROUTES.SIGN_IN} signUpUrl={ROUTES.SIGN_UP} appearance={clerkSignupAppearance} />
-          <RegionPicker />
+          {!IS_SELF_HOSTED && <RegionPicker />}
         </div>
       </div>
     </div>

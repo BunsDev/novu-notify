@@ -1,19 +1,24 @@
+import { Novu } from '@novu/api';
 import {
   CreateWorkflowDto,
   DirectionEnum,
   WorkflowCreationSourceEnum,
   WorkflowResponseDto,
+  WorkflowResponseDtoSortField,
   WorkflowStatusEnum,
-} from '@novu/shared';
+} from '@novu/api/models/components';
 import { UserSession } from '@novu/testing';
 import { expect } from 'chai';
+import { initNovuClassSdkInternalAuth } from '../../shared/helpers/e2e/sdk/e2e-sdk.helper';
 
-describe('List Workflows - /workflows (GET) #novu-v2', function () {
+describe('List Workflows - /workflows (GET) #novu-v2', () => {
   let session: UserSession;
+  let novuClient: Novu;
 
   beforeEach(async () => {
     session = new UserSession();
     await session.initialize();
+    novuClient = initNovuClassSdkInternalAuth(session);
   });
 
   describe('Pagination and Search', () => {
@@ -21,47 +26,39 @@ describe('List Workflows - /workflows (GET) #novu-v2', function () {
       const workflowIds: string[] = [];
       for (let i = 0; i < 15; i += 1) {
         const workflow = await createWorkflow(`Test Workflow ${i}`);
-        workflowIds.push(workflow._id);
+        workflowIds.push(workflow.id);
       }
 
-      const firstPage = await session.testAgent.get('/v2/workflows').query({
-        limit: 10,
-        offset: 0,
-      });
+      const { result: firstPage } = await novuClient.workflows.list({ limit: 10, offset: 0 });
 
-      expect(firstPage.body.data.workflows).to.have.length(10);
-      expect(firstPage.body.data.totalCount).to.equal(15);
+      expect(firstPage.workflows).to.have.length(10);
+      expect(firstPage.totalCount).to.equal(15);
 
-      const secondPage = await session.testAgent.get('/v2/workflows').query({
-        limit: 10,
-        offset: 10,
-      });
+      const { result: secondPage } = await novuClient.workflows.list({ limit: 10, offset: 10 });
 
-      expect(secondPage.body.data.workflows).to.have.length(5);
-      expect(secondPage.body.data.totalCount).to.equal(15);
+      expect(secondPage.workflows).to.have.length(5);
+      expect(secondPage.totalCount).to.equal(15);
 
-      const firstPageIds = firstPage.body.data.workflows.map((workflow: WorkflowResponseDto) => workflow._id);
-      const secondPageIds = secondPage.body.data.workflows.map((workflow: WorkflowResponseDto) => workflow._id);
+      const firstPageIds = firstPage.workflows.map((workflow) => workflow.id);
+      const secondPageIds = secondPage.workflows.map((workflow) => workflow.id);
       const uniqueIds = new Set([...firstPageIds, ...secondPageIds]);
 
       expect(uniqueIds.size).to.equal(15);
     });
 
     it('should correctly search workflows by name', async () => {
-      const searchTerm = 'SEARCHABLE_WORKFLOW';
+      const searchTerm = 'SEARCHABLE-WORKFLOW';
 
       // Create workflows with different names
-      await createWorkflow(`${searchTerm}_1`);
-      await createWorkflow(`${searchTerm}_2`);
+      await createWorkflow(`${searchTerm}-1`);
+      await createWorkflow(`${searchTerm}-2`);
       await createWorkflow('Different Workflow');
 
-      const { body } = await session.testAgent.get('/v2/workflows').query({
-        query: searchTerm,
-      });
+      const { result } = await novuClient.workflows.list({ query: searchTerm });
 
-      expect(body.data.workflows).to.have.length(2);
-      expect(body.data.workflows[0].name).to.include(searchTerm);
-      expect(body.data.workflows[1].name).to.include(searchTerm);
+      expect(result.workflows).to.have.length(2);
+      expect(result.workflows[0].name).to.include(searchTerm);
+      expect(result.workflows[1].name).to.include(searchTerm);
     });
   });
 
@@ -71,10 +68,10 @@ describe('List Workflows - /workflows (GET) #novu-v2', function () {
       await delay(100); // Ensure different creation times
       await createWorkflow('Second Workflow');
 
-      const { body } = await session.testAgent.get('/v2/workflows');
+      const { result } = await novuClient.workflows.list({});
 
-      expect(body.data.workflows[0].name).to.equal('Second Workflow');
-      expect(body.data.workflows[1].name).to.equal('First Workflow');
+      expect(result.workflows[0].name).to.equal('Second Workflow');
+      expect(result.workflows[1].name).to.equal('First Workflow');
     });
 
     it('should sort workflows by creation date in ascending order when specified', async () => {
@@ -82,13 +79,13 @@ describe('List Workflows - /workflows (GET) #novu-v2', function () {
       await delay(100); // Ensure different creation times
       await createWorkflow('Second Workflow');
 
-      const { body } = await session.testAgent.get('/v2/workflows').query({
-        orderDirection: DirectionEnum.ASC,
-        orderBy: 'createdAt',
+      const { result } = await novuClient.workflows.list({
+        orderDirection: DirectionEnum.Asc,
+        orderBy: WorkflowResponseDtoSortField.Name,
       });
 
-      expect(body.data.workflows[0].name).to.equal('First Workflow');
-      expect(body.data.workflows[1].name).to.equal('Second Workflow');
+      expect(result.workflows[0].name).to.equal('First Workflow');
+      expect(result.workflows[1].name).to.equal('Second Workflow');
     });
   });
 
@@ -97,14 +94,16 @@ describe('List Workflows - /workflows (GET) #novu-v2', function () {
       const workflowName = 'Test Workflow Structure';
       const createdWorkflow = await createWorkflow(workflowName);
 
-      const { body } = await session.testAgent.get('/v2/workflows');
-      const returnedWorkflow = body.data.workflows[0];
+      const { result } = await novuClient.workflows.list({});
+      const { result: topics } = await novuClient.topics.list({});
+      console.log(topics);
+      const returnedWorkflow = result.workflows[0];
 
       expect(returnedWorkflow).to.include({
-        _id: createdWorkflow._id,
+        id: createdWorkflow.id,
         name: workflowName,
         workflowId: createdWorkflow.workflowId,
-        status: WorkflowStatusEnum.ACTIVE,
+        status: WorkflowStatusEnum.Active,
       });
       expect(returnedWorkflow.createdAt).to.be.a('string');
       expect(returnedWorkflow.updatedAt).to.be.a('string');
@@ -115,14 +114,14 @@ describe('List Workflows - /workflows (GET) #novu-v2', function () {
     const createWorkflowDto: CreateWorkflowDto = {
       name,
       workflowId: name.toLowerCase().replace(/\s+/g, '-'),
-      __source: WorkflowCreationSourceEnum.EDITOR,
+      source: WorkflowCreationSourceEnum.Editor,
       active: true,
       steps: [],
     };
 
-    const { body } = await session.testAgent.post('/v2/workflows').send(createWorkflowDto);
+    const { result } = await novuClient.workflows.create(createWorkflowDto);
 
-    return body.data;
+    return result;
   }
 
   function delay(ms: number): Promise<void> {

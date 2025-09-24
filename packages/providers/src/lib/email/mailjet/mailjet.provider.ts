@@ -1,13 +1,13 @@
 import { EmailProviderIdEnum } from '@novu/shared';
 import {
   ChannelTypeEnum,
+  CheckIntegrationResponseEnum,
+  EmailEventStatusEnum,
+  ICheckIntegrationResponse,
+  IEmailEventBody,
   IEmailOptions,
   IEmailProvider,
   ISendMessageSuccessResponse,
-  ICheckIntegrationResponse,
-  CheckIntegrationResponseEnum,
-  IEmailEventBody,
-  EmailEventStatusEnum,
 } from '@novu/stateless';
 import { Client, type SendEmailV3_1 } from 'node-mailjet';
 import { BaseProvider, CasingEnum } from '../../../base.provider';
@@ -103,11 +103,21 @@ export class MailjetEmailProvider extends BaseProvider implements IEmailProvider
       Subject: options.subject,
       TextPart: options.text,
       HTMLPart: options.html,
-      Attachments: options.attachments?.map((attachment) => ({
-        ContentType: attachment.mime,
-        Filename: attachment.name,
-        Base64Content: attachment.file.toString('base64'),
-      })),
+      Attachments: options.attachments
+        ?.filter((attachment) => !attachment.cid)
+        ?.map((attachment) => ({
+          ContentType: attachment.mime,
+          Filename: attachment.name,
+          Base64Content: attachment.file.toString('base64'),
+        })),
+      InlinedAttachments: options.attachments
+        ?.filter((attachment) => attachment.cid)
+        ?.map((attachment) => ({
+          ContentType: attachment.mime,
+          Filename: attachment.name,
+          Base64Content: attachment.file.toString('base64'),
+          ContentID: attachment.cid,
+        })),
     }).body;
 
     if (options.replyTo) {
@@ -129,7 +139,6 @@ export class MailjetEmailProvider extends BaseProvider implements IEmailProvider
 
   parseEventBody(body: any | any[], identifier: string): IEmailEventBody | undefined {
     if (Array.isArray(body)) {
-      // eslint-disable-next-line no-param-reassign
       body = body.find((item) => item.MessageID === identifier);
     }
 

@@ -1,17 +1,15 @@
 import { BadRequestException, Injectable, UnprocessableEntityException } from '@nestjs/common';
+import { encryptApiKey, FeatureFlagsService } from '@novu/application-generic';
+import { EnvironmentEntity, EnvironmentRepository, NotificationGroupRepository } from '@novu/dal';
+import { EnvironmentEnum, EnvironmentTypeEnum, FeatureFlagsKeysEnum, PROTECTED_ENVIRONMENTS } from '@novu/shared';
 import { createHash } from 'crypto';
 import { nanoid } from 'nanoid';
-
-import { encryptApiKey } from '@novu/application-generic';
-import { EnvironmentEntity, EnvironmentRepository, NotificationGroupRepository } from '@novu/dal';
-
-import { EnvironmentEnum, PROTECTED_ENVIRONMENTS } from '@novu/shared';
 import { CreateNovuIntegrationsCommand } from '../../../integrations/usecases/create-novu-integrations/create-novu-integrations.command';
 import { CreateNovuIntegrations } from '../../../integrations/usecases/create-novu-integrations/create-novu-integrations.usecase';
-import { CreateDefaultLayout, CreateDefaultLayoutCommand } from '../../../layouts/usecases';
+import { CreateDefaultLayout, CreateDefaultLayoutCommand } from '../../../layouts-v1/usecases';
+import { EnvironmentResponseDto } from '../../dtos/environment-response.dto';
 import { GenerateUniqueApiKey } from '../generate-unique-api-key/generate-unique-api-key.usecase';
 import { CreateEnvironmentCommand } from './create-environment.command';
-import { EnvironmentResponseDto } from '../../dtos/environment-response.dto';
 
 @Injectable()
 export class CreateEnvironment {
@@ -20,10 +18,15 @@ export class CreateEnvironment {
     private notificationGroupRepository: NotificationGroupRepository,
     private generateUniqueApiKey: GenerateUniqueApiKey,
     private createDefaultLayoutUsecase: CreateDefaultLayout,
-    private createNovuIntegrationsUsecase: CreateNovuIntegrations
+    private createNovuIntegrationsUsecase: CreateNovuIntegrations,
+    private featureFlagsService: FeatureFlagsService
   ) {}
 
   async execute(command: CreateEnvironmentCommand): Promise<EnvironmentResponseDto> {
+    if (command.returnApiKeys === undefined) {
+      command.returnApiKeys = command.system === true;
+    }
+
     const environmentCount = await this.environmentRepository.count({
       _organizationId: command.organizationId,
     });
@@ -58,12 +61,15 @@ export class CreateEnvironment {
       throw new BadRequestException('Color property is required');
     }
 
+    const type = await this.getEnvironmentType(command.name, command.organizationId, command.type);
+
     const environment = await this.environmentRepository.create({
       _organizationId: command.organizationId,
       name: normalizedName,
       identifier: nanoid(12),
       _parentId: command.parentEnvironmentId,
       color,
+      type,
       apiKeys: [
         {
           key: encryptedApiKey,
@@ -108,13 +114,14 @@ export class CreateEnvironment {
         environmentId: environment._id,
         organizationId: environment._organizationId,
         userId: command.userId,
+        name: environment.name,
       })
     );
 
-    return this.convertEnvironmentEntityToDto(environment);
+    return this.convertEnvironmentEntityToDto(environment, command.returnApiKeys);
   }
 
-  private convertEnvironmentEntityToDto(environment: EnvironmentEntity) {
+  private convertEnvironmentEntityToDto(environment: EnvironmentEntity, returnApiKeys: boolean) {
     const dto = new EnvironmentResponseDto();
 
     dto._id = environment._id;
@@ -122,8 +129,9 @@ export class CreateEnvironment {
     dto._organizationId = environment._organizationId;
     dto.identifier = environment.identifier;
     dto._parentId = environment._parentId;
+    dto.type = environment.type;
 
-    if (environment.apiKeys && environment.apiKeys.length > 0) {
+    if (environment.apiKeys && environment.apiKeys.length > 0 && returnApiKeys) {
       dto.apiKeys = environment.apiKeys.map((apiKey) => ({
         key: apiKey.key,
         hash: apiKey.hash,
@@ -133,10 +141,34 @@ export class CreateEnvironment {
 
     return dto;
   }
+
   private getEnvironmentColor(name: string, commandColor?: string): string | undefined {
     if (name === EnvironmentEnum.DEVELOPMENT) return '#ff8547';
     if (name === EnvironmentEnum.PRODUCTION) return '#7e52f4';
 
     return commandColor;
+  }
+
+  private async getEnvironmentType(
+    name: string,
+    organizationId: string,
+    commandType?: EnvironmentTypeEnum
+  ): Promise<EnvironmentTypeEnum> {
+    if (commandType) return commandType;
+
+    const isNewChangeMechanismEnabled = await this.featureFlagsService.getFlag({
+      key: FeatureFlagsKeysEnum.IS_NEW_CHANGE_MECHANISM_ENABLED,
+      organization: { _id: organizationId },
+      defaultValue: false,
+    });
+
+    if (!isNewChangeMechanismEnabled) {
+      return EnvironmentTypeEnum.DEV;
+    }
+
+    if (name === EnvironmentEnum.DEVELOPMENT) return EnvironmentTypeEnum.DEV;
+    if (name === EnvironmentEnum.PRODUCTION) return EnvironmentTypeEnum.PROD;
+
+    return EnvironmentTypeEnum.PROD;
   }
 }

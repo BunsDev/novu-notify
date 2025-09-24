@@ -1,3 +1,13 @@
+import { zodResolver } from '@hookform/resolvers/zod';
+import {
+  type CreateWorkflowDto,
+  DuplicateWorkflowDto,
+  MAX_DESCRIPTION_LENGTH,
+  MAX_TAG_ELEMENTS,
+  slugify,
+} from '@novu/shared';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
 import {
   Form,
   FormControl,
@@ -11,16 +21,13 @@ import {
 import { Separator } from '@/components/primitives/separator';
 import { TagInput } from '@/components/primitives/tag-input';
 import { Textarea } from '@/components/primitives/textarea';
-import { MAX_DESCRIPTION_LENGTH, MAX_TAG_ELEMENTS, workflowSchema } from '@/components/workflow-editor/schema';
+import { workflowSchema } from '@/components/workflow-editor/schema';
+import { TranslationToggleSection } from '@/components/workflow-editor/translation-toggle-section';
 import { useTags } from '@/hooks/use-tags';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { type CreateWorkflowDto, slugify } from '@novu/shared';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
 
 interface CreateWorkflowFormProps {
   onSubmit: (values: z.infer<typeof workflowSchema>) => void;
-  template?: CreateWorkflowDto;
+  template?: CreateWorkflowDto | DuplicateWorkflowDto;
 }
 
 export function CreateWorkflowForm({ onSubmit, template }: CreateWorkflowFormProps) {
@@ -28,9 +35,10 @@ export function CreateWorkflowForm({ onSubmit, template }: CreateWorkflowFormPro
     resolver: zodResolver(workflowSchema),
     defaultValues: {
       description: template?.description ?? '',
-      workflowId: template?.workflowId ?? '',
+      workflowId: slugify(template?.name ?? ''),
       name: template?.name ?? '',
       tags: template?.tags ?? [],
+      isTranslationEnabled: template?.isTranslationEnabled ?? false,
     },
   });
 
@@ -74,7 +82,7 @@ export function CreateWorkflowForm({ onSubmit, template }: CreateWorkflowFormPro
             <FormItem>
               <FormLabel required>Identifier</FormLabel>
               <FormControl>
-                <FormInput {...field} disabled />
+                <FormInput {...field} />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -128,6 +136,18 @@ export function CreateWorkflowForm({ onSubmit, template }: CreateWorkflowFormPro
               <FormMessage />
             </FormItem>
           )}
+        />
+
+        <TranslationToggleSection
+          control={form.control}
+          fieldName="isTranslationEnabled"
+          showManageLink={false}
+          onChange={(checked) => {
+            form.setValue('isTranslationEnabled', checked, {
+              shouldValidate: true,
+              shouldDirty: true,
+            });
+          }}
         />
       </FormRoot>
     </Form>

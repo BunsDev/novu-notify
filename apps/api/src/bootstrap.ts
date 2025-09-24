@@ -1,15 +1,25 @@
 import './instrument';
 
-import helmet from 'helmet';
-import { INestApplication, Logger, ValidationPipe, VersioningType } from '@nestjs/common';
+import { INestApplication, ValidationPipe, VersioningType } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import bodyParser from 'body-parser';
+import {
+  BullMqService,
+  getErrorInterceptor,
+  // biome-ignore lint/style/noRestrictedImports: <explanation> x
+  Logger,
+  PinoLogger,
+  RequestLogRepository,
+} from '@novu/application-generic';
 
-import { BullMqService, getErrorInterceptor, Logger as PinoLogger } from '@novu/application-generic';
-import { CONTEXT_PATH, corsOptionsDelegate, validateEnv } from './config';
-import { AppModule } from './app.module';
-import { setupSwagger } from './app/shared/framework/swagger/swagger.controller';
+import bodyParser from 'body-parser';
+import helmet from 'helmet';
 import { ResponseInterceptor } from './app/shared/framework/response.interceptor';
+import { setupSwagger } from './app/shared/framework/swagger/swagger.controller';
+
+import { RequestIdMiddleware } from './app/shared/middleware/request-id.middleware';
+
+import { AppModule } from './app.module';
+import { CONTEXT_PATH, corsOptionsDelegate, validateEnv } from './config';
 import { AllExceptionsFilter } from './exception-filter';
 
 const passport = require('passport');
@@ -22,9 +32,11 @@ const extendedBodySizeRoutes = [
   '/v1/layouts',
   '/v1/bridge/sync',
   '/v1/bridge/diff',
+  '/v1/environments/:environmentId/bridge',
+  '/v2/workflows',
 ];
 
-// Validate the ENV variables after launching SENTRY, so missing variables will report to sentry
+// Validate the ENV variables after launching SENTRY, so missing variables will report to sentry.
 validateEnv();
 class BootstrapOptions {
   internalSdkGeneration?: boolean;
@@ -39,10 +51,10 @@ export async function bootstrap(
   let nestOptions: Record<string, boolean> = {};
 
   if (process.env.NOVU_ENTERPRISE === 'true' || process.env.CI_EE_TEST === 'true') {
-    rawBodyBuffer = (req, res, buffer, encoding): void => {
-      if (buffer && buffer.length) {
+    rawBodyBuffer = (_req, _res, buffer, _encoding): void => {
+      if (buffer?.length) {
         // eslint-disable-next-line no-param-reassign
-        req.rawBody = Buffer.from(buffer);
+        (_req as any).rawBody = Buffer.from(buffer);
       }
     };
     nestOptions = {
@@ -59,20 +71,27 @@ export async function bootstrap(
     defaultVersion: '1',
   });
 
-  app.useLogger(app.get(PinoLogger));
+  const logger = await app.resolve(PinoLogger);
+  logger.setContext('Bootstrap');
+
+  app.useLogger(app.get(Logger));
   app.flushLogs();
 
   const server = app.getHttpServer();
-  Logger.verbose(`Server timeout: ${server.timeout}`);
+  logger.trace(`Server timeout: ${server.timeout}`);
   server.keepAliveTimeout = 61 * 1000;
-  Logger.verbose(`Server keepAliveTimeout: ${server.keepAliveTimeout / 1000}s `);
+  logger.trace(`Server keepAliveTimeout: ${server.keepAliveTimeout / 1000}s `);
   server.headersTimeout = 65 * 1000;
-  Logger.verbose(`Server headersTimeout: ${server.headersTimeout / 1000}s `);
+  logger.trace(`Server headersTimeout: ${server.headersTimeout / 1000}s `);
 
   app.use(helmet());
   app.enableCors(corsOptionsDelegate);
 
   app.use(passport.initialize());
+
+  // Apply transaction ID middleware early in the request lifecycle
+  const transactionIdMiddleware = new RequestIdMiddleware();
+  app.use((req, res, next) => transactionIdMiddleware.use(req, res, next));
 
   app.useGlobalPipes(
     new ValidationPipe({
@@ -84,8 +103,14 @@ export async function bootstrap(
   app.useGlobalInterceptors(new ResponseInterceptor());
   app.useGlobalInterceptors(getErrorInterceptor());
 
-  app.use(extendedBodySizeRoutes, bodyParser.json({ limit: '20mb' }));
-  app.use(extendedBodySizeRoutes, bodyParser.urlencoded({ limit: '20mb', extended: true }));
+  app.use(extendedBodySizeRoutes, bodyParser.json({ limit: '26mb' }));
+  app.use(extendedBodySizeRoutes, bodyParser.urlencoded({ limit: '26mb', extended: true }));
+
+  // Add text/plain parser specifically for inbound webhooks (SNS confirmations)
+  app.use(
+    '/v2/inbound-webhooks/delivery-providers/:environmentId/:integrationId',
+    bodyParser.text({ verify: rawBodyBuffer })
+  );
 
   app.use(bodyParser.json({ verify: rawBodyBuffer }));
   app.use(bodyParser.urlencoded({ extended: true, verify: rawBodyBuffer }));
@@ -94,13 +119,30 @@ export async function bootstrap(
 
   const document = await setupSwagger(app, bootstrapOptions?.internalSdkGeneration);
 
-  app.useGlobalFilters(new AllExceptionsFilter(app.get(PinoLogger)));
+  app.useGlobalFilters(new AllExceptionsFilter(app.get(Logger), app.get(RequestLogRepository)));
+
+  /*
+   * Handle unhandled promise rejections
+   * We explicitly crash the process on unhandled rejections as they indicate the application
+   * is in an undefined state. NestJS can't handle these as they occur outside the event lifecycle.
+   * According to Node.js docs, it's unsafe to resume normal operation after unhandled rejections.
+   * We log these rejections with fatal level to ensure they are properly monitored and tracked.
+   * See: https://nodejs.org/api/process.html#process_warning_using_uncaughtexception_correctly
+   */
+  process.on('unhandledRejection', (reason, promise) => {
+    logger.fatal({
+      err: reason,
+      message: 'Unhandled promise rejection',
+      promise,
+    });
+    process.exit(1);
+  });
 
   await app.listen(process.env.PORT || 3000);
 
   app.enableShutdownHooks();
 
-  Logger.log(`Started application in NODE_ENV=${process.env.NODE_ENV} on port ${process.env.PORT}`);
+  logger.info(`Started application in NODE_ENV=${process.env.NODE_ENV} on port ${process.env.PORT}.`);
 
   return { app, document };
 }

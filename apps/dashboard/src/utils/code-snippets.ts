@@ -1,4 +1,4 @@
-import { API_HOSTNAME } from '@/config';
+import { API_HOSTNAME, IS_EU, IS_SELF_HOSTED } from '@/config';
 
 export type CodeSnippet = {
   identifier: string;
@@ -7,23 +7,39 @@ export type CodeSnippet = {
   secretKey?: string;
 };
 
+export type TriggerCurlCommandOptions = {
+  workflowId: string;
+  to: unknown;
+  payload: string | Record<string, unknown>;
+  apiKey: string;
+  baseUrl?: string;
+  addDashboardSource?: boolean;
+};
+
 const SECRET_KEY_ENV_KEY = 'NOVU_SECRET_KEY';
 
 const safeParsePayload = (payload: string) => {
   try {
     return JSON.parse(payload);
-  } catch (e) {
+  } catch {
     return {};
   }
 };
 
 export const createNodeJsSnippet = ({ identifier, to, payload, secretKey }: CodeSnippet) => {
   const renderedSecretKey = secretKey ? `'${secretKey}'` : `process.env['${SECRET_KEY_ENV_KEY}']`;
+  let serverConfig = '';
+
+  if (IS_EU) {
+    serverConfig = `,\n  serverIdx: 1`;
+  } else if (IS_SELF_HOSTED) {
+    serverConfig = `,\n  serverURL: '${API_HOSTNAME}'`;
+  }
 
   return `import { Novu } from '@novu/api'; 
 
 const novu = new Novu({ 
-  secretKey: ${renderedSecretKey}
+  secretKey: ${renderedSecretKey}${serverConfig}
 });
 
 novu.trigger(${JSON.stringify(
@@ -54,6 +70,98 @@ export const createCurlSnippet = ({ identifier, to, payload, secretKey = SECRET_
     2
   )}'
   `;
+};
+
+export const createTriggerRequestBody = ({
+  workflowId,
+  to,
+  payload,
+  addDashboardSource = true,
+}: Omit<TriggerCurlCommandOptions, 'apiKey' | 'baseUrl'>) => {
+  let parsedPayload = {};
+
+  try {
+    parsedPayload = typeof payload === 'string' ? JSON.parse(payload) : payload;
+  } catch {
+    parsedPayload = {};
+  }
+
+  return {
+    name: workflowId,
+    to,
+    payload: addDashboardSource ? { ...parsedPayload, __source: 'dashboard' } : parsedPayload,
+  };
+};
+
+export const generateTriggerCurlCommand = ({
+  workflowId,
+  to,
+  payload,
+  apiKey,
+  baseUrl = API_HOSTNAME ?? 'https://api.novu.co',
+  addDashboardSource = true,
+}: TriggerCurlCommandOptions) => {
+  const body = createTriggerRequestBody({ workflowId, to, payload, addDashboardSource });
+
+  return `curl -X POST "${baseUrl}/v1/events/trigger" \\
+  -H "Authorization: ApiKey ${apiKey}" \\
+  -H "Content-Type: application/json" \\
+  -d '${JSON.stringify(body, null, 2)}'`;
+};
+
+export type PostmanCollectionOptions = {
+  workflowId: string;
+  to: unknown;
+  payload: string | Record<string, unknown>;
+  apiKey: string;
+  baseUrl?: string;
+  addDashboardSource?: boolean;
+};
+
+export const generatePostmanCollection = ({
+  workflowId,
+  to,
+  payload,
+  apiKey,
+  baseUrl = API_HOSTNAME ?? 'https://api.novu.co',
+  addDashboardSource = true,
+}: PostmanCollectionOptions) => {
+  const body = createTriggerRequestBody({ workflowId, to, payload, addDashboardSource });
+
+  return {
+    info: {
+      name: `Novu - Trigger ${workflowId}`,
+      schema: 'https://schema.getpostman.com/json/collection/v2.1.0/collection.json',
+    },
+    item: [
+      {
+        name: `Trigger ${workflowId}`,
+        request: {
+          method: 'POST',
+          header: [
+            {
+              key: 'Authorization',
+              value: `ApiKey ${apiKey}`,
+            },
+            {
+              key: 'Content-Type',
+              value: 'application/json',
+            },
+          ],
+          body: {
+            mode: 'raw',
+            raw: JSON.stringify(body, null, 2),
+            options: {
+              raw: {
+                language: 'json',
+              },
+            },
+          },
+          url: `${baseUrl}/v1/events/trigger`,
+        },
+      },
+    ],
+  };
 };
 
 export const createFrameworkSnippet = ({ identifier, to, payload }: CodeSnippet) => {
@@ -108,6 +216,15 @@ export const createPhpSnippet = ({ identifier, to, payload, secretKey }: CodeSni
   const renderedSecretKey = secretKey
     ? `'${secretKey}'`
     : `$_ENV['${SECRET_KEY_ENV_KEY}'] ?? getenv('${SECRET_KEY_ENV_KEY}')`;
+  let serverConfig = '';
+
+  if (IS_EU) {
+    serverConfig = `
+    ->setServerIndex(1)`;
+  } else if (IS_SELF_HOSTED) {
+    serverConfig = `
+    ->setServerURL('${API_HOSTNAME}')`;
+  }
 
   return `use novu;
 use novu\\Models\\Components;
@@ -120,7 +237,7 @@ $dotenv->load();
 // Get API key from environment variable
 $apiKey = ${renderedSecretKey};
 
-$sdk = novu\\Novu::builder()
+$sdk = novu\\Novu::builder()${serverConfig}
     ->setSecurity($apiKey)
     ->build();
 
@@ -137,25 +254,40 @@ $response = $sdk->events->trigger($request);`;
 
 export const createPythonSnippet = ({ identifier, to, payload, secretKey }: CodeSnippet) => {
   const renderedSecretKey = secretKey ? `'${secretKey}'` : `os.environ['${SECRET_KEY_ENV_KEY}']`;
+  let serverConfig = '';
+
+  if (IS_EU) {
+    serverConfig = `,\n    server_idx=1`;
+  } else if (IS_SELF_HOSTED) {
+    serverConfig = `,\n    server_url='${API_HOSTNAME}'`;
+  }
 
   return `import novu_py
 from novu_py import Novu
 import os
 
 with Novu(
-    api_key=${renderedSecretKey},
+    secret_key=${renderedSecretKey}${serverConfig}
 ) as novu:
+
     res = novu.trigger(trigger_event_request_dto=novu_py.TriggerEventRequestDto(
-        workflowId="${identifier}",
-        to={
-            "subscriber_id": "${(to as { subscriberId: string }).subscriberId}",
-        },
-        payload=${JSON.stringify(safeParsePayload(payload), null, 8)}
+        workflow_id="${identifier}",
+        to="${(to as { subscriberId: string }).subscriberId}",
+        payload={
+            ${JSON.stringify(safeParsePayload(payload), null, 12).slice(1, -1).trim()}
+        }
     ))`;
 };
 
 export const createGoSnippet = ({ identifier, to, payload, secretKey }: CodeSnippet) => {
   const renderedSecretKey = secretKey ? `"${secretKey}"` : `os.Getenv("${SECRET_KEY_ENV_KEY}")`;
+  let serverConfig = '';
+
+  if (IS_EU) {
+    serverConfig = `\n		novugo.WithServerIndex(1),`;
+  } else if (IS_SELF_HOSTED) {
+    serverConfig = `\n		novugo.WithServerURL("${API_HOSTNAME}"),`;
+  }
 
   return `package main
 
@@ -171,11 +303,11 @@ func main() {
 	ctx := context.Background()
 
 	s := novugo.New(
-		novugo.WithSecurity(${renderedSecretKey}),
+		novugo.WithSecurity(${renderedSecretKey}),${serverConfig}
 	)
 
 	res, err := s.Trigger(ctx, components.TriggerEventRequestDto{
-		WorkflowId: "${identifier}",
+		WorkflowID: "${identifier}",
 		Payload: ${JSON.stringify(safeParsePayload(payload))},
 		To: components.CreateToSubscriberPayloadDto(
 			components.SubscriberPayloadDto{

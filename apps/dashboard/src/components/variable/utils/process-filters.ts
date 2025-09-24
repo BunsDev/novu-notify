@@ -1,7 +1,7 @@
-import { Liquid } from 'liquidjs';
+import { createLiquidEngine } from '@novu/framework/internal';
 import { FilterWithParam } from '../types';
 
-const engine = new Liquid();
+const engine = createLiquidEngine();
 
 function parseInputValue(value: string): any {
   try {

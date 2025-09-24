@@ -33,6 +33,10 @@ export type NotificationsControllerListNotificationsRequest = {
    */
   subscriberIds?: Array<string> | undefined;
   /**
+   * Array of severity levels or a single severity level
+   */
+  severity?: Array<string> | undefined;
+  /**
    * Page number for pagination
    */
   page?: number | undefined;
@@ -41,9 +45,13 @@ export type NotificationsControllerListNotificationsRequest = {
    */
   limit?: number | undefined;
   /**
-   * Transaction ID for filtering
+   * The transaction ID to filter by
    */
   transactionId?: string | undefined;
+  /**
+   * Topic Key for filtering notifications by topic
+   */
+  topicKey?: string | undefined;
   /**
    * Date filter for records after this timestamp. Defaults to earliest date allowed by subscription plan
    */
@@ -75,9 +83,11 @@ export const NotificationsControllerListNotificationsRequest$inboundSchema:
     emails: z.array(z.string()).optional(),
     search: z.string().optional(),
     subscriberIds: z.array(z.string()).optional(),
+    severity: z.array(z.string()).optional(),
     page: z.number().default(0),
     limit: z.number().default(10),
     transactionId: z.string().optional(),
+    topicKey: z.string().optional(),
     after: z.string().optional(),
     before: z.string().optional(),
     "idempotency-key": z.string().optional(),
@@ -94,9 +104,11 @@ export type NotificationsControllerListNotificationsRequest$Outbound = {
   emails?: Array<string> | undefined;
   search?: string | undefined;
   subscriberIds?: Array<string> | undefined;
+  severity?: Array<string> | undefined;
   page: number;
   limit: number;
   transactionId?: string | undefined;
+  topicKey?: string | undefined;
   after?: string | undefined;
   before?: string | undefined;
   "idempotency-key"?: string | undefined;
@@ -114,9 +126,11 @@ export const NotificationsControllerListNotificationsRequest$outboundSchema:
     emails: z.array(z.string()).optional(),
     search: z.string().optional(),
     subscriberIds: z.array(z.string()).optional(),
+    severity: z.array(z.string()).optional(),
     page: z.number().default(0),
     limit: z.number().default(10),
     transactionId: z.string().optional(),
+    topicKey: z.string().optional(),
     after: z.string().optional(),
     before: z.string().optional(),
     idempotencyKey: z.string().optional(),

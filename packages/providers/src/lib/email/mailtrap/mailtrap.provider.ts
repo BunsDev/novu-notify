@@ -1,13 +1,13 @@
 import { EmailProviderIdEnum } from '@novu/shared';
 import {
   ChannelTypeEnum,
-  ISendMessageSuccessResponse,
+  CheckIntegrationResponseEnum,
+  ICheckIntegrationResponse,
   IEmailOptions,
   IEmailProvider,
-  ICheckIntegrationResponse,
-  CheckIntegrationResponseEnum,
+  ISendMessageSuccessResponse,
 } from '@novu/stateless';
-import { MailtrapClient, Address, Mail } from 'mailtrap';
+import { Address, Attachment, Mail, MailtrapClient } from 'mailtrap';
 import { BaseProvider, CasingEnum } from '../../../base.provider';
 import { WithPassthrough } from '../../../utils/types';
 
@@ -73,6 +73,7 @@ export class MailtrapEmailProvider extends BaseProvider implements IEmailProvide
           filename: attachment.name,
           content: attachment.file,
           type: attachment.mime,
+          content_id: attachment.cid,
         })),
       }).body
     );

@@ -1,21 +1,15 @@
-import {
-  IsDefined,
-  IsEnum,
-  IsOptional,
-  IsString,
-  ValidateIf,
-  ValidateNested,
-} from 'class-validator';
+import { DiscoverWorkflowOutput } from '@novu/framework/internal';
 
 import {
   AddressingTypeEnum,
   StatelessControls,
-  TriggerRecipientsPayload,
+  TriggerOverrides,
   TriggerRecipientSubscriber,
+  TriggerRecipientsPayload,
   TriggerRequestCategoryEnum,
   TriggerTenantContext,
 } from '@novu/shared';
-import { DiscoverWorkflowOutput } from '@novu/framework/internal';
+import { IsDefined, IsEnum, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import { EnvironmentWithUserCommand } from '../../commands';
 
@@ -25,14 +19,19 @@ export class TriggerEventBaseCommand extends EnvironmentWithUserCommand {
   identifier: string;
 
   @IsDefined()
-  payload: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  payload: any;
 
   @IsDefined()
-  overrides: Record<string, Record<string, unknown>>;
+  overrides: TriggerOverrides;
 
   @IsString()
   @IsDefined()
   transactionId: string;
+
+  // TODO: remove optional flag after all the workers are migrated to use requestId NV-6475
+  @IsString()
+  @IsOptional()
+  requestId?: string;
 
   @IsOptional()
   @ValidateIf((_, value) => typeof value !== 'string')
@@ -71,6 +70,4 @@ export class TriggerEventBroadcastCommand extends TriggerEventBaseCommand {
   addressingType: AddressingTypeEnum.BROADCAST;
 }
 
-export type TriggerEventCommand =
-  | TriggerEventMulticastCommand
-  | TriggerEventBroadcastCommand;
+export type TriggerEventCommand = TriggerEventMulticastCommand | TriggerEventBroadcastCommand;

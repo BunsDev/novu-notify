@@ -2,6 +2,12 @@ import Title from '@/components/Title';
 import { novuConfig } from '@/utils/config';
 import { Inbox } from '@novu/nextjs';
 
+declare global {
+  interface NotificationData {
+    foo: string;
+  }
+}
+
 export default function Home() {
   return (
     <>
@@ -27,6 +33,7 @@ export default function Home() {
               <div>
                 <div className="text-xl font-bold">{notification.subject || 'Subject'}</div>
                 <div>{notification.body}</div>
+                {notification.data?.foo && <div>{notification.data.foo}</div>}
                 {!notification.isRead && (
                   <div className="border-background absolute right-2 top-2 size-2 rounded-full border bg-blue-500" />
                 )}

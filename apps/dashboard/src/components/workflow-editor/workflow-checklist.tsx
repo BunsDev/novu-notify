@@ -1,10 +1,3 @@
-import { useEnvironment, useFetchEnvironments } from '@/context/environment/hooks';
-import { useFetchIntegrations } from '@/hooks/use-fetch-integrations';
-import { useTelemetry } from '@/hooks/use-telemetry';
-import { StepTypeEnum } from '@/utils/enums';
-import { buildRoute, ROUTES } from '@/utils/routes';
-import { TelemetryEvent } from '@/utils/telemetry';
-import { Step } from '@/utils/types';
 import { useUser } from '@clerk/clerk-react';
 import { ChannelTypeEnum, WorkflowResponseDto } from '@novu/shared';
 import { motion } from 'motion/react';
@@ -17,6 +10,14 @@ import {
   RiSparkling2Fill,
 } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
+import { useEnvironment, useFetchEnvironments } from '@/context/environment/hooks';
+import { useFeatureFlag } from '@/hooks/use-feature-flag';
+import { useFetchIntegrations } from '@/hooks/use-fetch-integrations';
+import { useTelemetry } from '@/hooks/use-telemetry';
+import { StepTypeEnum } from '@/utils/enums';
+import { buildRoute, ROUTES } from '@/utils/routes';
+import { TelemetryEvent } from '@/utils/telemetry';
+import { Step } from '@/utils/types';
 import { cn } from '../../utils/ui';
 import { Badge, BadgeIcon } from '../primitives/badge';
 import { Popover, PopoverClose, PopoverContent, PopoverTrigger } from '../primitives/popover';
@@ -247,7 +248,7 @@ function useChecklistItems(steps: Step[]) {
         onClick: () => {
           telemetry(TelemetryEvent.WORKFLOW_CHECKLIST_STEP_CLICKED, { stepTitle: 'Trigger workflow' });
           navigate(
-            buildRoute(ROUTES.TEST_WORKFLOW, {
+            buildRoute(ROUTES.TRIGGER_WORKFLOW, {
               environmentSlug: currentEnvironment?.slug ?? '',
               workflowSlug: workflow?.slug ?? '',
             })

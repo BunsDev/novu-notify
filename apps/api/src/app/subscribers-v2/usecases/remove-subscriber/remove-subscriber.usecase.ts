@@ -1,11 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
-import { SubscriberRepository, TopicSubscribersRepository, PreferencesRepository } from '@novu/dal';
 import {
-  buildSubscriberKey,
   buildFeedKey,
   buildMessageCountKey,
+  buildSubscriberKey,
   InvalidateCacheService,
 } from '@novu/application-generic';
+import { MessageRepository, PreferencesRepository, SubscriberRepository, TopicSubscribersRepository } from '@novu/dal';
 
 import { RemoveSubscriberCommand } from './remove-subscriber.command';
 
@@ -15,7 +15,8 @@ export class RemoveSubscriber {
     private invalidateCache: InvalidateCacheService,
     private subscriberRepository: SubscriberRepository,
     private topicSubscribersRepository: TopicSubscribersRepository,
-    private preferenceRepository: PreferencesRepository
+    private preferenceRepository: PreferencesRepository,
+    private messageRepository: MessageRepository
   ) {}
 
   async execute({ environmentId: _environmentId, subscriberId }: RemoveSubscriberCommand) {
@@ -71,6 +72,11 @@ export class RemoveSubscriber {
       await this.preferenceRepository.delete({
         _environmentId,
         _subscriberId: { $in: subscriberInternalIds },
+      });
+
+      await this.messageRepository.delete({
+        _subscriberId: { $in: subscriberInternalIds },
+        _environmentId,
       });
     });
 

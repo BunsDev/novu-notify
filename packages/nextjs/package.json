@@ -1,6 +1,6 @@
 {
   "name": "@novu/nextjs",
-  "version": "3.0.2",
+  "version": "3.9.3",
   "repository": {
     "type": "git",
     "url": "https://github.com/novuhq/novu",
@@ -65,8 +65,8 @@
     "build:watch": "tsup --watch",
     "build": "tsup && pnpm run build:declarations && pnpm run check-exports",
     "build:declarations": "tsc -p tsconfig.declarations.json",
-    "lint": "eslint src",
-    "check-exports": "attw --pack . --ignore-rules unexpected-module-syntax"
+    "check-exports": "attw --pack . --ignore-rules unexpected-module-syntax",
+    "publish:rc": "pnpm publish --tag rc"
   },
   "browserslist": {
     "production": [

@@ -1,19 +1,18 @@
-/* eslint-disable global-require */
-import { Injectable, Logger } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { ModuleRef } from '@nestjs/core';
+import { PinoLogger } from '@novu/application-generic';
 import {
   ChangeEntity,
   ChangeRepository,
+  FeedRepository,
+  LayoutRepository,
   MessageTemplateRepository,
   NotificationGroupRepository,
   NotificationTemplateRepository,
-  FeedRepository,
-  LayoutRepository,
 } from '@novu/dal';
 import { ChangeEntityTypeEnum } from '@novu/shared';
-import { ModuleRef } from '@nestjs/core';
 import { ChangesResponseDto } from '../../dtos/change-response.dto';
 import { GetChangesCommand } from './get-changes.command';
-import { ApiException } from '../../../shared/exceptions/api.exception';
 
 interface IViewEntity {
   templateName: string;
@@ -36,8 +35,11 @@ export class GetChanges {
     private notificationGroupRepository: NotificationGroupRepository,
     private feedRepository: FeedRepository,
     private layoutRepository: LayoutRepository,
-    protected moduleRef: ModuleRef
-  ) {}
+    protected moduleRef: ModuleRef,
+    private logger: PinoLogger
+  ) {
+    this.logger.setContext(this.constructor.name);
+  }
 
   async execute(command: GetChangesCommand): Promise<ChangesResponseDto> {
     const { data: changeItems, totalCount } = await this.changeRepository.getList(
@@ -97,7 +99,7 @@ export class GetChanges {
     });
 
     if (!item) {
-      Logger.error(`Could not find notification template for message template id ${entityId}`);
+      this.logger.error(`Could not find notification template for message template id ${entityId}`);
 
       return {};
     }
@@ -128,12 +130,11 @@ export class GetChanges {
         _id: entityId,
         _environmentId: environmentId,
       });
-      // eslint-disable-next-line prefer-destructuring
       item = items[0];
     }
 
     if (!item) {
-      Logger.error(`Could not find notification template for template id ${entityId}`);
+      this.logger.error(`Could not find notification template for template id ${entityId}`);
 
       return {};
     }
@@ -151,7 +152,7 @@ export class GetChanges {
     try {
       if (process.env.NOVU_ENTERPRISE === 'true' || process.env.CI_EE_TEST === 'true') {
         if (!require('@novu/ee-shared-services')?.TranslationsService) {
-          throw new ApiException('Translation module is not loaded');
+          throw new BadRequestException('Translation module is not loaded');
         }
         const service = this.moduleRef.get(require('@novu/ee-shared-services')?.TranslationsService, { strict: false });
         const { name, identifier } = await service.getTranslationGroupData(environmentId, entityId);
@@ -162,7 +163,7 @@ export class GetChanges {
         };
       }
     } catch (e) {
-      Logger.error(e, `Unexpected error while importing enterprise modules`, 'TranslationsService');
+      this.logger.error({ err: e }, `Unexpected error while importing enterprise modules`);
     }
 
     return {};
@@ -175,7 +176,7 @@ export class GetChanges {
     try {
       if (process.env.NOVU_ENTERPRISE === 'true' || process.env.CI_EE_TEST === 'true') {
         if (!require('@novu/ee-shared-services')?.TranslationsService) {
-          throw new ApiException('Translation module is not loaded');
+          throw new BadRequestException('Translation module is not loaded');
         }
         const service = this.moduleRef.get(require('@novu/ee-shared-services')?.TranslationsService, { strict: false });
         const { name, group } = await service.getTranslationData(environmentId, entityId);
@@ -186,7 +187,7 @@ export class GetChanges {
         };
       }
     } catch (e) {
-      Logger.error(e, `Unexpected error while importing enterprise modules`, 'TranslationsService');
+      this.logger.error({ err: e }, `Unexpected error while importing enterprise modules`);
     }
 
     return {};
@@ -202,7 +203,7 @@ export class GetChanges {
     });
 
     if (!item) {
-      Logger.error(`Could not find notification group for id ${entityId}`);
+      this.logger.error(`Could not find notification group for id ${entityId}`);
 
       return {};
     }
@@ -223,10 +224,9 @@ export class GetChanges {
 
     if (!item) {
       const items = await this.feedRepository.findDeleted({ _id: entityId, _environmentId: environmentId });
-      // eslint-disable-next-line prefer-destructuring
       item = items[0];
       if (!item) {
-        Logger.error(`Could not find feed for id ${entityId}`);
+        this.logger.error(`Could not find feed for id ${entityId}`);
 
         return {};
       }
@@ -249,7 +249,7 @@ export class GetChanges {
     if (!item) {
       item = await this.layoutRepository.findDeleted(entityId, environmentId);
       if (!item) {
-        Logger.error(`Could not find layout for id ${entityId}`);
+        this.logger.error(`Could not find layout for id ${entityId}`);
 
         return {};
       }

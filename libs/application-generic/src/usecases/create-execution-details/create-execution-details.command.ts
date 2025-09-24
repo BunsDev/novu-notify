@@ -1,11 +1,16 @@
-import { IsNotEmpty, IsOptional, IsString, IsDate, IsMongoId } from 'class-validator';
-import { ExecutionDetailsEntity, ExecutionDetailsRepository } from '@novu/dal';
-import { ExecutionDetailsSourceEnum, ExecutionDetailsStatusEnum, IJob, StepTypeEnum } from '@novu/shared';
+import { ExecutionDetailsEntity, ExecutionDetailsRepository, JobEntity } from '@novu/dal';
+import { ExecutionDetailsSourceEnum, ExecutionDetailsStatusEnum, StepTypeEnum } from '@novu/shared';
 import { EmailEventStatusEnum, SmsEventStatusEnum } from '@novu/stateless';
-
-import { EnvironmentWithSubscriber } from '../../commands/project.command';
+import { IsDate, IsDefined, IsNotEmpty, IsOptional, IsString } from 'class-validator';
+import { EnvironmentWithSubscriber } from '../../commands';
+import { DetailEnum } from './types';
 
 export class CreateExecutionDetailsCommand extends EnvironmentWithSubscriber {
+  // used for trace log
+  @IsString()
+  @IsDefined()
+  workflowRunIdentifier: string;
+
   @IsOptional()
   jobId?: string;
 
@@ -28,7 +33,7 @@ export class CreateExecutionDetailsCommand extends EnvironmentWithSubscriber {
   channel?: StepTypeEnum;
 
   @IsNotEmpty()
-  detail: string;
+  detail: DetailEnum;
 
   @IsNotEmpty()
   source: ExecutionDetailsSourceEnum;
@@ -48,6 +53,7 @@ export class CreateExecutionDetailsCommand extends EnvironmentWithSubscriber {
 
   @IsOptional()
   @IsString()
+  // todo check if this can required
   _subscriberId?: string;
 
   @IsOptional()
@@ -61,7 +67,7 @@ export class CreateExecutionDetailsCommand extends EnvironmentWithSubscriber {
   webhookStatus?: EmailEventStatusEnum | SmsEventStatusEnum;
 
   static getDetailsFromJob(
-    job: IJob
+    job: JobEntity
   ): Pick<
     CreateExecutionDetailsCommand,
     | 'environmentId'
@@ -74,6 +80,7 @@ export class CreateExecutionDetailsCommand extends EnvironmentWithSubscriber {
     | 'providerId'
     | 'transactionId'
     | 'channel'
+    | 'workflowRunIdentifier'
   > {
     return {
       environmentId: job._environmentId,
@@ -87,6 +94,7 @@ export class CreateExecutionDetailsCommand extends EnvironmentWithSubscriber {
       providerId: job.providerId,
       transactionId: job.transactionId,
       channel: job.type,
+      workflowRunIdentifier: job.identifier,
     };
   }
 

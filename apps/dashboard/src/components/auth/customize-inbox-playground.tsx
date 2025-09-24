@@ -1,16 +1,10 @@
-import { EditorView } from '@uiw/react-codemirror';
 import { Info } from 'lucide-react';
-import { FormProvider, useFormContext, UseFormReturn } from 'react-hook-form';
-import { RiInputField, RiLayoutLine } from 'react-icons/ri';
-
-import { InAppActionDropdown } from '@/components/in-app-action-dropdown';
+import { useId } from 'react';
+import { Controller, UseFormReturn } from 'react-hook-form';
+import { RiLayoutLine } from 'react-icons/ri';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/primitives/accordion';
 import { ColorPicker } from '@/components/primitives/color-picker';
-import { Editor } from '@/components/primitives/editor';
-import { FormControl, FormField, FormItem } from '@/components/primitives/form/form';
-import { capitalize } from '@/utils/string';
-import { InputRoot, InputWrapper } from '../primitives/input';
-import type { InboxPlaygroundFormData } from './inbox-playground';
+import { Switch } from '../primitives/switch';
 
 interface PreviewStyle {
   id: string;
@@ -18,8 +12,15 @@ interface PreviewStyle {
   image: string;
 }
 
+interface CustomizeInboxFormData {
+  selectedStyle: string;
+  enableTabs: boolean;
+  primaryColor: string;
+  foregroundColor: string;
+}
+
 interface CustomizeInboxProps {
-  form: UseFormReturn<InboxPlaygroundFormData>;
+  form: UseFormReturn<CustomizeInboxFormData>;
 }
 
 const previewStyles: PreviewStyle[] = [
@@ -30,20 +31,41 @@ const previewStyles: PreviewStyle[] = [
 
 export function CustomizeInbox({ form }: CustomizeInboxProps) {
   const selectedStyle = form.watch('selectedStyle');
-  const openAccordion = form.watch('openAccordion');
-
-  const handleAccordionChange = (value: string | undefined) => {
-    form.setValue('openAccordion', value);
-  };
+  const enableTabsId = useId();
 
   return (
     <div className="space-y-3 p-3">
-      <Accordion type="single" collapsible value={openAccordion} onValueChange={handleAccordionChange}>
+      <Accordion type="single" value="layout">
         <AccordionItem value="layout" className="bg-white p-0">
-          <AccordionTrigger className="bg-neutral-alpha-50 p-2 data-[state=open]:border-b">
-            <div className="flex items-center gap-1 text-xs">
-              <RiLayoutLine className="text-feature size-5" />
-              Customize Inbox
+          <AccordionTrigger
+            className="bg-neutral-alpha-50 hover:bg-neutral-alpha-50 cursor-default select-text p-2 active:scale-100 data-[state=open]:border-b"
+            withChevron={false}
+          >
+            <div className="flex w-full items-center justify-between">
+              <div className="flex items-center gap-1 text-xs">
+                <RiLayoutLine className="text-feature size-5" />
+                Customize Inbox
+              </div>
+              <div className="flex items-center gap-2">
+                <Controller
+                  control={form.control}
+                  name="enableTabs"
+                  render={({ field }) => (
+                    <Switch
+                      checked={field.value}
+                      onCheckedChange={field.onChange}
+                      id={enableTabsId}
+                      className="text-[#7D52F4]"
+                    />
+                  )}
+                />
+                <label
+                  htmlFor={enableTabsId}
+                  className="text-foreground cursor-pointer select-none text-xs font-normal"
+                >
+                  Enable Tabs
+                </label>
+              </div>
             </div>
           </AccordionTrigger>
           <AccordionContent className="flex flex-col gap-2 p-2">
@@ -62,22 +84,6 @@ export function CustomizeInbox({ form }: CustomizeInboxProps) {
           </AccordionContent>
         </AccordionItem>
       </Accordion>
-
-      <FormProvider {...form}>
-        <Accordion type="single" collapsible value={openAccordion} onValueChange={handleAccordionChange}>
-          <AccordionItem value="configure" className="bg-white p-0">
-            <AccordionTrigger className="bg-neutral-alpha-50 p-2 data-[state=open]:border-b">
-              <div className="flex items-center gap-1 text-xs">
-                <RiInputField className="text-feature size-5" />
-                Configure notification
-              </div>
-            </AccordionTrigger>
-            <AccordionContent className="flex flex-col gap-2 p-2">
-              <NotificationConfigSection />
-            </AccordionContent>
-          </AccordionItem>
-        </Accordion>
-      </FormProvider>
     </div>
   );
 }
@@ -92,8 +98,9 @@ function StylePreviewCard({
   onSelect: () => void;
 }) {
   return (
-    <div
+    <button
       key={style.id}
+      type="button"
       className={`group relative h-[100px] cursor-pointer overflow-hidden rounded-lg border transition-all duration-200 active:scale-[0.98] ${
         isSelected ? 'border-2 border-neutral-200' : 'border border-neutral-100 hover:border-neutral-200'
       }`}
@@ -103,20 +110,18 @@ function StylePreviewCard({
         backgroundPosition: 'top',
       }}
       onClick={onSelect}
-      role="radio"
-      aria-checked={isSelected}
-      tabIndex={0}
+      aria-pressed={isSelected}
     >
       <div
         className={`absolute bottom-0 w-full translate-y-full transform border-t bg-neutral-50/90 text-center opacity-0 transition-all duration-200 ease-out group-hover:translate-y-0 group-hover:opacity-100 ${isSelected ? '!translate-y-0 !opacity-100' : ''}`}
       >
         <span className="text-xs leading-6">{style.label}</span>
       </div>
-    </div>
+    </button>
   );
 }
 
-function ColorPickerSection({ form }: { form: UseFormReturn<InboxPlaygroundFormData> }) {
+function ColorPickerSection({ form }: { form: UseFormReturn<CustomizeInboxFormData> }) {
   return (
     <div className="space-y-2">
       <div className="flex gap-2">
@@ -146,79 +151,15 @@ function ColorPickerSection({ form }: { form: UseFormReturn<InboxPlaygroundFormD
         <p className="text-foreground-400 leading-[21px]">
           The Inbox is completely customizable, using the{' '}
           <a
-            href="https://docs.novu.co/platform/inbox/react/styling#appearance-prop"
+            href="https://docs.novu.co/platform/inbox/configuration/styling"
             className="cursor-pointer underline"
+            target="_blank"
+            rel="noopener noreferrer"
           >
             appearance prop
           </a>
         </p>
       </div>
-    </div>
-  );
-}
-
-const extensions = [EditorView.lineWrapping];
-const basicSetup = {
-  defaultKeymap: true,
-};
-
-function NotificationConfigSection() {
-  const { control } = useFormContext();
-
-  return (
-    <div className="flex flex-col gap-1 p-1">
-      <div className="flex gap-1">
-        <FormField
-          control={control}
-          name="subject"
-          render={({ field, fieldState }) => (
-            <FormItem className="w-full">
-              <FormControl>
-                <InputRoot hasError={!!fieldState.error}>
-                  <InputWrapper className="flex items-center justify-center px-1 py-2">
-                    <Editor
-                      indentWithTab={false}
-                      fontFamily="inherit"
-                      placeholder={capitalize(field.name)}
-                      id={field.name}
-                      extensions={extensions}
-                      value={field.value}
-                      onChange={field.onChange}
-                    />
-                  </InputWrapper>
-                </InputRoot>
-              </FormControl>
-            </FormItem>
-          )}
-        />
-      </div>
-      <FormField
-        control={control}
-        name="body"
-        render={({ field }) => (
-          <FormItem className="w-full">
-            <FormControl>
-              <InputRoot>
-                <InputWrapper className="flex h-36 items-center justify-center px-1 py-2">
-                  <Editor
-                    fontFamily="inherit"
-                    indentWithTab={false}
-                    placeholder={capitalize(field.name)}
-                    id={field.name}
-                    extensions={extensions}
-                    basicSetup={basicSetup}
-                    ref={field.ref}
-                    value={field.value}
-                    onChange={field.onChange}
-                    height="100%"
-                  />
-                </InputWrapper>
-              </InputRoot>
-            </FormControl>
-          </FormItem>
-        )}
-      />
-      <InAppActionDropdown />
     </div>
   );
 }

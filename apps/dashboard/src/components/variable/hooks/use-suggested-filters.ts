@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { FILTERS } from '../constants';
+
+import { getFilters } from '../constants';
 import { Filters, FilterWithParam } from '../types';
 
 type SuggestionGroup = {
@@ -8,12 +9,16 @@ type SuggestionGroup = {
 };
 
 export function useSuggestedFilters(variableName: string, currentFilters: FilterWithParam[]): SuggestionGroup[] {
+  const liquidFilters = useMemo(() => getFilters(), []);
+
   return useMemo(() => {
     const currentFilterValues = new Set(currentFilters.map((f) => f.value));
     const suggestedFilters: Filters[] = [];
 
     const addSuggestions = (filterValues: string[]) => {
-      const newFilters = FILTERS.filter((f) => filterValues.includes(f.value) && !currentFilterValues.has(f.value));
+      const newFilters = liquidFilters.filter(
+        (f) => filterValues.includes(f.value) && !currentFilterValues.has(f.value)
+      );
 
       suggestedFilters.push(...newFilters);
     };
@@ -39,7 +44,7 @@ export function useSuggestedFilters(variableName: string, currentFilters: Filter
     }
 
     return suggestedFilters.length > 0 ? [{ label: 'Suggested', filters: suggestedFilters }] : [];
-  }, [variableName, currentFilters]);
+  }, [variableName, currentFilters, liquidFilters]);
 }
 
 function isDateVariable(name: string): boolean {

@@ -1,3 +1,11 @@
+import { Novu } from '@novu/api';
+import {
+  SubscriberPayloadDto,
+  TopicPayloadDto,
+  TopicResponseDto,
+  TriggerEventRequestDto,
+  TriggerRecipientsTypeEnum,
+} from '@novu/api/models/components';
 import { MessageRepository, NotificationRepository, NotificationTemplateEntity, SubscriberEntity } from '@novu/dal';
 import {
   ChannelTypeEnum,
@@ -11,15 +19,6 @@ import {
 } from '@novu/shared';
 import { SubscribersService, UserSession } from '@novu/testing';
 import { expect } from 'chai';
-
-import { Novu } from '@novu/api';
-import {
-  CreateTopicResponseDto,
-  SubscriberPayloadDto,
-  TopicPayloadDto,
-  TriggerEventRequestDto,
-  TriggerRecipientsTypeEnum,
-} from '@novu/api/models/components';
 import { initNovuClassSdk } from '../../shared/helpers/e2e/sdk/e2e-sdk.helper';
 
 describe('Topic Trigger Event #novu-v2', () => {
@@ -30,7 +29,7 @@ describe('Topic Trigger Event #novu-v2', () => {
     let secondSubscriber: SubscriberEntity;
     let subscribers: SubscriberEntity[];
     let subscriberService: SubscribersService;
-    let createdTopicDto: CreateTopicResponseDto;
+    let createdTopicDto: TopicResponseDto;
     let to: Array<TopicPayloadDto | SubscriberPayloadDto | string>;
     const notificationRepository = new NotificationRepository();
     const messageRepository = new MessageRepository();
@@ -277,8 +276,8 @@ describe('Topic Trigger Event #novu-v2', () => {
     let firstTopicSubscribers: SubscriberEntity[];
     let subscribers: SubscriberEntity[];
     let subscriberService: SubscribersService;
-    let firstTopicDto: CreateTopicResponseDto;
-    let secondTopicDto: CreateTopicResponseDto;
+    let firstTopicDto: TopicResponseDto;
+    let secondTopicDto: TopicResponseDto;
     let to: Array<TopicPayloadDto | SubscriberPayloadDto | string>;
     const notificationRepository = new NotificationRepository();
     const messageRepository = new MessageRepository();
@@ -506,7 +505,7 @@ describe('Topic Trigger Event #novu-v2', () => {
   });
 });
 
-const createTopic = async (session: UserSession, key: TopicKey, name: TopicName): Promise<CreateTopicResponseDto> => {
+const createTopic = async (session: UserSession, key: TopicKey, name: TopicName): Promise<TopicResponseDto> => {
   const response = await initNovuClassSdk(session).topics.create({ key, name });
 
   expect(response.result.id).to.exist;
@@ -517,21 +516,21 @@ const createTopic = async (session: UserSession, key: TopicKey, name: TopicName)
 
 const addSubscribersToTopic = async (
   session: UserSession,
-  createdTopicDto: CreateTopicResponseDto,
+  createdTopicDto: TopicResponseDto,
   subscribers: SubscriberEntity[]
 ) => {
   const subscriberIds: ExternalSubscriberId[] = subscribers.map(
     (subscriber: SubscriberEntity) => subscriber.subscriberId
   );
 
-  const response = await initNovuClassSdk(session).topics.subscribers.assign(
+  const response = await initNovuClassSdk(session).topics.subscriptions.create(
     {
-      subscribers: subscriberIds,
+      subscriberIds,
     },
     createdTopicDto.key
   );
 
-  expect(response.result.succeeded).to.have.members(subscriberIds);
+  expect(response.result.data).to.be.ok;
 };
 
 const buildTriggerRequestPayload = (

@@ -1,17 +1,19 @@
+import { useOrganization } from '@clerk/clerk-react';
+import { FeatureFlagsKeysEnum } from '@novu/shared';
+import { AnimatePresence } from 'motion/react';
 import { useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { AnimatePresence } from 'motion/react';
-import { useOrganization } from '@clerk/clerk-react';
 import { ActivityFilters } from '@/components/activity/activity-filters';
 import { defaultActivityFilters } from '@/components/activity/constants';
-import { ActivityFiltersData } from '@/types/activity';
+import { ActivityDetailsDrawer } from '@/components/subscribers/subscriber-activity-drawer';
+import { SubscriberActivityList } from '@/components/subscribers/subscriber-activity-list';
+import { useEnvironment } from '@/context/environment/hooks';
+import { useFeatureFlag } from '@/hooks/use-feature-flag';
 import { useFetchActivities } from '@/hooks/use-fetch-activities';
 import { useFetchSubscription } from '@/hooks/use-fetch-subscription';
-import { SubscriberActivityList } from '@/components/subscribers/subscriber-activity-list';
-import { buildRoute, ROUTES } from '@/utils/routes';
-import { useEnvironment } from '@/context/environment/hooks';
-import { ActivityDetailsDrawer } from '@/components/subscribers/subscriber-activity-drawer';
+import { ActivityFiltersData } from '@/types/activity';
 import { getMaxAvailableActivityFeedDateRange } from '@/utils/activityFilters';
+import { buildRoute, ROUTES } from '@/utils/routes';
 
 const getInitialFilters = (subscriberId: string, dateRange: string): ActivityFiltersData => ({
   channels: [],
@@ -19,12 +21,15 @@ const getInitialFilters = (subscriberId: string, dateRange: string): ActivityFil
   subscriberId,
   transactionId: '',
   workflows: [],
+  topicKey: '',
+  severity: [],
 });
 
 export const SubscriberActivity = ({ subscriberId }: { subscriberId: string }) => {
   const { organization } = useOrganization();
   const { currentEnvironment } = useEnvironment();
   const { subscription } = useFetchSubscription();
+  const isHttpLogsPageEnabled = useFeatureFlag(FeatureFlagsKeysEnum.IS_HTTP_LOGS_PAGE_ENABLED, false);
 
   const maxAvailableActivityFeedDateRange = useMemo(
     () =>
@@ -59,7 +64,8 @@ export const SubscriberActivity = ({ subscriberId }: { subscriberId: string }) =
     return (
       filters.channels.length > 0 ||
       filters.workflows.length > 0 ||
-      filters.transactionId !== defaultActivityFilters.transactionId
+      filters.transactionId !== defaultActivityFilters.transactionId ||
+      filters.topicKey !== defaultActivityFilters.topicKey
     );
   }, [filters]);
 
@@ -78,6 +84,14 @@ export const SubscriberActivity = ({ subscriberId }: { subscriberId: string }) =
 
     if (filters.transactionId) {
       params.set('transactionId', filters.transactionId);
+    }
+
+    if (filters.topicKey) {
+      params.set('topicKey', filters.topicKey);
+    }
+
+    if (filters.severity.length > 0) {
+      params.set('severity', filters.severity.join(','));
     }
 
     return params;
@@ -109,7 +123,9 @@ export const SubscriberActivity = ({ subscriberId }: { subscriberId: string }) =
           To view more detailed activity, View{' '}
           <Link
             className="underline"
-            to={`${buildRoute(ROUTES.ACTIVITY_FEED, { environmentSlug: currentEnvironment?.slug ?? '' })}?${searchParams.toString()}`}
+            to={`${buildRoute(isHttpLogsPageEnabled ? ROUTES.ACTIVITY_WORKFLOW_RUNS : ROUTES.ACTIVITY_FEED, {
+              environmentSlug: currentEnvironment?.slug ?? '',
+            })}?${searchParams.toString()}`}
           >
             Activity Feed
           </Link>{' '}

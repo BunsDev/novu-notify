@@ -1,12 +1,11 @@
+import { ResourceOriginEnum } from '@novu/shared';
 import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
-import { WorkflowOriginEnum } from '@novu/shared';
-
-import { StepEditorProps } from '@/components/workflow-editor/steps/configure-step-template-form';
-import { CustomStepControls } from '@/components/workflow-editor/steps/controls/custom-step-controls';
-import { TemplateTabs } from '@/components/workflow-editor/steps/template-tabs';
 import { ChatEditor } from '@/components/workflow-editor/steps/chat/chat-editor';
 import { ChatEditorPreview } from '@/components/workflow-editor/steps/chat/chat-editor-preview';
+import { CustomStepControls } from '@/components/workflow-editor/steps/controls/custom-step-controls';
+import { StepEditorProps } from '@/components/workflow-editor/steps/step-editor-types';
+import { TemplateTabs } from '@/components/workflow-editor/steps/template-tabs';
 import { useEditorPreview } from '../use-editor-preview';
 
 export const ChatTabs = (props: StepEditorProps) => {
@@ -14,13 +13,15 @@ export const ChatTabs = (props: StepEditorProps) => {
   const { dataSchema, uiSchema } = step.controls;
   const [tabsValue, setTabsValue] = useState('editor');
   const form = useFormContext();
-  const isNovuCloud = !!(workflow.origin === WorkflowOriginEnum.NOVU_CLOUD && uiSchema);
-  const isExternal = workflow.origin === WorkflowOriginEnum.EXTERNAL;
+  const isNovuCloud = !!(workflow.origin === ResourceOriginEnum.NOVU_CLOUD && uiSchema);
+  const isExternal = workflow.origin === ResourceOriginEnum.EXTERNAL;
 
+  const controlValues = form.watch();
   const { editorValue, setEditorValue, previewStep, previewData, isPreviewPending } = useEditorPreview({
     workflowSlug: workflow.workflowId,
     stepSlug: step.stepId,
-    controlValues: form.getValues(),
+    controlValues,
+    payloadSchema: workflow.payloadSchema,
   });
 
   const editorContent = (
@@ -37,6 +38,7 @@ export const ChatTabs = (props: StepEditorProps) => {
       previewStep={previewStep}
       previewData={previewData}
       isPreviewPending={isPreviewPending}
+      workflow={workflow}
     />
   );
 

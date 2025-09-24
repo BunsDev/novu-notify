@@ -18,7 +18,8 @@ import {
   UnexpectedClientError,
 } from "../models/errors/httpclienterrors.js";
 import * as errors from "../models/errors/index.js";
-import { SDKError } from "../models/errors/sdkerror.js";
+import { NovuError } from "../models/errors/novuerror.js";
+import { ResponseValidationError } from "../models/errors/responsevalidationerror.js";
 import { SDKValidationError } from "../models/errors/sdkvalidationerror.js";
 import * as operations from "../models/operations/index.js";
 import { APICall, APIPromise } from "../types/async.js";
@@ -38,18 +39,17 @@ export function topicsSubscribersRetrieve(
   options?: RequestOptions,
 ): APIPromise<
   Result<
-    operations.TopicsControllerGetTopicSubscriberResponse,
-    | errors.ErrorDto
+    operations.TopicsV1ControllerGetTopicSubscriberResponse,
     | errors.ErrorDto
     | errors.ValidationErrorDto
-    | errors.ErrorDto
-    | SDKError
-    | SDKValidationError
-    | UnexpectedClientError
-    | InvalidRequestError
+    | NovuError
+    | ResponseValidationError
+    | ConnectionError
     | RequestAbortedError
     | RequestTimeoutError
-    | ConnectionError
+    | InvalidRequestError
+    | UnexpectedClientError
+    | SDKValidationError
   >
 > {
   return new APIPromise($do(
@@ -70,23 +70,22 @@ async function $do(
 ): Promise<
   [
     Result<
-      operations.TopicsControllerGetTopicSubscriberResponse,
-      | errors.ErrorDto
+      operations.TopicsV1ControllerGetTopicSubscriberResponse,
       | errors.ErrorDto
       | errors.ValidationErrorDto
-      | errors.ErrorDto
-      | SDKError
-      | SDKValidationError
-      | UnexpectedClientError
-      | InvalidRequestError
+      | NovuError
+      | ResponseValidationError
+      | ConnectionError
       | RequestAbortedError
       | RequestTimeoutError
-      | ConnectionError
+      | InvalidRequestError
+      | UnexpectedClientError
+      | SDKValidationError
     >,
     APICall,
   ]
 > {
-  const input: operations.TopicsControllerGetTopicSubscriberRequest = {
+  const input: operations.TopicsV1ControllerGetTopicSubscriberRequest = {
     topicKey: topicKey,
     externalSubscriberId: externalSubscriberId,
     idempotencyKey: idempotencyKey,
@@ -95,9 +94,8 @@ async function $do(
   const parsed = safeParse(
     input,
     (value) =>
-      operations.TopicsControllerGetTopicSubscriberRequest$outboundSchema.parse(
-        value,
-      ),
+      operations.TopicsV1ControllerGetTopicSubscriberRequest$outboundSchema
+        .parse(value),
     "Input validation failed",
   );
   if (!parsed.ok) {
@@ -135,8 +133,9 @@ async function $do(
   const requestSecurity = resolveGlobalSecurity(securityInput);
 
   const context = {
+    options: client._options,
     baseURL: options?.serverURL ?? client._baseURL ?? "",
-    operationID: "TopicsController_getTopicSubscriber",
+    operationID: "TopicsV1Controller_getTopicSubscriber",
     oAuth2Scopes: [],
 
     resolvedSecurity: requestSecurity,
@@ -165,6 +164,7 @@ async function $do(
     path: path,
     headers: headers,
     body: body,
+    userAgent: client._options.userAgent,
     timeoutMs: options?.timeoutMs || client._options.timeoutMs || -1,
   }, options);
   if (!requestRes.ok) {
@@ -204,22 +204,21 @@ async function $do(
   };
 
   const [result] = await M.match<
-    operations.TopicsControllerGetTopicSubscriberResponse,
-    | errors.ErrorDto
+    operations.TopicsV1ControllerGetTopicSubscriberResponse,
     | errors.ErrorDto
     | errors.ValidationErrorDto
-    | errors.ErrorDto
-    | SDKError
-    | SDKValidationError
-    | UnexpectedClientError
-    | InvalidRequestError
+    | NovuError
+    | ResponseValidationError
+    | ConnectionError
     | RequestAbortedError
     | RequestTimeoutError
-    | ConnectionError
+    | InvalidRequestError
+    | UnexpectedClientError
+    | SDKValidationError
   >(
     M.json(
       200,
-      operations.TopicsControllerGetTopicSubscriberResponse$inboundSchema,
+      operations.TopicsV1ControllerGetTopicSubscriberResponse$inboundSchema,
       { hdrs: true, key: "Result" },
     ),
     M.jsonErr(414, errors.ErrorDto$inboundSchema),
@@ -234,7 +233,7 @@ async function $do(
     M.fail(503),
     M.fail("4XX"),
     M.fail("5XX"),
-  )(response, { extraFields: responseFields });
+  )(response, req, { extraFields: responseFields });
   if (!result.ok) {
     return [result, { status: "complete", request: req, response }];
   }

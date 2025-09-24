@@ -1,4 +1,12 @@
-import type { ChannelTypeEnum, Redirect, IPreferenceChannels, PreferenceLevelEnum, CustomDataType } from '@novu/shared';
+import type {
+  ChannelTypeEnum,
+  CustomDataType,
+  IPreferenceChannels,
+  PreferenceLevelEnum,
+  Redirect,
+  Schedule,
+  SeverityLevelEnum,
+} from '@novu/shared';
 
 export type Subscriber = {
   id: string;
@@ -16,13 +24,19 @@ type Action = {
 
 export type InboxNotification = {
   id: string;
+  transactionId: string;
   subject?: string;
   body: string;
   to: Subscriber;
   isRead: boolean;
+  isSeen: boolean;
   isArchived: boolean;
+  isSnoozed: boolean;
+  snoozedUntil?: string | null;
+  deliveredAt?: string[];
   createdAt: string;
   readAt?: string | null;
+  firstSeenAt?: string | null;
   archivedAt?: string | null;
   avatar?: string;
   primaryAction?: Action;
@@ -31,27 +45,40 @@ export type InboxNotification = {
   tags?: string[];
   data?: Record<string, unknown>;
   redirect?: Redirect;
-  workflowId: string;
+  workflow?: {
+    id: string;
+    identifier: string;
+    name: string;
+    critical: boolean;
+    tags?: string[];
+    data?: CustomDataType;
+    severity: SeverityLevelEnum;
+  };
+  severity: SeverityLevelEnum;
 };
 
 export type NotificationFilter = {
   tags?: string[];
   read?: boolean;
   archived?: boolean;
-};
-
-export type Workflow = {
-  id: string;
-  identifier: string;
-  name: string;
-  critical: boolean;
-  tags?: string[];
-  data?: CustomDataType;
+  snoozed?: boolean;
+  seen?: boolean;
+  data?: string;
+  severity?: SeverityLevelEnum | SeverityLevelEnum[];
 };
 
 export type InboxPreference = {
   level: PreferenceLevelEnum;
   enabled: boolean;
   channels: IPreferenceChannels;
-  workflow?: Workflow;
+  workflow?: {
+    id: string;
+    identifier: string;
+    name: string;
+    critical: boolean;
+    tags?: string[];
+    data?: CustomDataType;
+    severity: SeverityLevelEnum;
+  };
+  schedule?: Schedule;
 };

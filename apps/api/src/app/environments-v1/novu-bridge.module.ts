@@ -1,21 +1,41 @@
 import { Module } from '@nestjs/common';
-import { NovuClient, NovuHandler } from '@novu/framework/nest';
+import {
+  AnalyticsService,
+  ClickHouseService,
+  CreateExecutionDetails,
+  FeatureFlagsService,
+  GetDecryptedSecretKey,
+  GetLayoutUseCase as GetLayoutUseCaseV1,
+  TraceLogRepository,
+} from '@novu/application-generic';
 
-import { EnvironmentRepository, NotificationTemplateRepository } from '@novu/dal';
-import { GetDecryptedSecretKey, FeatureFlagsService } from '@novu/application-generic';
+import {
+  CommunityOrganizationRepository,
+  ControlValuesRepository,
+  EnvironmentRepository,
+  ExecutionDetailsRepository,
+  IntegrationRepository,
+  JobRepository,
+  LayoutRepository,
+  NotificationTemplateRepository,
+} from '@novu/dal';
+import { NovuClient, NovuHandler } from '@novu/framework/nest';
+import { GetLayoutUseCase } from '../layouts-v2/usecases/get-layout';
+import { LayoutVariablesSchemaUseCase } from '../layouts-v2/usecases/layout-variables-schema';
+import { GetOrganizationSettings } from '../organization/usecases/get-organization-settings/get-organization-settings.usecase';
+import { CreateVariablesObject } from '../shared/usecases/create-variables-object';
+import { NovuBridgeController } from './novu-bridge.controller';
 import { NovuBridgeClient } from './novu-bridge-client';
 import { ConstructFrameworkWorkflow } from './usecases/construct-framework-workflow';
-import { NovuBridgeController } from './novu-bridge.controller';
 import {
   ChatOutputRendererUsecase,
+  EmailOutputRendererUsecase,
   InAppOutputRendererUsecase,
   PushOutputRendererUsecase,
-  EmailOutputRendererUsecase,
   SmsOutputRendererUsecase,
 } from './usecases/output-renderers';
 import { DelayOutputRendererUsecase } from './usecases/output-renderers/delay-output-renderer.usecase';
 import { DigestOutputRendererUsecase } from './usecases/output-renderers/digest-output-renderer.usecase';
-import { WrapMailyInLiquidUseCase } from './usecases/output-renderers/maily-to-liquid/wrap-maily-in-liquid.usecase';
 
 export const featureFlagsService = {
   provide: FeatureFlagsService,
@@ -37,6 +57,11 @@ export const featureFlagsService = {
     NovuHandler,
     EnvironmentRepository,
     NotificationTemplateRepository,
+    CommunityOrganizationRepository,
+    IntegrationRepository,
+    ControlValuesRepository,
+    LayoutRepository,
+    GetOrganizationSettings,
     ConstructFrameworkWorkflow,
     GetDecryptedSecretKey,
     InAppOutputRendererUsecase,
@@ -44,9 +69,18 @@ export const featureFlagsService = {
     SmsOutputRendererUsecase,
     ChatOutputRendererUsecase,
     PushOutputRendererUsecase,
-    WrapMailyInLiquidUseCase,
     DelayOutputRendererUsecase,
     DigestOutputRendererUsecase,
+    AnalyticsService,
+    GetLayoutUseCaseV1,
+    LayoutVariablesSchemaUseCase,
+    CreateVariablesObject,
+    GetLayoutUseCase,
+    JobRepository,
+    ExecutionDetailsRepository,
+    TraceLogRepository,
+    ClickHouseService,
+    CreateExecutionDetails,
     featureFlagsService,
   ],
 })

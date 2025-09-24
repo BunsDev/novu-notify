@@ -63,7 +63,7 @@ export type NotificationFeedItemDto = {
   /**
    * Identifier for the message template used.
    */
-  messageTemplateId: string;
+  messageTemplateId?: string | undefined;
   /**
    * Identifier for the organization sending the notification.
    */
@@ -79,7 +79,7 @@ export type NotificationFeedItemDto = {
   /**
    * Identifier for the feed associated with the notification.
    */
-  feedId: string;
+  feedId?: string | null | undefined;
   /**
    * Identifier for the job that triggered the notification.
    */
@@ -133,10 +133,6 @@ export type NotificationFeedItemDto = {
    */
   seen: boolean;
   /**
-   * Indicates whether the notification has been deleted.
-   */
-  deleted: boolean;
-  /**
    * Device tokens for push notifications, if applicable.
    */
   deviceTokens?: Array<string> | null | undefined;
@@ -153,9 +149,17 @@ export type NotificationFeedItemDto = {
    */
   payload?: { [k: string]: any } | undefined;
   /**
+   * The data sent with the notification.
+   */
+  data?: { [k: string]: any } | null | undefined;
+  /**
    * Provider-specific overrides used when triggering the notification.
    */
   overrides?: { [k: string]: any } | undefined;
+  /**
+   * Tags associated with the workflow that triggered the notification.
+   */
+  tags?: Array<string> | null | undefined;
 };
 
 /** @internal */
@@ -188,11 +192,11 @@ export const NotificationFeedItemDto$inboundSchema: z.ZodType<
   _id: z.string(),
   _templateId: z.string(),
   _environmentId: z.string(),
-  _messageTemplateId: z.string(),
+  _messageTemplateId: z.string().optional(),
   _organizationId: z.string(),
   _notificationId: z.string(),
   _subscriberId: z.string(),
-  _feedId: z.string(),
+  _feedId: z.nullable(z.string()).optional(),
   _jobId: z.string(),
   createdAt: z.nullable(
     z.string().datetime({ offset: true }).transform(v => new Date(v)),
@@ -210,12 +214,13 @@ export const NotificationFeedItemDto$inboundSchema: z.ZodType<
   channel: ChannelTypeEnum$inboundSchema,
   read: z.boolean(),
   seen: z.boolean(),
-  deleted: z.boolean(),
   deviceTokens: z.nullable(z.array(z.string())).optional(),
   cta: MessageCTA$inboundSchema,
   status: NotificationFeedItemDtoStatus$inboundSchema,
   payload: z.record(z.any()).optional(),
+  data: z.nullable(z.record(z.any())).optional(),
   overrides: z.record(z.any()).optional(),
+  tags: z.nullable(z.array(z.string())).optional(),
 }).transform((v) => {
   return remap$(v, {
     "_id": "id",
@@ -235,11 +240,11 @@ export type NotificationFeedItemDto$Outbound = {
   _id: string;
   _templateId: string;
   _environmentId: string;
-  _messageTemplateId: string;
+  _messageTemplateId?: string | undefined;
   _organizationId: string;
   _notificationId: string;
   _subscriberId: string;
-  _feedId: string;
+  _feedId?: string | null | undefined;
   _jobId: string;
   createdAt?: string | null | undefined;
   updatedAt?: string | null | undefined;
@@ -253,12 +258,13 @@ export type NotificationFeedItemDto$Outbound = {
   channel: string;
   read: boolean;
   seen: boolean;
-  deleted: boolean;
   deviceTokens?: Array<string> | null | undefined;
   cta: MessageCTA$Outbound;
   status: string;
   payload?: { [k: string]: any } | undefined;
+  data?: { [k: string]: any } | null | undefined;
   overrides?: { [k: string]: any } | undefined;
+  tags?: Array<string> | null | undefined;
 };
 
 /** @internal */
@@ -270,11 +276,11 @@ export const NotificationFeedItemDto$outboundSchema: z.ZodType<
   id: z.string(),
   templateId: z.string(),
   environmentId: z.string(),
-  messageTemplateId: z.string(),
+  messageTemplateId: z.string().optional(),
   organizationId: z.string(),
   notificationId: z.string(),
   subscriberId: z.string(),
-  feedId: z.string(),
+  feedId: z.nullable(z.string()).optional(),
   jobId: z.string(),
   createdAt: z.nullable(z.date().transform(v => v.toISOString())).optional(),
   updatedAt: z.nullable(z.date().transform(v => v.toISOString())).optional(),
@@ -288,12 +294,13 @@ export const NotificationFeedItemDto$outboundSchema: z.ZodType<
   channel: ChannelTypeEnum$outboundSchema,
   read: z.boolean(),
   seen: z.boolean(),
-  deleted: z.boolean(),
   deviceTokens: z.nullable(z.array(z.string())).optional(),
   cta: MessageCTA$outboundSchema,
   status: NotificationFeedItemDtoStatus$outboundSchema,
   payload: z.record(z.any()).optional(),
+  data: z.nullable(z.record(z.any())).optional(),
   overrides: z.record(z.any()).optional(),
+  tags: z.nullable(z.array(z.string())).optional(),
 }).transform((v) => {
   return remap$(v, {
     id: "_id",

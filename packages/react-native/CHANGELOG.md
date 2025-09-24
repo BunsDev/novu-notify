@@ -1,3 +1,120 @@
+## v3.9.3 (2025-09-03)
+
+This was a version bump only for @novu/react-native to align it with other projects, there were no code changes.
+
+## v3.9.2 (2025-09-03)
+
+This was a version bump only for @novu/react-native to align it with other projects, there were no code changes.
+
+## v3.9.1 (2025-08-27)
+
+This was a version bump only for @novu/react-native to align it with other projects, there were no code changes.
+
+## v3.8.1 (2025-08-13)
+
+### 🩹 Fixes
+
+- **root:** nx release publish issue for syntax error fixes NV-6506 ([#8922](https://github.com/novuhq/novu/pull/8922))
+
+### ❤️ Thank You
+
+- Himanshu Garg @merrcury
+
+## v3.7.0 (2025-07-22)
+
+### 🩹 Fixes
+
+- **root:** bring back eslint and web app build ([#8505](https://github.com/novuhq/novu/pull/8505))
+- version bump react packages ([62ff7ee154](https://github.com/novuhq/novu/commit/62ff7ee154))
+
+### ❤️ Thank You
+
+- Dima Grossman @scopsy
+- Paweł Tymczuk @LetItRock
+
+## v3.4.0 (2025-05-16)
+
+### 🧱 Updated Dependencies
+
+- Updated @novu/react to 3.4.0
+
+### ❤️ Thank You
+
+- Paweł Tymczuk @LetItRock
+
+# v3.3.1 (2025-05-07)
+
+### 🧱 Updated Dependencies
+
+- Updated @novu/react to 3.3.1
+
+### ❤️ Thank You
+
+- Adam Chmara @ChmaraX
+
+## v3.3.0 (2025-05-07)
+
+### 🧱 Updated Dependencies
+
+- Updated @novu/react to 3.3.0
+
+### ❤️ Thank You
+
+- Adam Chmara @ChmaraX
+- George Desipris @desiprisg
+- Paweł Tymczuk @LetItRock
+
+## v3.2.0 (2025-04-30)
+
+### 🧱 Updated Dependencies
+
+- Updated @novu/react to 3.2.0
+
+### ❤️ Thank You
+
+- George Djabarov @djabarovgeorge
+
+## v3.1.0 (2025-04-11)
+
+### 🧱 Updated Dependencies
+
+- Updated @novu/react to 3.1.0
+
+### ❤️ Thank You
+
+- Sokratis Vidros @SokratisVidros
+
+## v3.0.3 (2025-03-31)
+
+### 🚀 Features
+
+- **js:** Inbox retheme ([#7759](https://github.com/novuhq/novu/pull/7759))
+- **api-service:** system limits & update pricing pages ([#7718](https://github.com/novuhq/novu/pull/7718))
+- **root:** add no only github action ([#7692](https://github.com/novuhq/novu/pull/7692))
+
+### 🩹 Fixes
+
+- **api-service:** Remove lock from cached entity 2nd try ([#7979](https://github.com/novuhq/novu/pull/7979))
+- **root:** simplify service dependencies in docker-compose.yml ([#7993](https://github.com/novuhq/novu/pull/7993))
+- **root:** Stop updating lock-file when releasing new packages ([2107336ae2](https://github.com/novuhq/novu/commit/2107336ae2))
+- **api-service:** remove-lock-from-cached-entity ([#7923](https://github.com/novuhq/novu/pull/7923))
+- **root:** add NEW_RELIC_ENABLED to docker community ([#7943](https://github.com/novuhq/novu/pull/7943))
+- **root:** remove healthcheck option in docker-compose.yml ([#7929](https://github.com/novuhq/novu/pull/7929))
+- **api-service:** Remove redlock ([#7845](https://github.com/novuhq/novu/pull/7845))
+- **api-service:** fix idices not created in mongo-test ([#7857](https://github.com/novuhq/novu/pull/7857))
+- **root:** unhandled promise reject and undefined ff kind ([#7732](https://github.com/novuhq/novu/pull/7732))
+- **api-service:** remove only on e2e ([#7691](https://github.com/novuhq/novu/pull/7691))
+
+### ❤️ Thank You
+
+- Aaron Ritter @Aaron-Ritter
+- GalTidhar @tatarco
+- George Desipris @desiprisg
+- George Djabarov @djabarovgeorge
+- Himanshu Garg @merrcury
+- Pawan Jain
+- Sokratis Vidros @SokratisVidros
+
 ## 3.0.1 (2025-03-24)
 
 ### 🧱 Updated Dependencies

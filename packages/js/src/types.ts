@@ -1,15 +1,28 @@
 import { NovuError } from './utils/errors';
 
-export { type FiltersCountResponse, type ListNotificationsResponse } from './notifications';
-export type { Notification } from './notifications';
+export type { FiltersCountResponse, ListNotificationsResponse, Notification } from './notifications';
 export type { Preference } from './preferences/preference';
+export type { Schedule } from './preferences/schedule';
 export type { NovuError } from './utils/errors';
+
+declare global {
+  /**
+   * If you want to provide custom types for the notification.data object,
+   * simply redeclare this rule in the global namespace.
+   * Every notification object will use the provided type.
+   */
+  interface NotificationData {
+    [k: string]: unknown;
+  }
+}
 
 export enum NotificationStatus {
   READ = 'read',
   SEEN = 'seen',
+  SNOOZED = 'snoozed',
   UNREAD = 'unread',
   UNSEEN = 'unseen',
+  UNSNOOZED = 'unsnoozed',
 }
 
 export enum NotificationButton {
@@ -20,10 +33,6 @@ export enum NotificationButton {
 export enum NotificationActionStatus {
   PENDING = 'pending',
   DONE = 'done',
-}
-
-export enum CtaType {
-  REDIRECT = 'redirect',
 }
 
 export enum PreferenceLevel {
@@ -39,51 +48,57 @@ export enum ChannelType {
   PUSH = 'push',
 }
 
-export enum PreferenceOverrideSource {
-  SUBSCRIBER = 'subscriber',
-  TEMPLATE = 'template',
-  WORKFLOW_OVERRIDE = 'workflowOverride',
-}
-
 export enum WebSocketEvent {
   RECEIVED = 'notification_received',
   UNREAD = 'unread_count_changed',
   UNSEEN = 'unseen_count_changed',
 }
 
-export enum ActionTypeEnum {
-  PRIMARY = 'primary',
-  SECONDARY = 'secondary',
+export enum SocketType {
+  SOCKET_IO = 'socket.io',
+  PARTY_SOCKET = 'partysocket',
 }
+
+export enum SeverityLevelEnum {
+  HIGH = 'high',
+  MEDIUM = 'medium',
+  LOW = 'low',
+  NONE = 'none',
+}
+
+export enum WorkflowCriticalityEnum {
+  CRITICAL = 'critical',
+  NON_CRITICAL = 'nonCritical',
+  ALL = 'all',
+}
+
+export type UnreadCount = {
+  total: number;
+  severity: Record<SeverityLevelEnum, number>;
+};
 
 export type Session = {
   token: string;
+  /** @deprecated Use unreadCount.total instead */
   totalUnreadCount: number;
+  unreadCount: UnreadCount;
   removeNovuBranding: boolean;
   isDevelopmentMode: boolean;
-};
-
-export type MessageButton = {
-  type: NotificationButton;
-  content: string;
-  resultContent?: string;
-};
-
-export type MessageAction = {
-  status?: NotificationActionStatus;
-  buttons?: MessageButton[];
-  result: {
-    payload?: Record<string, unknown>;
-    type?: NotificationButton;
-  };
+  maxSnoozeDurationHours: number;
+  applicationIdentifier?: string;
 };
 
 export type Subscriber = {
-  id: string;
+  id?: string;
+  subscriberId: string;
   firstName?: string;
   lastName?: string;
+  email?: string;
+  phone?: string;
   avatar?: string;
-  subscriberId: string;
+  locale?: string;
+  data?: Record<string, unknown>;
+  timezone?: string;
 };
 
 export type Redirect = {
@@ -91,36 +106,15 @@ export type Redirect = {
   target?: '_self' | '_blank' | '_parent' | '_top' | '_unfencedTop';
 };
 
+export enum ActionTypeEnum {
+  PRIMARY = 'primary',
+  SECONDARY = 'secondary',
+}
+
 export type Action = {
   label: string;
   isCompleted: boolean;
   redirect?: Redirect;
-};
-
-export type InboxNotification = {
-  id: string;
-  subject?: string;
-  body: string;
-  to: Subscriber;
-  isRead: boolean;
-  isArchived: boolean;
-  createdAt: string;
-  readAt?: string | null;
-  archivedAt?: string | null;
-  avatar?: string;
-  primaryAction?: Action;
-  secondaryAction?: Action;
-  channelType: ChannelType;
-  tags?: string[];
-  data?: Record<string, unknown>;
-  redirect?: Redirect;
-  workflowId: string;
-};
-
-export type NotificationFilter = {
-  tags?: string[];
-  read?: boolean;
-  archived?: boolean;
 };
 
 export type Workflow = {
@@ -129,6 +123,44 @@ export type Workflow = {
   name: string;
   critical: boolean;
   tags?: string[];
+  severity: SeverityLevelEnum;
+};
+
+export type InboxNotification = {
+  id: string;
+  transactionId: string;
+  subject?: string;
+  body: string;
+  to: Subscriber;
+  isRead: boolean;
+  isSeen: boolean;
+  isArchived: boolean;
+  isSnoozed: boolean;
+  snoozedUntil?: string | null;
+  deliveredAt?: string[];
+  createdAt: string;
+  readAt?: string | null;
+  firstSeenAt?: string | null;
+  archivedAt?: string | null;
+  avatar?: string;
+  primaryAction?: Action;
+  secondaryAction?: Action;
+  channelType: ChannelType;
+  tags?: string[];
+  data?: NotificationData;
+  redirect?: Redirect;
+  workflow?: Workflow;
+  severity: SeverityLevelEnum;
+};
+
+export type NotificationFilter = {
+  tags?: string[];
+  read?: boolean;
+  archived?: boolean;
+  snoozed?: boolean;
+  seen?: boolean;
+  data?: Record<string, unknown>;
+  severity?: SeverityLevelEnum | SeverityLevelEnum[];
 };
 
 export type ChannelPreference = {
@@ -147,12 +179,41 @@ export type PaginatedResponse<T = unknown> = {
   page: number;
 };
 
+export type TimeRange = {
+  start: string;
+  end: string;
+};
+
+export type DaySchedule = {
+  isEnabled: boolean;
+  hours?: Array<TimeRange>;
+};
+
+export type WeeklySchedule = {
+  monday?: DaySchedule;
+  tuesday?: DaySchedule;
+  wednesday?: DaySchedule;
+  thursday?: DaySchedule;
+  friday?: DaySchedule;
+  saturday?: DaySchedule;
+  sunday?: DaySchedule;
+};
+
+export type DefaultSchedule = {
+  isEnabled?: boolean;
+  weeklySchedule?: WeeklySchedule;
+};
+
 export type PreferencesResponse = {
   level: PreferenceLevel;
   enabled: boolean;
   channels: ChannelPreference;
   overrides?: IPreferenceOverride[];
   workflow?: Workflow;
+  schedule?: {
+    isEnabled: boolean;
+    weeklySchedule?: WeeklySchedule;
+  };
 };
 
 export enum PreferenceOverrideSourceEnum {
@@ -166,7 +227,6 @@ export type IPreferenceOverride = {
   source: PreferenceOverrideSourceEnum;
 };
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export type TODO = any;
 
 export type Result<D = undefined, E = NovuError> = Promise<{
@@ -174,17 +234,32 @@ export type Result<D = undefined, E = NovuError> = Promise<{
   error?: E;
 }>;
 
-export type NovuOptions = {
-  applicationIdentifier: string;
-  subscriberId: string;
-  subscriberHash?: string;
+type KeylessNovuOptions = {} & { [K in string]?: never }; // empty object,disallows all unknown keys
+
+export type StandardNovuOptions = {
   /** @deprecated Use apiUrl instead  */
   backendUrl?: string;
+  /** @internal Should be used internally for testing purposes */
+  __userAgent?: string;
+  applicationIdentifier: string;
+  subscriberHash?: string;
   apiUrl?: string;
   socketUrl?: string;
   useCache?: boolean;
-  /** @internal Should be used internally for testing purposes */
-  __userAgent?: string;
-};
+  defaultSchedule?: DefaultSchedule;
+} & (
+  | {
+      // TODO: Backward compatibility support - remove in future versions (see NV-5801)
+      /** @deprecated Use subscriber prop instead */
+      subscriberId: string;
+      subscriber?: never;
+    }
+  | {
+      subscriber: Subscriber | string;
+      subscriberId?: never;
+    }
+);
+
+export type NovuOptions = KeylessNovuOptions | StandardNovuOptions;
 
 export type Prettify<T> = { [K in keyof T]: T[K] } & {};

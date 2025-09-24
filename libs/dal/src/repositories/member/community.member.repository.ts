@@ -1,11 +1,11 @@
 import { MemberRoleEnum, MemberStatusEnum } from '@novu/shared';
 import { FilterQuery } from 'mongoose';
-import { MemberEntity, MemberDBModel } from './member.entity';
-import { BaseRepository } from '../base-repository';
-import { Member } from './member.schema';
 import type { EnforceOrgId } from '../../types/enforce';
-import { IMemberRepository } from './member-repository.interface';
+import { BaseRepository } from '../base-repository';
+import { MemberDBModel, MemberEntity } from './member.entity';
 import { IAddMemberData } from './member.repository';
+import { Member } from './member.schema';
+import { IMemberRepository } from './member-repository.interface';
 
 type MemberQuery = FilterQuery<MemberDBModel> & EnforceOrgId;
 
@@ -55,7 +55,6 @@ export class CommunityMemberRepository
     );
     if (!members) return [];
 
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const membersEntity: any = this.mapEntities(members);
 
     return [
@@ -69,10 +68,10 @@ export class CommunityMemberRepository
     ];
   }
 
-  async getOrganizationAdminAccount(organizationId: string) {
+  async getOrganizationOwnerAccount(organizationId: string) {
     const requestQuery: MemberQuery = {
       _organizationId: organizationId,
-      roles: MemberRoleEnum.ADMIN,
+      roles: MemberRoleEnum.OSS_ADMIN,
     };
 
     const member = await this.MongooseModel.findOne(requestQuery);
@@ -92,11 +91,10 @@ export class CommunityMemberRepository
 
     return [
       ...membersEntity
-        .filter((i) => i.roles.includes(MemberRoleEnum.ADMIN))
+        .filter((i) => i.roles.includes(MemberRoleEnum.OSS_ADMIN))
         .map((member) => {
           return {
             ...member,
-            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             _userId: member._userId ? (member._userId as any)._id : null,
             user: member._userId,
           };

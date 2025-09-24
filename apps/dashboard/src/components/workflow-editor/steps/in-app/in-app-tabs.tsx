@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { useFormContext } from 'react-hook-form';
 import { InAppEditor } from '@/components/workflow-editor/steps/in-app/in-app-editor';
 import { InAppEditorPreview } from '@/components/workflow-editor/steps/in-app/in-app-editor-preview';
-import { CustomStepControls } from '../controls/custom-step-controls';
-import { StepEditorProps } from '@/components/workflow-editor/steps/configure-step-template-form';
+import { StepEditorProps } from '@/components/workflow-editor/steps/step-editor-types';
 import { TemplateTabs } from '@/components/workflow-editor/steps/template-tabs';
-import { WorkflowOriginEnum } from '@/utils/enums';
+import { ResourceOriginEnum } from '@/utils/enums';
+import { CustomStepControls } from '../controls/custom-step-controls';
 import { useEditorPreview } from '../use-editor-preview';
 
 export const InAppTabs = (props: StepEditorProps) => {
@@ -14,13 +14,15 @@ export const InAppTabs = (props: StepEditorProps) => {
   const form = useFormContext();
   const [tabsValue, setTabsValue] = useState('editor');
 
-  const isNovuCloud = workflow.origin === WorkflowOriginEnum.NOVU_CLOUD && uiSchema;
-  const isExternal = workflow.origin === WorkflowOriginEnum.EXTERNAL;
+  const isNovuCloud = workflow.origin === ResourceOriginEnum.NOVU_CLOUD && uiSchema;
+  const isExternal = workflow.origin === ResourceOriginEnum.EXTERNAL;
 
+  const controlValues = form.watch();
   const { editorValue, setEditorValue, previewStep, previewData, isPreviewPending } = useEditorPreview({
     workflowSlug: workflow.workflowId,
     stepSlug: step.stepId,
-    controlValues: form.getValues(),
+    controlValues,
+    payloadSchema: workflow.payloadSchema,
   });
 
   const editorContent = (
@@ -37,6 +39,7 @@ export const InAppTabs = (props: StepEditorProps) => {
       previewStep={previewStep}
       previewData={previewData}
       isPreviewPending={isPreviewPending}
+      workflow={workflow}
     />
   );
 

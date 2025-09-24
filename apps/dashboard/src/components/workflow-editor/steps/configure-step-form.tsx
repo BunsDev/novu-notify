@@ -1,16 +1,18 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import {
+  EnvironmentTypeEnum,
+  FeatureFlagsKeysEnum,
   IEnvironment,
+  ResourceOriginEnum,
   StepResponseDto,
   StepTypeEnum,
   StepUpdateDto,
-  WorkflowOriginEnum,
   WorkflowResponseDto,
 } from '@novu/shared';
 import { AnimatePresence, motion } from 'motion/react';
 import { HTMLAttributes, ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { RiArrowLeftSLine, RiArrowRightSLine, RiCloseFill, RiDeleteBin2Line, RiPencilRuler2Fill } from 'react-icons/ri';
+import { RiArrowLeftSLine, RiArrowRightSLine, RiCloseFill, RiDeleteBin2Line, RiEdit2Line } from 'react-icons/ri';
 import { Link, useNavigate } from 'react-router-dom';
 import { z } from 'zod';
 
@@ -33,7 +35,6 @@ import { Separator } from '@/components/primitives/separator';
 import { SidebarContent, SidebarFooter, SidebarHeader } from '@/components/side-navigation/sidebar';
 import TruncatedText from '@/components/truncated-text';
 import { stepSchema } from '@/components/workflow-editor/schema';
-import { getStepDefaultValues } from '@/components/workflow-editor/step-default-values';
 import { flattenIssues, getFirstErrorMessage, updateStepInWorkflow } from '@/components/workflow-editor/step-utils';
 import { ConfigureChatStepPreview } from '@/components/workflow-editor/steps/chat/configure-chat-step-preview';
 import {
@@ -50,8 +51,10 @@ import { SdkBanner } from '@/components/workflow-editor/steps/sdk-banner';
 import { SkipConditionsButton } from '@/components/workflow-editor/steps/skip-conditions-button';
 import { ConfigureSmsStepPreview } from '@/components/workflow-editor/steps/sms/configure-sms-step-preview';
 import { UpdateWorkflowFn } from '@/components/workflow-editor/workflow-provider';
+import { useFeatureFlag } from '@/hooks/use-feature-flag';
 import { useFormAutosave } from '@/hooks/use-form-autosave';
 import { INLINE_CONFIGURABLE_STEP_TYPES, STEP_TYPE_LABELS, TEMPLATE_CONFIGURABLE_STEP_TYPES } from '@/utils/constants';
+import { getControlsDefaultValues } from '@/utils/default-values';
 import { buildRoute, ROUTES } from '@/utils/routes';
 
 const STEP_TYPE_TO_INLINE_CONTROL_VALUES: Record<StepTypeEnum, () => React.JSX.Element | null> = {
@@ -100,7 +103,8 @@ export const ConfigureStepForm = (props: ConfigureStepFormProps) => {
   ];
 
   const isSupportedStep = supportedStepTypes.includes(step.type);
-  const isReadOnly = !isSupportedStep || workflow.origin === WorkflowOriginEnum.EXTERNAL;
+  const isReadOnly =
+    !isSupportedStep || workflow.origin === ResourceOriginEnum.EXTERNAL || environment.type !== EnvironmentTypeEnum.DEV;
 
   const isTemplateConfigurableStep = isSupportedStep && TEMPLATE_CONFIGURABLE_STEP_TYPES.includes(step.type);
   const isInlineConfigurableStep = isSupportedStep && INLINE_CONFIGURABLE_STEP_TYPES.includes(step.type);
@@ -127,7 +131,7 @@ export const ConfigureStepForm = (props: ConfigureStepFormProps) => {
     return (step: StepResponseDto) => {
       if (isInlineConfigurableStep) {
         return {
-          controlValues: getStepDefaultValues(step),
+          controlValues: getControlsDefaultValues(step),
         };
       }
 
@@ -188,11 +192,14 @@ export const ConfigureStepForm = (props: ConfigureStepFormProps) => {
       });
     });
 
-    // Set new errors from stepIssues
-    Object.entries(stepIssues).forEach(([key, value]) => {
-      // @ts-expect-error - dynamic key
-      form.setError(`controlValues.${key}`, { message: value });
-    });
+    // @ts-expect-error - isNew doesn't exist on StepResponseDto and it's too much work to override the @novu/shared types now. See useUpdateWorkflow.ts for more details
+    if (!step.isNew) {
+      // Set new errors from stepIssues
+      Object.entries(stepIssues).forEach(([key, value]) => {
+        // @ts-expect-error - dynamic key
+        form.setError(`controlValues.${key}`, { message: value });
+      });
+    }
   }, [form, step]);
 
   useEffect(() => {
@@ -215,7 +222,7 @@ export const ConfigureStepForm = (props: ConfigureStepFormProps) => {
           exit={{ opacity: 0.1 }}
           transition={{ duration: 0.1 }}
         >
-          <SidebarHeader className="flex items-center gap-2.5 border-b text-sm font-medium">
+          <SidebarHeader className="flex items-center gap-2.5 border-b py-3 text-sm font-medium">
             <Link
               to={buildRoute(ROUTES.EDIT_WORKFLOW, {
                 environmentSlug: environment.slug!,
@@ -300,17 +307,21 @@ export const ConfigureStepForm = (props: ConfigureStepFormProps) => {
           {(isTemplateConfigurableStep || isInlineConfigurableStepWithCustomControls) && (
             <>
               <SidebarContent>
-                <Link to={'./edit'} relative="path" state={{ stepType: step.type }}>
+                <Link to="./editor" relative="path" state={{ stepType: step.type }}>
                   <Button
                     variant="secondary"
                     mode="outline"
                     className="flex w-full justify-start gap-1.5 text-xs font-medium"
                   >
-                    <RiPencilRuler2Fill className="h-4 w-4 text-neutral-600" />
-                    Configure {STEP_TYPE_LABELS[step.type]} Step template{' '}
+                    <RiEdit2Line className="h-4 w-4 text-neutral-600" />
+                    Edit {STEP_TYPE_LABELS[step.type]} Step content{' '}
                     <RiArrowRightSLine className="ml-auto h-4 w-4 text-neutral-600" />
                   </Button>
                 </Link>
+
+                {environment.type === EnvironmentTypeEnum.DEV && (
+                  <SkipConditionsButton origin={workflow.origin} step={step} />
+                )}
               </SidebarContent>
               <Separator />
 
@@ -339,7 +350,14 @@ export const ConfigureStepForm = (props: ConfigureStepFormProps) => {
             </>
           )}
 
-          <SkipConditionsButton origin={workflow.origin} step={step} inSidebar />
+          {isInlineConfigurableStep && environment.type === EnvironmentTypeEnum.DEV && (
+            <>
+              <SidebarContent>
+                <SkipConditionsButton origin={workflow.origin} step={step} />
+              </SidebarContent>
+              <Separator />
+            </>
+          )}
 
           {!isSupportedStep && (
             <SidebarContent>
@@ -349,7 +367,6 @@ export const ConfigureStepForm = (props: ConfigureStepFormProps) => {
 
           {!isReadOnly && (
             <SidebarFooter>
-              <Separator />
               <ConfirmationModal
                 open={isDeleteModalOpen}
                 onOpenChange={setIsDeleteModalOpen}

@@ -1,0 +1,137 @@
+name: Release Packages
+
+on:
+  workflow_dispatch:
+    inputs:
+      packages:
+        description: 'Packages to release (comma-separated)'
+        required: true
+        type: string
+        default: '@novu/js,@novu/react,@novu/nextjs,@novu/react-native'
+      version:
+        description: 'Version to release (e.g., v3.0.0)'
+        required: true
+        type: string
+        default: 'v3.0.0'
+      previous_tag:
+        description: 'Previous tag to generate changelog from (e.g., @novu/js@v3.4.0)'
+        required: true
+        type: string
+        default: '@novu/js@v3.4.0'
+      nightly:
+        description: 'Publish as nightly release'
+        required: true
+        type: boolean
+        default: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      pr_number: ${{ !github.event.inputs.nightly && steps.create-pr.outputs.pull-request-number || '' }}
+      pr_url: ${{ !github.event.inputs.nightly && steps.create-pr.outputs.pull-request-url || '' }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          fetch-tags: true
+
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.11.0
+          run_install: false
+
+      - name: Setup Node Version
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.19.0'
+          cache: 'pnpm'
+          registry-url: 'https://registry.npmjs.org'
+
+      - name: Install Dependencies
+        shell: bash
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm nx --version
+          pnpm list nx
+
+      - name: Set version for nightly
+        if: ${{ github.event.inputs.nightly }}
+        run: |
+          DATE=$(date +'%Y%m%d')
+          COMMIT_SHA=$(git rev-parse --short HEAD)
+          echo "NIGHTLY_VERSION=${{ github.event.inputs.version }}-nightly.${DATE}.${COMMIT_SHA}" >> $GITHUB_ENV
+          echo "Using nightly version: $NIGHTLY_VERSION"
+
+      - name: Configure Git
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+
+      - name: Release version (without commit)
+        run: |
+          if [ "${{ github.event.inputs.nightly }}" = "true" ]; then
+            echo "Running nightly release with version: ${{ env.NIGHTLY_VERSION }}"
+            pnpm nx release version ${{ env.NIGHTLY_VERSION }} --projects=${{ github.event.inputs.packages }} --preid nightly --git-commit=false --verbose
+          else
+            echo "Running regular release with version: ${{ github.event.inputs.version }}"
+            pnpm nx release version ${{ github.event.inputs.version }} --projects=${{ github.event.inputs.packages }} --git-commit=false --verbose
+          fi
+
+      - name: Generate changelog (without commit)
+        run: |
+          if [ "${{ github.event.inputs.nightly }}" = "true" ]; then
+            pnpm nx release changelog ${{ env.NIGHTLY_VERSION }} --projects=${{ github.event.inputs.packages }} --from=${{ github.event.inputs.previous_tag }} --git-commit=false
+          else
+            pnpm nx release changelog ${{ github.event.inputs.version }} --projects=${{ github.event.inputs.packages }} --from=${{ github.event.inputs.previous_tag }} --git-commit=false
+          fi
+
+      - name: Build packages
+        run: |
+          if [ "${{ github.event.inputs.nightly }}" = "true" ]; then
+            pnpm run build:packages
+          else
+            echo "Skipping build for non-nightly release"
+          fi
+
+      - name: Publish packages (nightly only)
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ "${{ github.event.inputs.nightly }}" = "true" ]; then
+            export NX_RELEASE_TAG=nightly
+            pnpm nx run-many -t nx-release-publish --projects=${{ github.event.inputs.packages }}
+          else
+            echo "Skipping publish for non-nightly release"
+          fi
+
+      - name: Create Pull Request
+        id: create-pr
+        uses: peter-evans/create-pull-request@v5
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "chore: release ${{ github.event.inputs.version }} (${{ github.event.inputs.packages }})"
+          title: "🚀 Release ${{ github.event.inputs.version }} - ${{ github.event.inputs.packages }}"
+          body: |
+            ## 🚀 Release ${{ github.event.inputs.version }}
+            
+            This PR contains the release changes for version **${{ github.event.inputs.version }}**
+            
+            ### 📦 Packages Released:
+            ```
+            ${{ github.event.inputs.packages }}
+            ```
+            
+            ### 🔄 Changes:
+            - Updated package versions to ${{ github.event.inputs.version }}
+            - Generated changelogs from ${{ github.event.inputs.previous_tag }}
+            - Built packages for release
+            
+            **Please review the changes and merge when ready for the release to be tagged and GitHub releases to be created.**
+          branch: release-${{ github.event.inputs.version }}
+          base: next
+          delete-branch: false

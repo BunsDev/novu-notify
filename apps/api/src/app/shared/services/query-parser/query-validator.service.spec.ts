@@ -1,5 +1,5 @@
-import { RulesLogic, AdditionalOperation } from 'json-logic-js';
 import { expect } from 'chai';
+import { AdditionalOperation, RulesLogic } from 'json-logic-js';
 
 import { QueryIssueTypeEnum, QueryValidatorService } from './query-validator.service';
 import { COMPARISON_OPERATORS, JsonLogicOperatorEnum } from './types';
@@ -505,6 +505,29 @@ describe('QueryValidatorService', () => {
       const issues = queryValidatorService.validateQueryRules(rule);
 
       expect(issues).to.be.empty;
+    });
+
+    it('should validate namespace field itself (subscriber.data)', () => {
+      const rule: RulesLogic<AdditionalOperation> = {
+        '==': [{ var: 'subscriber.data' }, 'value'],
+      };
+
+      const issues = queryValidatorService.validateQueryRules(rule);
+
+      expect(issues).to.be.empty;
+    });
+
+    it('should detect invalid namespace field (payload)', () => {
+      const rule: RulesLogic<AdditionalOperation> = {
+        '==': [{ var: 'payload' }, 'value'],
+      };
+
+      const issues = queryValidatorService.validateQueryRules(rule);
+
+      expect(issues).to.have.lengthOf(1);
+      expect(issues[0].message).to.include('Value is not valid');
+      expect(issues[0].path).to.deep.equal([]);
+      expect(issues[0].type).to.equal(QueryIssueTypeEnum.INVALID_FIELD_VALUE);
     });
 
     it('should detect invalid field that is not in allowed list', () => {

@@ -1,8 +1,9 @@
 // useFormAutosave.ts
-import { useDataRef } from '@/hooks/use-data-ref';
-import { useDebounce } from '@/hooks/use-debounce';
+
 import { useCallback, useEffect } from 'react';
 import { FieldValues, UseFormReturn } from 'react-hook-form';
+import { useDataRef } from '@/hooks/use-data-ref';
+import { useDebounce } from '@/hooks/use-debounce';
 
 const TEN_SECONDS = 10 * 1000;
 
@@ -17,12 +18,12 @@ export function useFormAutosave<U extends Record<string, unknown>, T extends Fie
   form: UseFormReturn<T>;
   isReadOnly?: boolean;
   shouldClientValidate?: boolean;
-  save: (data: U) => void;
+  save: (data: U, options: { onSuccess?: () => void }) => void;
 }) {
   const formRef = useDataRef(propsForm);
 
   const onSave = useCallback(
-    async (data: T, options?: { forceSubmit?: boolean }) => {
+    async (data: T, options?: { forceSubmit?: boolean; onSuccess?: () => void }) => {
       if (isReadOnly) {
         return;
       }
@@ -51,7 +52,7 @@ export function useFormAutosave<U extends Record<string, unknown>, T extends Fie
       // so other blur/change events might trigger in the meantime
       // we also send the invalid values to api and should keep the errors in the form
       form.reset(values, { keepErrors: true });
-      save(values);
+      save(values, { onSuccess: options?.onSuccess });
     },
     [formRef, previousData, isReadOnly, save, shouldClientValidate]
   );
@@ -74,14 +75,20 @@ export function useFormAutosave<U extends Record<string, unknown>, T extends Fie
   );
 
   // flush the form updates right away
-  const saveForm = (forceSubmit: boolean = false): Promise<void> => {
+  const saveForm = ({
+    forceSubmit = false,
+    onSuccess,
+  }: {
+    forceSubmit?: boolean;
+    onSuccess?: () => void;
+  } = {}): Promise<void> => {
     return new Promise((resolve) => {
       // await for the state to be updated
       setTimeout(async () => {
         // use the form reference instead of destructuring the props to avoid stale closures
         const form = formRef.current;
         const values = form.getValues();
-        await onSave(values, { forceSubmit });
+        await onSave(values, { forceSubmit, onSuccess });
 
         resolve();
       }, 0);

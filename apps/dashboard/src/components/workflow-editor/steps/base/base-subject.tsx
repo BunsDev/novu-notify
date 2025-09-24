@@ -1,10 +1,8 @@
-import { useMemo } from 'react';
 import { useFormContext } from 'react-hook-form';
-
-import { ControlInput } from '@/components/primitives/control-input';
 import { FormControl, FormField, FormItem, FormMessage } from '@/components/primitives/form/form';
+import { ControlInput } from '@/components/workflow-editor/control-input';
 import { useWorkflow } from '@/components/workflow-editor/workflow-provider';
-import { parseStepVariablesToLiquidVariables } from '@/utils/parseStepVariablesToLiquidVariables';
+import { useParseVariables } from '@/hooks/use-parse-variables';
 import { capitalize } from '@/utils/string';
 import { InputRoot } from '../../../primitives/input';
 
@@ -12,8 +10,8 @@ const subjectKey = 'subject';
 
 export const BaseSubject = () => {
   const { control } = useFormContext();
-  const { step } = useWorkflow();
-  const variables = useMemo(() => (step ? parseStepVariablesToLiquidVariables(step.variables) : []), [step]);
+  const { step, digestStepBeforeCurrent } = useWorkflow();
+  const { variables, isAllowedVariable } = useParseVariables(step?.variables, digestStepBeforeCurrent?.stepId);
 
   return (
     <FormField
@@ -31,6 +29,8 @@ export const BaseSubject = () => {
                 value={field.value}
                 onChange={field.onChange}
                 variables={variables}
+                isAllowedVariable={isAllowedVariable}
+                enableTranslations
               />
             </InputRoot>
           </FormControl>

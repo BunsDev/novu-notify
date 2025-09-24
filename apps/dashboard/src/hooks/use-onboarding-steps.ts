@@ -1,9 +1,9 @@
-import { useMemo } from 'react';
-import { useFetchWorkflows } from './use-fetch-workflows';
 import { useOrganization } from '@clerk/clerk-react';
 import { ChannelTypeEnum, IIntegration } from '@novu/shared';
+import { useMemo } from 'react';
+import { IS_SELF_HOSTED, ONBOARDING_DEMO_WORKFLOW_ID } from '../config';
 import { useFetchIntegrations } from './use-fetch-integrations';
-import { ONBOARDING_DEMO_WORKFLOW_ID } from '../config';
+import { useFetchWorkflows } from './use-fetch-workflows';
 
 export enum StepIdEnum {
   ACCOUNT_CREATION = 'account-creation',
@@ -82,8 +82,8 @@ export function useOnboardingSteps(): OnboardingStepsResult {
     return PROVIDER_TYPE_PRIORITIES.find((type) => useCases.includes(type)) ?? useCases[0];
   }, [organization?.publicMetadata]);
 
-  const steps = useMemo(
-    (): Step[] => [
+  const steps = useMemo((): Step[] => {
+    const allSteps: Step[] = [
       {
         id: StepIdEnum.ACCOUNT_CREATION,
         title: 'Account creation',
@@ -110,9 +110,14 @@ export function useOnboardingSteps(): OnboardingStepsResult {
         description: 'Collaborate with your team to manage notifications',
         status: hasInvitedTeamMember ? 'completed' : 'pending',
       },
-    ],
-    [hasInvitedTeamMember, providerType, integrations, hasCreatedWorkflow]
-  );
+    ];
+
+    if (IS_SELF_HOSTED) {
+      return allSteps.filter((step) => step.id !== StepIdEnum.INVITE_TEAM_MEMBER);
+    }
+
+    return allSteps;
+  }, [hasInvitedTeamMember, providerType, integrations, hasCreatedWorkflow]);
 
   return {
     steps,

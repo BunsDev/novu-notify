@@ -1,8 +1,8 @@
-import { Skeleton } from '@/components/primitives/skeleton';
-import { cn } from '@/utils/ui';
 import { ChannelTypeEnum, GeneratePreviewResponseDto, PushRenderOutput } from '@novu/shared';
 import { HTMLMotionProps, motion } from 'motion/react';
 import { HTMLAttributes } from 'react';
+import { Skeleton } from '@/components/primitives/skeleton';
+import { cn } from '@/utils/ui';
 
 export function PushPreview({
   isPreviewPending,
@@ -101,7 +101,7 @@ export const PushContentContainerPreview = ({ children, className, ...rest }: HT
 
 export const PushBackgroundWithPhone = ({ children, className, ...rest }: HTMLAttributes<HTMLDivElement>) => {
   return (
-    <div className="flex items-center justify-center">
+    <div className="flex items-center justify-center w-full">
       <div
         className={cn("relative h-60 w-full max-w-72 bg-[url('/images/phones/iphone-push.svg')] bg-cover", className)}
         {...rest}

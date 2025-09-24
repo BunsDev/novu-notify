@@ -1,7 +1,7 @@
 import { Inject } from '@nestjs/common';
-import { MemberRoleEnum, IMemberInvite, MemberStatusEnum } from '@novu/shared';
-import { IMemberRepository } from './member-repository.interface';
+import { IMemberInvite, MemberRoleEnum, MemberStatusEnum } from '@novu/shared';
 import { MemberEntity } from './member.entity';
+import { IMemberRepository } from './member-repository.interface';
 
 export interface IAddMemberData {
   _userId?: string;
@@ -29,8 +29,8 @@ export class MemberRepository implements IMemberRepository {
     return this.memberRepository.getOrganizationMembers(organizationId);
   }
 
-  getOrganizationAdminAccount(organizationId: string): Promise<MemberEntity | null> {
-    return this.memberRepository.getOrganizationAdminAccount(organizationId);
+  getOrganizationOwnerAccount(organizationId: string): Promise<MemberEntity | null> {
+    return this.memberRepository.getOrganizationOwnerAccount(organizationId);
   }
 
   getOrganizationAdmins(organizationId: string): Promise<
@@ -111,7 +111,6 @@ export class MemberRepository implements IMemberRepository {
     return this.memberRepository.find(query, select, options);
   }
 
-  // eslint-disable-next-line require-yield
   async *findBatch(
     query: any,
     select?: string | undefined,

@@ -3,12 +3,12 @@ import { ChannelTypeEnum, EmailProviderIdEnum, InAppProviderIdEnum } from '@novu
 import { IntegrationService, NotificationTemplateService, UserSession } from '@novu/testing';
 import { expect } from 'chai';
 import { SharedModule } from '../../../shared/shared.module';
-import { WorkflowResponse } from '../../dto/workflow-response.dto';
+import { WorkflowResponse } from '../../dtos/workflow-response.dto';
 import { WorkflowModuleV1 } from '../../workflow-v1.module';
 import { GetActiveIntegrationsStatusCommand } from './get-active-integrations-status.command';
 import { GetActiveIntegrationsStatus } from './get-active-integrations-status.usecase';
 
-describe('Get Active Integrations Status', function () {
+describe('Get Active Integrations Status', () => {
   let useCase: GetActiveIntegrationsStatus;
   let session: UserSession;
 
@@ -24,7 +24,7 @@ describe('Get Active Integrations Status', function () {
     useCase = moduleRef.get<GetActiveIntegrationsStatus>(GetActiveIntegrationsStatus);
   });
 
-  it('should get the active integrations status for workflow', async function () {
+  it('should get the active integrations status for workflow', async () => {
     const notificationTemplateService = new NotificationTemplateService(
       session.user._id,
       session.organization._id,

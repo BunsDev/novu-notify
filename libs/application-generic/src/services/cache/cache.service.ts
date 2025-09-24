@@ -1,8 +1,7 @@
 import { Logger } from '@nestjs/common';
-
-import { QUERY_PREFIX } from './key-builders';
-import { CacheInMemoryProviderService, InMemoryProviderClient, Pipeline } from '../in-memory-provider';
 import { addJitter } from '../../resilience';
+import { CacheInMemoryProviderService, InMemoryProviderClient, Pipeline } from '../in-memory-provider';
+import { QUERY_PREFIX } from './key-builders';
 
 const LOG_CONTEXT = 'CacheService';
 
@@ -15,12 +14,14 @@ export interface ICacheService {
   set(key: string, value: string, options?: CachingConfig);
   get(key: string);
   del(key: string);
+  incrIfExistsAtomic(key: string, incrementBy?: number): Promise<number | null>;
   delByPattern(pattern: string);
   keys(pattern?: string);
   getStatus();
   cacheEnabled();
   sadd(key: string, ...members: (string | number | Buffer)[]): Promise<number>;
   eval<TData = unknown>(script: string, keys: string[], args: (string | number | Buffer)[]): Promise<TData>;
+  incr(key: string): Promise<number>;
 }
 
 export type CachingConfig = {
@@ -62,7 +63,7 @@ export class CacheService implements ICacheService {
     return isEnabled;
   }
 
-  public async set(key: string, value: string, options?: CachingConfig): Promise<string | null> {
+  public async set(key: string, value: string | number, options?: CachingConfig): Promise<string | null> {
     const result = await this.client?.set(key, value, 'EX', this.getTtlInSeconds(options));
 
     if (result === null) {
@@ -110,6 +111,30 @@ export class CacheService implements ICacheService {
     return this.client?.del(keys);
   }
 
+  // @deprecated This method is maintained solely for backward compatibility with quota throttling tests.
+  // Use incrIfExistsAtomic() for new implementations to ensure proper TTL handling.
+  public async incr(key: string): Promise<number> {
+    return this.client?.incr(key);
+  }
+
+  public async incrIfExistsAtomic(key: string, incrementBy = 1): Promise<number | null> {
+    if (!this.client) {
+      return null;
+    }
+
+    const luaScript = `
+      if redis.call('exists', KEYS[1]) == 1 then
+        return redis.call('incrby', KEYS[1], ARGV[1])
+      else
+        return nil
+      end
+    `;
+
+    const result = await this.eval<number | null>(luaScript, [key], [incrementBy]);
+
+    return result;
+  }
+
   public async delQuery(key: string): Promise<void | unknown[]> {
     if (this.client) {
       const queries = await this.client.smembers(key);
@@ -118,7 +143,7 @@ export class CacheService implements ICacheService {
 
       const pipeline = this.client.pipeline();
       // invalidate queries
-      queries.forEach(function (query) {
+      queries.forEach((query) => {
         const fullKey = `${key}:${QUERY_PREFIX}=${query}`;
         pipeline.del(fullKey);
       });
@@ -145,10 +170,10 @@ export class CacheService implements ICacheService {
       return new Promise((resolve, reject) => {
         const stream = this.cacheInMemoryProviderService.inMemoryScan(pattern);
 
-        stream.on('data', function (keys) {
+        stream.on('data', (keys) => {
           if (keys.length) {
             const pipeline = client.pipeline();
-            keys.forEach(function (key) {
+            keys.forEach((key) => {
               pipeline.del(key);
             });
             pipeline.exec().then(resolve).catch(reject);

@@ -1,9 +1,23 @@
+import {
+  ApiServiceLevelEnum,
+  ChannelTypeEnum,
+  type IEnvironment,
+  type IIntegration,
+  type IProviderConfig,
+} from '@novu/shared';
+import {
+  RiCheckboxCircleFill,
+  RiCloseCircleFill,
+  RiLockStarLine,
+  RiSettings4Line,
+  RiStarSmileLine,
+} from 'react-icons/ri';
+import { useNavigate } from 'react-router-dom';
 import { Badge } from '@/components/primitives/badge';
 import { Button } from '@/components/primitives/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/primitives/tooltip';
-import { ChannelTypeEnum, type IEnvironment, type IIntegration, type IProviderConfig } from '@novu/shared';
-import { RiCheckboxCircleFill, RiCloseCircleFill, RiSettings4Line, RiStarSmileLine } from 'react-icons/ri';
-import { useNavigate } from 'react-router-dom';
+import { UpgradeCTATooltip } from '@/components/upgrade-cta-tooltip';
+import { useFetchSubscription } from '../../../hooks/use-fetch-subscription';
 import { ROUTES } from '../../../utils/routes';
 import { cn } from '../../../utils/ui';
 import { EnvironmentBranchIcon } from '../../primitives/environment-branch-icon';
@@ -21,6 +35,7 @@ type IntegrationCardProps = {
 
 export function IntegrationCard({ integration, provider, environment, onClick }: IntegrationCardProps) {
   const navigate = useNavigate();
+  const { subscription } = useFetchSubscription();
 
   const handleConfigureClick = (e: React.MouseEvent<HTMLElement>) => {
     if (integration.channel === ChannelTypeEnum.IN_APP && !integration.connected) {
@@ -41,6 +56,7 @@ export function IntegrationCard({ integration, provider, environment, onClick }:
   };
 
   const isDemo = isDemoIntegration(provider.id);
+  const isFreePlan = subscription?.apiServiceLevel === ApiServiceLevelEnum.FREE;
 
   return (
     <div
@@ -51,7 +67,7 @@ export function IntegrationCard({ integration, provider, environment, onClick }:
       onClick={handleConfigureClick}
       data-test-id={`integration-${integration._id}-row`}
     >
-      <div className="flex items-start justify-between">
+      <div className="flex justify-between">
         <div className="flex items-center gap-1.5">
           <div className="relative h-6 w-6">
             <ProviderIcon
@@ -62,14 +78,26 @@ export function IntegrationCard({ integration, provider, environment, onClick }:
           </div>
           <span className="text-sm font-medium">{integration.name}</span>
         </div>
-        {integration.primary && (
-          <Tooltip>
-            <TooltipTrigger>
-              <RiStarSmileLine className="text-feature h-4 w-4" />
-            </TooltipTrigger>
-            <TooltipContent>This is your primary integration for the {provider.channel} channel.</TooltipContent>
-          </Tooltip>
-        )}
+        <div className="flex items-center gap-1">
+          {integration.primary && (
+            <Tooltip>
+              <TooltipTrigger>
+                <RiStarSmileLine className="text-feature h-4 w-4" />
+              </TooltipTrigger>
+              <TooltipContent>This is your primary integration for the {provider.channel} channel.</TooltipContent>
+            </Tooltip>
+          )}
+          {integration.channel === ChannelTypeEnum.IN_APP && isFreePlan && (
+            <UpgradeCTATooltip
+              description="Upgrade to remove the Novu branding and extend notification snooze beyond 24 hours in your Inbox component."
+              utmSource="in-app-upgrade-tooltip"
+              side="right"
+              align="center"
+            >
+              <RiLockStarLine className="text-warning h-4 w-4" />
+            </UpgradeCTATooltip>
+          )}
+        </div>
       </div>
       <div className="flex items-center gap-2">
         {isDemo && (

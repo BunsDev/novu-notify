@@ -1,5 +1,5 @@
 import type { MessageEntity } from '@novu/dal';
-import { ButtonTypeEnum, MessageActionStatusEnum } from '@novu/shared';
+import { ButtonTypeEnum, MessageActionStatusEnum, SeverityLevelEnum } from '@novu/shared';
 
 import type { InboxNotification, Subscriber } from './types';
 
@@ -7,9 +7,13 @@ const mapSingleItem = ({
   _id,
   content,
   read,
+  seen,
   archived,
+  snoozedUntil,
+  deliveredAt,
   createdAt,
   lastReadDate,
+  firstSeenDate,
   archivedAt,
   channel,
   subscriber,
@@ -17,8 +21,10 @@ const mapSingleItem = ({
   avatar,
   cta,
   tags,
+  severity,
   data,
-  templateIdentifier,
+  template,
+  transactionId,
 }: MessageEntity): InboxNotification => {
   const to: Subscriber = {
     id: subscriber?._id ?? '',
@@ -34,13 +40,23 @@ const mapSingleItem = ({
 
   return {
     id: _id,
+    transactionId,
     subject,
     body: content as string,
     to,
     isRead: read,
+    isSeen: seen,
     isArchived: archived,
+    isSnoozed: !!snoozedUntil,
+    ...(deliveredAt && {
+      deliveredAt,
+    }),
+    ...(snoozedUntil && {
+      snoozedUntil,
+    }),
     createdAt,
     readAt: lastReadDate,
+    firstSeenAt: firstSeenDate,
     archivedAt,
     avatar,
     primaryAction: primaryCta && {
@@ -65,6 +81,7 @@ const mapSingleItem = ({
     },
     channelType: channel,
     tags,
+    severity: severity ?? SeverityLevelEnum.NONE,
     redirect: cta.data?.url
       ? {
           url: cta.data.url,
@@ -72,7 +89,16 @@ const mapSingleItem = ({
         }
       : undefined,
     data,
-    workflowId: templateIdentifier,
+    workflow: template
+      ? {
+          critical: template.critical,
+          id: template._id,
+          identifier: template.triggers?.[0]?.identifier,
+          name: template.name,
+          tags: template.tags,
+          severity: template.severity ?? SeverityLevelEnum.NONE,
+        }
+      : undefined,
   };
 };
 

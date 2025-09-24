@@ -1,10 +1,10 @@
-import { useTelemetry } from '@/hooks/use-telemetry';
-import { ROUTES } from '@/utils/routes';
-import { TelemetryEvent } from '@/utils/telemetry';
 import { GetSubscriptionDto } from '@novu/shared';
 import { format } from 'date-fns';
 import { RiCalendarEventLine, RiErrorWarningLine } from 'react-icons/ri';
 import { Link } from 'react-router-dom';
+import { useTelemetry } from '@/hooks/use-telemetry';
+import { ROUTES } from '@/utils/routes';
+import { TelemetryEvent } from '@/utils/telemetry';
 import { Button } from '../primitives/button';
 import { Progress } from '../primitives/progress';
 
@@ -14,11 +14,16 @@ type UsageStatus = {
 };
 
 export type UsageCardProps = {
-  subscription: GetSubscriptionDto;
+  subscription: GetSubscriptionDto | undefined;
 };
 
 export function UsageCard({ subscription }: UsageCardProps) {
   const track = useTelemetry();
+
+  if (!subscription) {
+    return null;
+  }
+
   const currentEvents = subscription.events?.current ?? 0;
   const maxEvents = subscription.events?.included ?? 10000;
   const resetDate = subscription.currentPeriodEnd ?? null;

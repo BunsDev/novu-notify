@@ -1,57 +1,69 @@
-import { Injectable, Logger, NotFoundException, Scope } from '@nestjs/common';
-
+import { Injectable, NotFoundException, Scope } from '@nestjs/common';
+import { decryptApiKey, FeatureFlagsService, PinoLogger } from '@novu/application-generic';
 import { EnvironmentEntity, EnvironmentRepository } from '@novu/dal';
-import { decryptApiKey } from '@novu/application-generic';
-import { ShortIsPrefixEnum, EnvironmentEnum } from '@novu/shared';
-
-import { GetMyEnvironmentsCommand } from './get-my-environments.command';
-import { EnvironmentResponseDto } from '../../dtos/environment-response.dto';
+import { EnvironmentEnum, EnvironmentTypeEnum, FeatureFlagsKeysEnum, ShortIsPrefixEnum } from '@novu/shared';
 import { buildSlug } from '../../../shared/helpers/build-slug';
+import { EnvironmentResponseDto } from '../../dtos/environment-response.dto';
+import { GetMyEnvironmentsCommand } from './get-my-environments.command';
 
 @Injectable({
   scope: Scope.REQUEST,
 })
 export class GetMyEnvironments {
-  constructor(private environmentRepository: EnvironmentRepository) {}
+  constructor(
+    private environmentRepository: EnvironmentRepository,
+    private logger: PinoLogger,
+    private featureFlagsService: FeatureFlagsService
+  ) {
+    this.logger.setContext(this.constructor.name);
+  }
 
   async execute(command: GetMyEnvironmentsCommand): Promise<EnvironmentResponseDto[]> {
-    Logger.verbose('Getting Environments');
+    this.logger.trace('Getting Environments');
 
     const environments = await this.environmentRepository.findOrganizationEnvironments(command.organizationId);
 
-    if (!environments?.length)
+    if (!environments?.length) {
       throw new NotFoundException(`No environments were found for organization ${command.organizationId}`);
+    }
+
+    const isNewChangeMechanismEnabled = await this.isNewChangeMechanismEnabled(command);
 
     return environments.map((environment) => {
-      if (command.includeAllApiKeys || environment._id === command.environmentId) {
-        return this.decryptApiKeys(environment);
+      const processedEnvironment = { ...environment };
+
+      processedEnvironment.apiKeys = command.returnApiKeys ? this.decryptApiKeys(environment.apiKeys) : [];
+
+      // Override environment type to DEV if feature flag is disabled
+      if (!isNewChangeMechanismEnabled) {
+        processedEnvironment.type = EnvironmentTypeEnum.DEV;
       }
-      // TODO: For api_v2: Remove the key from the response. This was not done yet as it's a breaking change.
-      // eslint-disable-next-line no-param-reassign
-      environment.apiKeys = [];
 
-      return environment;
-    });
-  }
+      const shortEnvName = shortenEnvironmentName(processedEnvironment.name);
 
-  private decryptApiKeys(environment: EnvironmentEntity): EnvironmentResponseDto {
-    const decryptedApiKeysEnvironment = { ...environment };
-
-    decryptedApiKeysEnvironment.apiKeys = environment.apiKeys.map((apiKey) => {
       return {
-        ...apiKey,
-        key: decryptApiKey(apiKey.key),
+        ...processedEnvironment,
+        slug: buildSlug(shortEnvName, ShortIsPrefixEnum.ENVIRONMENT, processedEnvironment._id),
       };
     });
+  }
 
-    const shortEnvName = shortenEnvironmentName(decryptedApiKeysEnvironment.name);
+  private async isNewChangeMechanismEnabled(command: GetMyEnvironmentsCommand): Promise<boolean> {
+    return await this.featureFlagsService.getFlag({
+      key: FeatureFlagsKeysEnum.IS_NEW_CHANGE_MECHANISM_ENABLED,
+      defaultValue: false,
+      organization: { _id: command.organizationId },
+    });
+  }
 
-    return {
-      ...decryptedApiKeysEnvironment,
-      slug: buildSlug(shortEnvName, ShortIsPrefixEnum.ENVIRONMENT, decryptedApiKeysEnvironment._id),
-    };
+  private decryptApiKeys(apiKeys: EnvironmentEntity['apiKeys']) {
+    return apiKeys.map((apiKey) => ({
+      ...apiKey,
+      key: decryptApiKey(apiKey.key),
+    }));
   }
 }
+
 function shortenEnvironmentName(name: string): string {
   const mapToShotEnvName: Record<EnvironmentEnum, string> = {
     [EnvironmentEnum.PRODUCTION]: 'prod',

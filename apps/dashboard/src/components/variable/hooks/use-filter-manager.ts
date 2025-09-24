@@ -1,5 +1,5 @@
-import { useCallback, useState } from 'react';
-import { FILTERS } from '../constants';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { getFilters } from '../constants';
 import type { FilterWithParam } from '../types';
 
 type UseFilterManagerProps = {
@@ -8,7 +8,12 @@ type UseFilterManagerProps = {
 };
 
 export function useFilterManager({ initialFilters, onUpdate }: UseFilterManagerProps) {
+  const liquidFilters = useMemo(() => getFilters(), []);
   const [filters, setFilters] = useState<FilterWithParam[]>(initialFilters.filter((t) => t.value !== 'default'));
+
+  useEffect(() => {
+    setFilters(initialFilters.filter((t) => t.value !== 'default'));
+  }, [initialFilters]);
 
   const handleReorder = useCallback(
     (newFilters: FilterWithParam[]) => {
@@ -25,7 +30,7 @@ export function useFilterManager({ initialFilters, onUpdate }: UseFilterManagerP
         let newFilters: FilterWithParam[];
 
         if (index === -1) {
-          const filterDef = FILTERS.find((t) => t.value === value);
+          const filterDef = liquidFilters.find((t) => t.value === value);
           const newFilter: FilterWithParam = {
             value,
             ...(filterDef?.hasParam
@@ -46,14 +51,14 @@ export function useFilterManager({ initialFilters, onUpdate }: UseFilterManagerP
         return newFilters;
       });
     },
-    [onUpdate]
+    [onUpdate, liquidFilters]
   );
 
   const handleParamChange = useCallback(
     (index: number, params: string[]) => {
       setFilters((current) => {
         const newFilters = [...current];
-        const filterDef = FILTERS.find((def) => def.value === newFilters[index].value);
+        const filterDef = liquidFilters.find((def) => def.value === newFilters[index].value);
 
         // Format params based on their types
         const formattedParams = params.map((param, paramIndex) => {
@@ -72,20 +77,20 @@ export function useFilterManager({ initialFilters, onUpdate }: UseFilterManagerP
         return newFilters;
       });
     },
-    [onUpdate]
+    [onUpdate, liquidFilters]
   );
 
   const getFilteredFilters = useCallback(
     (query: string) => {
       const currentFilterValues = filters.map((t) => t.value);
-      return FILTERS.filter(
+      return liquidFilters.filter(
         (t) =>
           !currentFilterValues.includes(t.value) &&
           (t.label.toLowerCase().includes(query.toLowerCase()) ||
             t.description?.toLowerCase().includes(query.toLowerCase()))
       );
     },
-    [filters]
+    [filters, liquidFilters]
   );
 
   return {

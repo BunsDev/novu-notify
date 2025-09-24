@@ -1,10 +1,9 @@
 import { Slot } from '@radix-ui/react-slot';
 import * as React from 'react';
-
+import { IconType } from 'react-icons';
 import type { PolymorphicComponentProps } from '@/utils/polymorphic';
 import { recursiveCloneChildren } from '@/utils/recursive-clone-children';
 import { tv, type VariantProps } from '@/utils/tv';
-import { IconType } from 'react-icons';
 import { AUTOCOMPLETE_PASSWORD_MANAGERS_OFF } from '../../utils/constants';
 
 const INPUT_ROOT_NAME = 'InputRoot';
@@ -19,7 +18,7 @@ export const inputVariants = tv({
     root: [
       // base
       'ring-stroke-soft',
-      'group relative flex w-full overflow-hidden bg-bg-white-0 text-text-strong shadow-xs',
+      'group relative flex w-full overflow-hidden bg-bg-white text-text-strong shadow-xs',
       'transition duration-200 ease-out',
       'divide-x divide-stroke-soft',
       // before
@@ -102,7 +101,7 @@ export const inputVariants = tv({
       sm: {
         root: 'rounded-lg',
         wrapper: 'gap-2 px-2.5',
-        input: 'h-9 text-paragraph-xs',
+        input: 'h-[2.35rem] text-paragraph-xs',
         affix: 'text-paragraph-xs',
         inlineAffix: 'text-paragraph-xs',
       },
@@ -281,7 +280,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
   ) => {
     return (
       <InputRoot size={size} hasError={hasError}>
-        {leadingNode && <div className="space-y-1">{trailingNode}</div>}
+        {leadingNode && <div className="flex flex-col justify-center gap-1">{leadingNode}</div>}
         <InputWrapper>
           {inlineLeadingNode}
           {LeadingIcon && <InputIcon as={LeadingIcon} />}
@@ -289,7 +288,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
           {TrailingIcon && <InputIcon as={TrailingIcon} />}
           {inlineTrailingNode}
         </InputWrapper>
-        {trailingNode && <div className="space-y-1">{trailingNode}</div>}
+        {trailingNode && <div className="flex flex-col justify-center gap-1">{trailingNode}</div>}
       </InputRoot>
     );
   }
@@ -360,7 +359,7 @@ export {
   InputInlineAffix as InlineAffix,
   Input,
   InputEl as InputPure,
-  InputRoot as InputRoot,
-  InputWrapper as InputWrapper,
+  InputRoot,
+  InputWrapper,
   type InputProps,
 };

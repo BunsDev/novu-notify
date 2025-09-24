@@ -13,8 +13,8 @@
     "postbuild": "npm run check:circulars",
     "start:dev": "pnpm build:watch",
     "precommit": "lint-staged",
-    "lint": "eslint src",
-    "lint:fix": "pnpm lint -- --fix",
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
     "test": "vitest",
     "watch:test": "pnpm test --watch",
     "check:circulars": "madge --circular --extensions ts ./src"
@@ -48,7 +48,7 @@
     "madge": "^8.0.0",
     "rimraf": "^3.0.2",
     "typescript": "5.6.2",
-    "vitest": "^2.0.5"
+    "vitest": "^2.1.9"
   },
   "nx": {
     "tags": [

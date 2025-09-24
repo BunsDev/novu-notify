@@ -20,6 +20,11 @@ import {
   StepFilterDto$outboundSchema,
 } from "./stepfilterdto.js";
 
+/**
+ * Configurations for the integration
+ */
+export type UpdateIntegrationRequestDtoConfigurations = {};
+
 export type UpdateIntegrationRequestDto = {
   name?: string | undefined;
   identifier?: string | undefined;
@@ -29,13 +34,73 @@ export type UpdateIntegrationRequestDto = {
    */
   active?: boolean | undefined;
   credentials?: CredentialsDto | undefined;
-  /**
-   * If true, the Novu branding will be removed from the Inbox component
-   */
-  removeNovuBranding?: boolean | undefined;
   check?: boolean | undefined;
   conditions?: Array<StepFilterDto> | undefined;
+  /**
+   * Configurations for the integration
+   */
+  configurations?: UpdateIntegrationRequestDtoConfigurations | undefined;
 };
+
+/** @internal */
+export const UpdateIntegrationRequestDtoConfigurations$inboundSchema: z.ZodType<
+  UpdateIntegrationRequestDtoConfigurations,
+  z.ZodTypeDef,
+  unknown
+> = z.object({});
+
+/** @internal */
+export type UpdateIntegrationRequestDtoConfigurations$Outbound = {};
+
+/** @internal */
+export const UpdateIntegrationRequestDtoConfigurations$outboundSchema:
+  z.ZodType<
+    UpdateIntegrationRequestDtoConfigurations$Outbound,
+    z.ZodTypeDef,
+    UpdateIntegrationRequestDtoConfigurations
+  > = z.object({});
+
+/**
+ * @internal
+ * @deprecated This namespace will be removed in future versions. Use schemas and types that are exported directly from this module.
+ */
+export namespace UpdateIntegrationRequestDtoConfigurations$ {
+  /** @deprecated use `UpdateIntegrationRequestDtoConfigurations$inboundSchema` instead. */
+  export const inboundSchema =
+    UpdateIntegrationRequestDtoConfigurations$inboundSchema;
+  /** @deprecated use `UpdateIntegrationRequestDtoConfigurations$outboundSchema` instead. */
+  export const outboundSchema =
+    UpdateIntegrationRequestDtoConfigurations$outboundSchema;
+  /** @deprecated use `UpdateIntegrationRequestDtoConfigurations$Outbound` instead. */
+  export type Outbound = UpdateIntegrationRequestDtoConfigurations$Outbound;
+}
+
+export function updateIntegrationRequestDtoConfigurationsToJSON(
+  updateIntegrationRequestDtoConfigurations:
+    UpdateIntegrationRequestDtoConfigurations,
+): string {
+  return JSON.stringify(
+    UpdateIntegrationRequestDtoConfigurations$outboundSchema.parse(
+      updateIntegrationRequestDtoConfigurations,
+    ),
+  );
+}
+
+export function updateIntegrationRequestDtoConfigurationsFromJSON(
+  jsonString: string,
+): SafeParseResult<
+  UpdateIntegrationRequestDtoConfigurations,
+  SDKValidationError
+> {
+  return safeParse(
+    jsonString,
+    (x) =>
+      UpdateIntegrationRequestDtoConfigurations$inboundSchema.parse(
+        JSON.parse(x),
+      ),
+    `Failed to parse 'UpdateIntegrationRequestDtoConfigurations' from JSON`,
+  );
+}
 
 /** @internal */
 export const UpdateIntegrationRequestDto$inboundSchema: z.ZodType<
@@ -48,9 +113,11 @@ export const UpdateIntegrationRequestDto$inboundSchema: z.ZodType<
   _environmentId: z.string().optional(),
   active: z.boolean().optional(),
   credentials: CredentialsDto$inboundSchema.optional(),
-  removeNovuBranding: z.boolean().optional(),
   check: z.boolean().optional(),
   conditions: z.array(StepFilterDto$inboundSchema).optional(),
+  configurations: z.lazy(() =>
+    UpdateIntegrationRequestDtoConfigurations$inboundSchema
+  ).optional(),
 }).transform((v) => {
   return remap$(v, {
     "_environmentId": "environmentId",
@@ -64,9 +131,11 @@ export type UpdateIntegrationRequestDto$Outbound = {
   _environmentId?: string | undefined;
   active?: boolean | undefined;
   credentials?: CredentialsDto$Outbound | undefined;
-  removeNovuBranding?: boolean | undefined;
   check?: boolean | undefined;
   conditions?: Array<StepFilterDto$Outbound> | undefined;
+  configurations?:
+    | UpdateIntegrationRequestDtoConfigurations$Outbound
+    | undefined;
 };
 
 /** @internal */
@@ -80,9 +149,11 @@ export const UpdateIntegrationRequestDto$outboundSchema: z.ZodType<
   environmentId: z.string().optional(),
   active: z.boolean().optional(),
   credentials: CredentialsDto$outboundSchema.optional(),
-  removeNovuBranding: z.boolean().optional(),
   check: z.boolean().optional(),
   conditions: z.array(StepFilterDto$outboundSchema).optional(),
+  configurations: z.lazy(() =>
+    UpdateIntegrationRequestDtoConfigurations$outboundSchema
+  ).optional(),
 }).transform((v) => {
   return remap$(v, {
     environmentId: "_environmentId",

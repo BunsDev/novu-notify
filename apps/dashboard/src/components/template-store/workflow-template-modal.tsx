@@ -1,3 +1,8 @@
+import { ComponentProps, useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { RiArrowLeftSLine } from 'react-icons/ri';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { z } from 'zod';
 import { RouteFill } from '@/components/icons/route-fill';
 import {
   Breadcrumb,
@@ -23,11 +28,6 @@ import { useCreateWorkflow } from '@/hooks/use-create-workflow';
 import { useTelemetry } from '@/hooks/use-telemetry';
 import { buildRoute, ROUTES } from '@/utils/routes';
 import { TelemetryEvent } from '@/utils/telemetry';
-import { ComponentProps, useEffect, useState } from 'react';
-import { useForm } from 'react-hook-form';
-import { RiArrowLeftSLine } from 'react-icons/ri';
-import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { z } from 'zod';
 
 const WORKFLOW_TEMPLATES = getTemplates();
 
@@ -173,7 +173,7 @@ export function WorkflowTemplateModal(props: WorkflowTemplateModalProps) {
               <div className="flex h-full w-full gap-4">
                 <div className="flex-1">
                   <WorkflowCanvas
-                    readOnly
+                    isTemplateStorePreview
                     steps={
                       selectedTemplate.workflowDefinition.steps.map((step) => ({
                         _id: null,

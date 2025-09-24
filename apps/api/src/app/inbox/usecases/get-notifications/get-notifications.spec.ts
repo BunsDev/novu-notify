@@ -1,15 +1,14 @@
-import sinon from 'sinon';
-import { expect } from 'chai';
-import { ChannelCTATypeEnum } from '@novu/shared';
-import { ChannelTypeEnum, MessageRepository } from '@novu/dal';
+import { BadRequestException } from '@nestjs/common';
 import { AnalyticsService } from '@novu/application-generic';
-
-import { GetNotifications } from './get-notifications.usecase';
+import { ChannelTypeEnum, MessageRepository } from '@novu/dal';
+import { ChannelCTATypeEnum } from '@novu/shared';
+import { expect } from 'chai';
+import sinon from 'sinon';
 import { GetSubscriber } from '../../../subscribers/usecases/get-subscriber';
-import type { GetNotificationsCommand } from './get-notifications.command';
-import { ApiException } from '../../../shared/exceptions/api.exception';
-import { mapToDto } from '../../utils/notification-mapper';
 import { AnalyticsEventsEnum } from '../../utils';
+import { mapToDto } from '../../utils/notification-mapper';
+import type { GetNotificationsCommand } from './get-notifications.command';
+import { GetNotifications } from './get-notifications.usecase';
 
 const mockSubscriber: any = { _id: '123', subscriberId: 'test-mockSubscriber' };
 const mockMessages: any = [
@@ -17,6 +16,7 @@ const mockMessages: any = [
     _id: '_id',
     content: '',
     read: false,
+    seen: false,
     archived: false,
     createdAt: new Date(),
     lastReadAt: new Date(),
@@ -66,7 +66,7 @@ describe('GetNotifications', () => {
     try {
       await getNotifications.execute(command);
     } catch (error) {
-      expect(error).to.be.instanceOf(ApiException);
+      expect(error).to.be.instanceOf(BadRequestException);
       expect(error.message).to.equal(`Subscriber with id: ${command.subscriberId} is not found.`);
     }
   });
@@ -87,7 +87,7 @@ describe('GetNotifications', () => {
     try {
       await getNotifications.execute(command);
     } catch (error) {
-      expect(error).to.be.instanceOf(ApiException);
+      expect(error).to.be.instanceOf(BadRequestException);
       expect(error.message).to.equal(`Filtering for unread and archived notifications is not supported.`);
     }
   });
@@ -127,7 +127,11 @@ describe('GetNotifications', () => {
     expect(result.filter).to.deep.equal({
       tags: command.tags,
       read: command.read,
+      data: command.data,
       archived: command.archived,
+      snoozed: command.snoozed,
+      severity: command.severity,
+      seen: command.seen,
     });
     expect(result.hasMore).to.be.false;
     expect(analyticsServiceMock.mixpanelTrack.calledOnce).to.be.true;

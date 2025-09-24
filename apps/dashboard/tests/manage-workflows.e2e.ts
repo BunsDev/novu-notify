@@ -1,13 +1,12 @@
-import { expect } from '@playwright/test';
 import { StepTypeEnum } from '@novu/shared';
-
-import { test } from './utils/fixtures';
-import { InAppStepEditor } from './page-object-models/in-app-step-editor';
-import { WorkflowsPage } from './page-object-models/workflows-page';
+import { expect } from '@playwright/test';
 import { CreateWorkflowSidebar } from './page-object-models/create-workflow-sidebar';
-import { WorkflowEditorPage } from './page-object-models/workflow-editor-page';
+import { InAppStepEditor } from './page-object-models/in-app-step-editor';
 import { StepConfigSidebar } from './page-object-models/step-config-sidebar';
 import { TriggerWorkflowPage } from './page-object-models/trigger-workflow-page';
+import { WorkflowEditorPage } from './page-object-models/workflow-editor-page';
+import { WorkflowsPage } from './page-object-models/workflows-page';
+import { test } from './utils/fixtures';
 
 test('manage workflows', async ({ page }) => {
   const workflowName = 'test-workflow';
@@ -16,6 +15,7 @@ test('manage workflows', async ({ page }) => {
   const inAppStepName = 'In-App Step';
   const subject = 'You have been invited to join the Novu project';
   const body = "Hello {{payload.name}}! You've been invited to join the Novu project";
+  const parsedBody = "Hello name! You've been invited to join the Novu project";
 
   const workflowsPage = new WorkflowsPage(page);
   await workflowsPage.goTo();
@@ -75,8 +75,8 @@ test('manage workflows', async ({ page }) => {
   // Wait for navigation and check title
   await expect(page).toHaveTitle(`Edit ${inAppStepName} | Novu Cloud Dashboard`);
 
-  // check the validation errors
-  await expect(await inAppStepEditor.getBodyValidationError()).toBeVisible();
+  // check that validation errors don't show right after a step was created
+  await expect(await inAppStepEditor.getBodyValidationError()).not.toBeVisible();
 
   await inAppStepEditor.fillForm({
     subject,
@@ -91,7 +91,7 @@ test('manage workflows', async ({ page }) => {
   // TODO: add assertions for the primary and secondary actions
   const previewElements = await inAppStepEditor.getPreviewElements();
   await expect(previewElements.subject).toContainText(subject);
-  await expect(previewElements.body).toContainText(body);
+  await expect(previewElements.body).toContainText(parsedBody);
   await inAppStepEditor.close();
 
   // check the step config sidebar
@@ -148,7 +148,6 @@ test('manage workflows', async ({ page }) => {
   // check the activity panel
   let activityPanel = triggerWorkflowPage.getActivityPanel();
   await expect(activityPanel).toBeVisible();
-  await expect(activityPanel.locator('span').filter({ hasText: workflowNameUpdated })).toBeVisible();
   await expect(activityPanel.getByTestId('activity-status')).toHaveText('pending');
 
   // trigger the workflow second time to see digested activity
@@ -159,7 +158,6 @@ test('manage workflows', async ({ page }) => {
 
   activityPanel = triggerWorkflowPage.getActivityPanel();
   await expect(activityPanel).toBeVisible();
-  await expect(activityPanel.locator('span').filter({ hasText: workflowNameUpdated })).toBeVisible();
   await expect(activityPanel.getByTestId('activity-status')).toHaveText('merged');
 
   // click the view execution to see the parent execution

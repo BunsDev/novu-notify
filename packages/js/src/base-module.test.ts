@@ -35,13 +35,25 @@ describe('callWithSession(fn)', () => {
     emitter.emit('session.initialize.resolved', {
       args: {
         applicationIdentifier: 'foo',
-        subscriberId: 'bar',
+        subscriber: {
+          subscriberId: 'bar',
+        },
       },
       data: {
         token: 'cafebabe',
         totalUnreadCount: 10,
+        unreadCount: {
+          severity: {
+            high: 1,
+            medium: 2,
+            low: 3,
+            none: 4,
+          },
+          total: 10,
+        },
         removeNovuBranding: true,
         isDevelopmentMode: true,
+        maxSnoozeDurationHours: 24,
       },
     });
 
@@ -58,7 +70,9 @@ describe('callWithSession(fn)', () => {
     emitter.emit('session.initialize.resolved', {
       args: {
         applicationIdentifier: 'foo',
-        subscriberId: 'bar',
+        subscriber: {
+          subscriberId: 'bar',
+        },
       },
       error: new Error('Failed to initialize session'),
     });

@@ -1,10 +1,10 @@
 import React, { type ElementType } from 'react';
 import { css, cx } from '../../../styled-system/css';
 import { splitCssProps } from '../../../styled-system/jsx';
-import { title, type TitleVariantProps } from '../../../styled-system/recipes';
+import { type TitleVariantProps, title } from '../../../styled-system/recipes';
 import type { JsxStyleProps } from '../../../styled-system/types';
 import { CoreProps, ExtractGeneric } from '../../types';
-import { PolymorphicComponentPropWithRef, PolymorphicRef } from '../../types/props-helpers';
+import { forwardRefWithAs, PolymorphicComponentPropWithRef, PolymorphicRef } from '../../types/props-helpers';
 
 export type TitleProps<C extends React.ElementType> = PolymorphicComponentPropWithRef<
   C,
@@ -23,8 +23,7 @@ const DEFAULT_VARIANT: TitleVariant = 'page';
 
 type PolymorphicComponent = <C extends React.ElementType = 'h1'>(props: TitleProps<C>) => JSX.Element | null;
 
-// @ts-expect-error
-export const Title: PolymorphicComponent = React.forwardRef(
+export const Title: PolymorphicComponent = forwardRefWithAs<'h1', JsxStyleProps & TitleVariantProps & CoreProps>(
   <C extends React.ElementType = 'h1'>(props: TitleProps<C>, ref?: PolymorphicRef<C>) => {
     const [variantProps, titleProps] = title.splitVariantProps(props);
     const [cssProps, localProps] = splitCssProps(titleProps);

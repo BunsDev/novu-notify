@@ -1,33 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import { WorkflowResponseDto } from '@novu/shared';
+import React, { useCallback, useEffect, useState } from 'react';
 import { useFormContext, useWatch } from 'react-hook-form';
 import { RiCheckboxCircleFill } from 'react-icons/ri';
-import { WorkflowResponseDto } from '@novu/shared';
-
+import { ActivityError } from '@/components/activity/activity-error';
+import { ActivityHeader } from '@/components/activity/activity-header';
+import { ActivityLogs } from '@/components/activity/activity-logs';
 import { ActivityPanel } from '@/components/activity/activity-panel';
-import { useFetchActivities } from '../../../hooks/use-fetch-activities';
+import { ActivitySkeleton } from '@/components/activity/activity-skeleton';
+import { ActivityOverview } from '@/components/activity/components/activity-overview';
+import { usePullActivity } from '@/hooks/use-pull-activity';
+import { useFetchActivities } from '../../../hooks/use-fetch-activities.ts';
 import { WorkflowTriggerInboxIllustration } from '../../icons/workflow-trigger-inbox';
 import { Button } from '../../primitives/button';
 import { TestWorkflowFormType } from '../schema';
 import { TestWorkflowInstructions } from './test-workflow-instructions';
-import { ActivitySkeleton } from '@/components/activity/activity-skeleton';
-import { ActivityError } from '@/components/activity/activity-error';
-import { ActivityHeader } from '@/components/activity/activity-header';
-import { ActivityOverview } from '@/components/activity/components/activity-overview';
-import { ActivityLogs } from '@/components/activity/activity-logs';
-import { usePullActivity } from '@/hooks/use-pull-activity';
 
 type TestWorkflowLogsSidebarProps = {
   transactionId?: string;
   workflow?: WorkflowResponseDto;
 };
 
-export const TestWorkflowLogsSidebar = ({ transactionId, workflow }: TestWorkflowLogsSidebarProps) => {
+export const TestWorkflowLogsSidebar = (props: TestWorkflowLogsSidebarProps) => {
   const { control } = useFormContext<TestWorkflowFormType>();
   const [parentActivityId, setParentActivityId] = useState<string | undefined>(undefined);
   const [shouldRefetch, setShouldRefetch] = useState(true);
   const [showInstructions, setShowInstructions] = useState(false);
   const to = useWatch({ name: 'to', control });
   const payload = useWatch({ name: 'payload', control });
+  const [transactionId, setTransactionId] = useState<string | undefined>(props.transactionId);
 
   const {
     activities,
@@ -55,15 +55,19 @@ export const TestWorkflowLogsSidebar = ({ transactionId, workflow }: TestWorkflo
     }
   }, [activityId]);
 
-  // Reset refetch when transaction ID changes
+  const handleTransactionIdChange = useCallback((newTransactionId: string) => {
+    setTransactionId(newTransactionId);
+    setParentActivityId(undefined);
+  }, []);
+
   useEffect(() => {
-    if (!transactionId) {
+    if (!props.transactionId) {
       return;
     }
 
     setShouldRefetch(true);
-    setParentActivityId(undefined);
-  }, [transactionId]);
+    setTransactionId(props.transactionId);
+  }, [props.transactionId]);
 
   return (
     <aside className="flex h-full max-h-full flex-1 flex-col overflow-auto">
@@ -76,12 +80,16 @@ export const TestWorkflowLogsSidebar = ({ transactionId, workflow }: TestWorkflo
               <ActivityError />
             ) : (
               <React.Fragment key={activityId}>
-                <ActivityHeader title={activity.template?.name} className="h-[49px] border-t-0" />
+                <ActivityHeader
+                  className="h-[49px] border-t-0"
+                  activity={activity}
+                  onTransactionIdChange={handleTransactionIdChange}
+                />
                 <ActivityOverview activity={activity} />
                 <ActivityLogs activity={activity} onActivitySelect={setParentActivityId} />
               </React.Fragment>
             )}
-            {!workflow?.lastTriggeredAt && (
+            {!props.workflow?.lastTriggeredAt && (
               <div className="border-t border-neutral-100 p-3">
                 <div className="border-stroke-soft bg-bg-weak rounded-8 flex items-center justify-between gap-3 border p-3 py-2">
                   <div className="flex items-center gap-3">
@@ -117,7 +125,7 @@ export const TestWorkflowLogsSidebar = ({ transactionId, workflow }: TestWorkflo
       <TestWorkflowInstructions
         isOpen={showInstructions}
         onClose={() => setShowInstructions(false)}
-        workflow={workflow}
+        workflow={props.workflow}
         to={to}
         payload={payload}
       />

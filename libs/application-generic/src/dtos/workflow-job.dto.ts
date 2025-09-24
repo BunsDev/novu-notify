@@ -1,16 +1,14 @@
+import { DiscoverWorkflowOutput } from '@novu/framework/internal';
 import {
   AddressingTypeEnum,
   StatelessControls,
-  TriggerRecipientsPayload,
+  TriggerOverrides,
   TriggerRecipientSubscriber,
+  TriggerRecipientsPayload,
   TriggerRequestCategoryEnum,
   TriggerTenantContext,
 } from '@novu/shared';
-import { DiscoverWorkflowOutput } from '@novu/framework/internal';
-import {
-  IBulkJobParams,
-  IJobParams,
-} from '../services/queues/queue-base.service';
+import { IBulkJobParams, IJobParams } from '../services/queues/queue-base.service';
 
 export type AddressingBroadcast = {
   addressingType: AddressingTypeEnum.BROADCAST;
@@ -27,9 +25,11 @@ export type IWorkflowDataDto = {
   environmentId: string;
   organizationId: string;
   userId: string;
+  // TODO: remove optional flag after all the workers are migrated to use requestId NV-6475
+  requestId?: string;
   identifier: string;
-  payload: any; // eslint-disable-line @typescript-eslint/no-explicit-any
-  overrides: Record<string, Record<string, unknown>>;
+  payload: any;
+  overrides: TriggerOverrides;
   transactionId: string;
   actor?: TriggerRecipientSubscriber | null;
   tenant?: TriggerTenantContext | null;

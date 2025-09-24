@@ -1,12 +1,14 @@
-import { IsDefined, IsEnum, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
+import { NotificationTemplateEntity } from '@novu/dal';
 import {
   AddressingTypeEnum,
   StatelessControls,
-  TriggerRecipientsPayload,
+  TriggerOverrides,
   TriggerRecipientSubscriber,
+  TriggerRecipientsPayload,
   TriggerRequestCategoryEnum,
   TriggerTenantContext,
 } from '@novu/shared';
+import { IsDefined, IsEnum, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
 
 import { EnvironmentWithUserCommand } from '../../../shared/commands/project.command';
 
@@ -16,10 +18,10 @@ export class ParseEventRequestBaseCommand extends EnvironmentWithUserCommand {
   identifier: string;
 
   @IsDefined()
-  payload: any; // eslint-disable-line @typescript-eslint/no-explicit-any
+  payload: any;
 
   @IsDefined()
-  overrides: Record<string, Record<string, unknown>>;
+  overrides: TriggerOverrides;
 
   @IsString()
   @IsOptional()
@@ -50,6 +52,12 @@ export class ParseEventRequestBaseCommand extends EnvironmentWithUserCommand {
    * @optional
    */
   controls?: StatelessControls;
+
+  @IsString()
+  requestId: string;
+
+  @IsOptional()
+  workflow?: NotificationTemplateEntity;
 }
 
 export class ParseEventRequestMulticastCommand extends ParseEventRequestBaseCommand {

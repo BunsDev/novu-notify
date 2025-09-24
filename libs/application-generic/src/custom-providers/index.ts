@@ -1,9 +1,11 @@
+import { forwardRef } from '@nestjs/common';
 import { DalService } from '@novu/dal';
+import { PinoLogger } from 'nestjs-pino';
 import {
   AnalyticsService,
   CacheInMemoryProviderService,
   CacheService,
-  DistributedLockService,
+  ClickHouseService,
   FeatureFlagsService,
 } from '../services';
 
@@ -57,14 +59,11 @@ export const analyticsService = {
   },
 };
 
-export const distributedLockService = {
-  provide: DistributedLockService,
-  useFactory: async (): Promise<DistributedLockService> => {
-    const factoryCacheInMemoryProviderService = cacheInMemoryProviderService.useFactory();
-
-    const service = new DistributedLockService(factoryCacheInMemoryProviderService);
-
-    await service.initialize();
+export const clickHouseService = {
+  provide: ClickHouseService,
+  useFactory: async () => {
+    const service = new ClickHouseService();
+    await service.init();
 
     return service;
   },

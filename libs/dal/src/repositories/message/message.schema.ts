@@ -1,10 +1,8 @@
-import { ActorTypeEnum } from '@novu/shared';
+import { ActorTypeEnum, SeverityLevelEnum } from '@novu/shared';
 import mongoose, { Schema } from 'mongoose';
 
 import { schemaOptions } from '../schema-default.options';
 import { MessageDBModel } from './message.entity';
-
-const mongooseDelete = require('mongoose-delete');
 
 const messageSchema = new Schema<MessageDBModel>(
   {
@@ -87,7 +85,13 @@ const messageSchema = new Schema<MessageDBModel>(
       type: Schema.Types.Boolean,
       default: false,
     },
+    snoozedUntil: Schema.Types.Date,
+    deliveredAt: {
+      type: [Schema.Types.Date],
+      default: undefined,
+    },
     lastSeenDate: Schema.Types.Date,
+    firstSeenDate: Schema.Types.Date,
     lastReadDate: Schema.Types.Date,
     archivedAt: Schema.Types.Date,
     status: {
@@ -96,7 +100,6 @@ const messageSchema = new Schema<MessageDBModel>(
     },
     errorId: Schema.Types.String,
     errorText: Schema.Types.String,
-    providerResponse: Schema.Types.Mixed,
     transactionId: {
       type: Schema.Types.String,
     },
@@ -117,9 +120,57 @@ const messageSchema = new Schema<MessageDBModel>(
     },
     tags: [Schema.Types.String],
     avatar: Schema.Types.String,
+    severity: {
+      type: Schema.Types.String,
+      enum: SeverityLevelEnum,
+      default: SeverityLevelEnum.NONE,
+    },
+    channelData: {
+      type: [
+        {
+          _id: false,
+          identifier: {
+            type: Schema.Types.String,
+            required: true,
+          },
+          type: {
+            type: Schema.Types.String,
+            required: true,
+          },
+          endpoint: {
+            type: Schema.Types.Mixed,
+            required: true,
+          },
+          token: {
+            type: Schema.Types.String,
+            required: false,
+          },
+        },
+      ],
+      default: undefined,
+    },
   },
   schemaOptions
 );
+
+/**
+ * todo: all the pre hooks should be removed after all the soft deletes are removed task nv-5688
+ */
+messageSchema.pre('find', function filterDeletedFind() {
+  this.where({ deleted: { $ne: true } });
+});
+messageSchema.pre('findOne', function filterDeletedFindOne() {
+  this.where({ deleted: { $ne: true } });
+});
+messageSchema.pre('findOneAndUpdate', function filterDeletedFindOneAndUpdate() {
+  this.where({ deleted: { $ne: true } });
+});
+messageSchema.pre('countDocuments', function filterDeletedCountDocuments() {
+  this.where({ deleted: { $ne: true } });
+});
+messageSchema.pre('count', function filterDeletedCount() {
+  this.where({ deleted: { $ne: true } });
+});
 
 messageSchema.virtual('subscriber', {
   ref: 'Subscriber',
@@ -140,24 +191,6 @@ messageSchema.virtual('actorSubscriber', {
   localField: '_actorId',
   foreignField: '_id',
   justOne: true,
-});
-
-messageSchema.plugin(mongooseDelete, { deletedAt: true, deletedBy: true, overrideMethods: 'all' });
-
-/*
- * This index was initially created to optimize:
- *
- * Path : apps/webhook/src/webhooks/usecases/webhook/webhook.usecase.ts
- * Context : parseEvent()
- *  Query : findOne({
- *    identifier: messageIdentifier,
- *    _environmentId: command.environmentId,
- *    _organizationId: command.organizationId,
- *  });
- */
-messageSchema.index({
-  identifier: 1,
-  _environmentId: 1,
 });
 
 /*
@@ -211,8 +244,10 @@ messageSchema.index({
   _subscriberId: 1,
   _environmentId: 1,
   channel: 1,
-  seen: 1,
   read: 1,
+  archived: 1,
+  seen: 1,
+  snoozedUntil: 1,
   createdAt: -1,
 });
 
@@ -244,7 +279,7 @@ messageSchema.index({
  * });
  *
  *
- * Path: apps/api/src/app/events/usecases/message-matcher/message-matcher.usecase.ts
+ * Path: libs/application-generic/src/usecases/conditions-filter/conditions-filter.usecase.ts
  * Context: processPreviousStep
  * Query: findOne({
  *   _jobId: job._id,
@@ -292,6 +327,9 @@ messageSchema.index({
  */
 messageSchema.index({ createdAt: 1 });
 
+/**
+ * todo: remove deleted field after all the soft deletes are removed task nv-5688
+ */
 messageSchema.index({ _environmentId: 1, _jobId: 1, deleted: 1 });
 
 export const Message =

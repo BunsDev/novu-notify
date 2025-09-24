@@ -1,5 +1,5 @@
-import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
 import { ChannelTypeEnum, ProvidersIdEnum } from '@novu/shared';
+import { IsBoolean, IsEnum, IsOptional } from 'class-validator';
 
 import { EnvironmentWithUserCommand } from '../../commands';
 
@@ -18,6 +18,10 @@ export class GetDecryptedIntegrationsCommand extends EnvironmentWithUserCommand 
 
   @IsOptional()
   providerId?: ProvidersIdEnum;
+
+  @IsBoolean()
+  @IsOptional()
+  returnCredentials?: boolean;
 }
 
 export class GetEnvironmentDecryptedIntegrationsCommand extends EnvironmentWithUserCommand {
@@ -35,4 +39,8 @@ export class GetEnvironmentDecryptedIntegrationsCommand extends EnvironmentWithU
 
   @IsOptional()
   providerId?: ProvidersIdEnum;
+
+  @IsBoolean()
+  @IsOptional()
+  returnCredentials?: boolean;
 }

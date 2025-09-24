@@ -27,7 +27,12 @@ export type EnvironmentsCreateMutationData =
   operations.EnvironmentsControllerV1CreateEnvironmentResponse;
 
 /**
- * Create environment
+ * Create an environment
+ *
+ * @remarks
+ * Creates a new environment within the current organization.
+ *     Environments allow you to manage different stages of your application development lifecycle.
+ *     Each environment has its own set of API keys and configurations.
  */
 export function useEnvironmentsCreateMutation(
   options?: MutationHookOptions<

@@ -22,11 +22,11 @@ export type SubscriberResponseDto = {
   /**
    * The first name of the subscriber.
    */
-  firstName?: string | undefined;
+  firstName?: string | null | undefined;
   /**
    * The last name of the subscriber.
    */
-  lastName?: string | undefined;
+  lastName?: string | null | undefined;
   /**
    * The email address of the subscriber.
    */
@@ -34,19 +34,15 @@ export type SubscriberResponseDto = {
   /**
    * The phone number of the subscriber.
    */
-  phone?: string | undefined;
+  phone?: string | null | undefined;
   /**
    * The URL of the subscriber's avatar image.
    */
-  avatar?: string | undefined;
+  avatar?: string | null | undefined;
   /**
    * The locale setting of the subscriber, indicating their preferred language or region.
    */
-  locale?: string | undefined;
-  /**
-   * The identifier used to create this subscriber, which typically corresponds to the user ID in your system.
-   */
-  subscriberId: string;
+  locale?: string | null | undefined;
   /**
    * An array of channel settings associated with the subscriber.
    */
@@ -60,11 +56,27 @@ export type SubscriberResponseDto = {
   /**
    * Indicates whether the subscriber is currently online.
    */
-  isOnline?: boolean | undefined;
+  isOnline?: boolean | null | undefined;
   /**
    * The timestamp indicating when the subscriber was last online, in ISO 8601 format.
    */
-  lastOnlineAt?: string | undefined;
+  lastOnlineAt?: string | null | undefined;
+  /**
+   * The version of the subscriber document.
+   */
+  v?: number | undefined;
+  /**
+   * Additional custom data for the subscriber
+   */
+  data?: { [k: string]: any } | null | undefined;
+  /**
+   * Timezone of the subscriber
+   */
+  timezone?: string | null | undefined;
+  /**
+   * The identifier used to create this subscriber, which typically corresponds to the user ID in your system.
+   */
+  subscriberId: string;
   /**
    * The unique identifier of the organization to which the subscriber belongs.
    */
@@ -85,18 +97,6 @@ export type SubscriberResponseDto = {
    * The timestamp indicating when the subscriber was last updated, in ISO 8601 format.
    */
   updatedAt: string;
-  /**
-   * The version of the subscriber document.
-   */
-  v?: number | undefined;
-  /**
-   * Additional custom data for the subscriber
-   */
-  data?: { [k: string]: any } | null | undefined;
-  /**
-   * Timezone of the subscriber
-   */
-  timezone?: string | undefined;
 };
 
 /** @internal */
@@ -106,56 +106,56 @@ export const SubscriberResponseDto$inboundSchema: z.ZodType<
   unknown
 > = z.object({
   _id: z.string().optional(),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
+  firstName: z.nullable(z.string()).optional(),
+  lastName: z.nullable(z.string()).optional(),
   email: z.nullable(z.string()).optional(),
-  phone: z.string().optional(),
-  avatar: z.string().optional(),
-  locale: z.string().optional(),
-  subscriberId: z.string(),
+  phone: z.nullable(z.string()).optional(),
+  avatar: z.nullable(z.string()).optional(),
+  locale: z.nullable(z.string()).optional(),
   channels: z.array(ChannelSettingsDto$inboundSchema).optional(),
   topics: z.array(z.string()).optional(),
-  isOnline: z.boolean().optional(),
-  lastOnlineAt: z.string().optional(),
+  isOnline: z.nullable(z.boolean()).optional(),
+  lastOnlineAt: z.nullable(z.string()).optional(),
+  __v: z.number().optional(),
+  data: z.nullable(z.record(z.any())).optional(),
+  timezone: z.nullable(z.string()).optional(),
+  subscriberId: z.string(),
   _organizationId: z.string(),
   _environmentId: z.string(),
   deleted: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
-  __v: z.number().optional(),
-  data: z.nullable(z.record(z.any())).optional(),
-  timezone: z.string().optional(),
 }).transform((v) => {
   return remap$(v, {
     "_id": "id",
+    "__v": "v",
     "_organizationId": "organizationId",
     "_environmentId": "environmentId",
-    "__v": "v",
   });
 });
 
 /** @internal */
 export type SubscriberResponseDto$Outbound = {
   _id?: string | undefined;
-  firstName?: string | undefined;
-  lastName?: string | undefined;
+  firstName?: string | null | undefined;
+  lastName?: string | null | undefined;
   email?: string | null | undefined;
-  phone?: string | undefined;
-  avatar?: string | undefined;
-  locale?: string | undefined;
-  subscriberId: string;
+  phone?: string | null | undefined;
+  avatar?: string | null | undefined;
+  locale?: string | null | undefined;
   channels?: Array<ChannelSettingsDto$Outbound> | undefined;
   topics?: Array<string> | undefined;
-  isOnline?: boolean | undefined;
-  lastOnlineAt?: string | undefined;
+  isOnline?: boolean | null | undefined;
+  lastOnlineAt?: string | null | undefined;
+  __v?: number | undefined;
+  data?: { [k: string]: any } | null | undefined;
+  timezone?: string | null | undefined;
+  subscriberId: string;
   _organizationId: string;
   _environmentId: string;
   deleted: boolean;
   createdAt: string;
   updatedAt: string;
-  __v?: number | undefined;
-  data?: { [k: string]: any } | null | undefined;
-  timezone?: string | undefined;
 };
 
 /** @internal */
@@ -165,31 +165,31 @@ export const SubscriberResponseDto$outboundSchema: z.ZodType<
   SubscriberResponseDto
 > = z.object({
   id: z.string().optional(),
-  firstName: z.string().optional(),
-  lastName: z.string().optional(),
+  firstName: z.nullable(z.string()).optional(),
+  lastName: z.nullable(z.string()).optional(),
   email: z.nullable(z.string()).optional(),
-  phone: z.string().optional(),
-  avatar: z.string().optional(),
-  locale: z.string().optional(),
-  subscriberId: z.string(),
+  phone: z.nullable(z.string()).optional(),
+  avatar: z.nullable(z.string()).optional(),
+  locale: z.nullable(z.string()).optional(),
   channels: z.array(ChannelSettingsDto$outboundSchema).optional(),
   topics: z.array(z.string()).optional(),
-  isOnline: z.boolean().optional(),
-  lastOnlineAt: z.string().optional(),
+  isOnline: z.nullable(z.boolean()).optional(),
+  lastOnlineAt: z.nullable(z.string()).optional(),
+  v: z.number().optional(),
+  data: z.nullable(z.record(z.any())).optional(),
+  timezone: z.nullable(z.string()).optional(),
+  subscriberId: z.string(),
   organizationId: z.string(),
   environmentId: z.string(),
   deleted: z.boolean(),
   createdAt: z.string(),
   updatedAt: z.string(),
-  v: z.number().optional(),
-  data: z.nullable(z.record(z.any())).optional(),
-  timezone: z.string().optional(),
 }).transform((v) => {
   return remap$(v, {
     id: "_id",
+    v: "__v",
     organizationId: "_organizationId",
     environmentId: "_environmentId",
-    v: "__v",
   });
 });
 

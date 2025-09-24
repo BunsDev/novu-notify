@@ -9,6 +9,12 @@ import { ClosedEnum } from "../../types/enums.js";
 import { Result as SafeParseResult } from "../../types/fp.js";
 import { SDKValidationError } from "../errors/sdkvalidationerror.js";
 import {
+  ConfigurationsDto,
+  ConfigurationsDto$inboundSchema,
+  ConfigurationsDto$Outbound,
+  ConfigurationsDto$outboundSchema,
+} from "./configurationsdto.js";
+import {
   CredentialsDto,
   CredentialsDto$inboundSchema,
   CredentialsDto$Outbound,
@@ -24,7 +30,7 @@ import {
 /**
  * The channel type for the integration, which defines how the integration communicates (e.g., email, SMS).
  */
-export const IntegrationResponseDtoChannel = {
+export const Channel = {
   InApp: "in_app",
   Email: "email",
   Sms: "sms",
@@ -34,9 +40,7 @@ export const IntegrationResponseDtoChannel = {
 /**
  * The channel type for the integration, which defines how the integration communicates (e.g., email, SMS).
  */
-export type IntegrationResponseDtoChannel = ClosedEnum<
-  typeof IntegrationResponseDtoChannel
->;
+export type Channel = ClosedEnum<typeof Channel>;
 
 export type IntegrationResponseDto = {
   /**
@@ -66,11 +70,15 @@ export type IntegrationResponseDto = {
   /**
    * The channel type for the integration, which defines how the integration communicates (e.g., email, SMS).
    */
-  channel: IntegrationResponseDtoChannel;
+  channel: Channel;
   /**
    * The credentials required for the integration to function, including API keys and other sensitive information.
    */
   credentials: CredentialsDto;
+  /**
+   * The configurations required for enabling the additional configurations of the integration.
+   */
+  configurations?: ConfigurationsDto | undefined;
   /**
    * Indicates whether the integration is currently active. An active integration will process events and messages.
    */
@@ -98,24 +106,22 @@ export type IntegrationResponseDto = {
 };
 
 /** @internal */
-export const IntegrationResponseDtoChannel$inboundSchema: z.ZodNativeEnum<
-  typeof IntegrationResponseDtoChannel
-> = z.nativeEnum(IntegrationResponseDtoChannel);
+export const Channel$inboundSchema: z.ZodNativeEnum<typeof Channel> = z
+  .nativeEnum(Channel);
 
 /** @internal */
-export const IntegrationResponseDtoChannel$outboundSchema: z.ZodNativeEnum<
-  typeof IntegrationResponseDtoChannel
-> = IntegrationResponseDtoChannel$inboundSchema;
+export const Channel$outboundSchema: z.ZodNativeEnum<typeof Channel> =
+  Channel$inboundSchema;
 
 /**
  * @internal
  * @deprecated This namespace will be removed in future versions. Use schemas and types that are exported directly from this module.
  */
-export namespace IntegrationResponseDtoChannel$ {
-  /** @deprecated use `IntegrationResponseDtoChannel$inboundSchema` instead. */
-  export const inboundSchema = IntegrationResponseDtoChannel$inboundSchema;
-  /** @deprecated use `IntegrationResponseDtoChannel$outboundSchema` instead. */
-  export const outboundSchema = IntegrationResponseDtoChannel$outboundSchema;
+export namespace Channel$ {
+  /** @deprecated use `Channel$inboundSchema` instead. */
+  export const inboundSchema = Channel$inboundSchema;
+  /** @deprecated use `Channel$outboundSchema` instead. */
+  export const outboundSchema = Channel$outboundSchema;
 }
 
 /** @internal */
@@ -130,8 +136,9 @@ export const IntegrationResponseDto$inboundSchema: z.ZodType<
   name: z.string(),
   identifier: z.string(),
   providerId: z.string(),
-  channel: IntegrationResponseDtoChannel$inboundSchema,
+  channel: Channel$inboundSchema,
   credentials: CredentialsDto$inboundSchema,
+  configurations: ConfigurationsDto$inboundSchema.optional(),
   active: z.boolean(),
   deleted: z.boolean(),
   deletedAt: z.string().optional(),
@@ -156,6 +163,7 @@ export type IntegrationResponseDto$Outbound = {
   providerId: string;
   channel: string;
   credentials: CredentialsDto$Outbound;
+  configurations?: ConfigurationsDto$Outbound | undefined;
   active: boolean;
   deleted: boolean;
   deletedAt?: string | undefined;
@@ -176,8 +184,9 @@ export const IntegrationResponseDto$outboundSchema: z.ZodType<
   name: z.string(),
   identifier: z.string(),
   providerId: z.string(),
-  channel: IntegrationResponseDtoChannel$outboundSchema,
+  channel: Channel$outboundSchema,
   credentials: CredentialsDto$outboundSchema,
+  configurations: ConfigurationsDto$outboundSchema.optional(),
   active: z.boolean(),
   deleted: z.boolean(),
   deletedAt: z.string().optional(),

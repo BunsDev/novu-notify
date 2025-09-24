@@ -1,19 +1,13 @@
-import { createHash } from './crypto';
-import {
-  BLUEPRINT_IDENTIFIER,
-  CacheKeyPrefixEnum,
-  CacheKeyTypeEnum,
-  IdentifierPrefixEnum,
-  ServiceConfigIdentifierEnum,
-} from './identifiers';
+import { ResourceEnum } from '@novu/shared';
+import { buildUnscopedKey } from './builder.base';
 import {
   buildEnvironmentScopedKey,
   buildEnvironmentScopedKeyById,
   buildOrganizationScopedKey,
   buildOrganizationScopedKeyById,
-  buildServiceConfigKey,
 } from './builder.scoped';
-import { buildUnscopedKey } from './builder.base';
+import { createHash } from './crypto';
+import { BLUEPRINT_IDENTIFIER, CacheKeyPrefixEnum, CacheKeyTypeEnum, IdentifierPrefixEnum } from './identifiers';
 
 export const buildSubscriberKey = ({
   subscriberId,
@@ -118,21 +112,18 @@ export const buildEvaluateApiRateLimitKey = ({
 export const buildUsageKey = ({
   _organizationId,
   resourceType,
-  periodStart,
-  periodEnd,
 }: {
   _organizationId: string;
-  resourceType: string;
-  periodStart: number;
-  periodEnd: number;
-}): string =>
-  buildOrganizationScopedKeyById({
+  resourceType: ResourceEnum;
+}): string => {
+  return buildOrganizationScopedKeyById({
     type: CacheKeyTypeEnum.ENTITY,
     keyEntity: CacheKeyPrefixEnum.USAGE,
-    identifierPrefix: IdentifierPrefixEnum.RESOURCE_TYPE,
-    identifier: `${resourceType}_${periodStart}_${periodEnd}`,
     organizationId: _organizationId,
+    identifierPrefix: IdentifierPrefixEnum.RESOURCE_TYPE,
+    identifier: resourceType,
   });
+};
 
 export const buildSubscriptionKey = ({ organizationId }: { organizationId: string }): string =>
   buildOrganizationScopedKey({

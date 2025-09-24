@@ -11,7 +11,7 @@ import {
   TextAlignEnum,
 } from '@novu/shared';
 import { SubscriberResponseDto } from '../../subscribers/dtos';
-import { WorkflowResponse } from '../../workflows-v1/dto/workflow-response.dto';
+import { WorkflowResponse } from '../../workflows-v1/dtos/workflow-response.dto';
 
 class EmailBlockStyles {
   @ApiProperty({
@@ -123,7 +123,7 @@ export class MessageCTA implements IMessageCTA {
   })
   type: ChannelCTATypeEnum;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Data associated with the call to action',
     type: MessageCTAData,
   })
@@ -144,7 +144,8 @@ export class MessageResponseDto implements IMessage {
   })
   _id: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
+    nullable: true,
     type: String,
     description: 'Template ID associated with the message',
   })
@@ -156,7 +157,8 @@ export class MessageResponseDto implements IMessage {
   })
   _environmentId: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
+    nullable: true,
     type: String,
     description: 'Message template ID',
   })
@@ -205,6 +207,13 @@ export class MessageResponseDto implements IMessage {
   createdAt: string;
 
   @ApiPropertyOptional({
+    type: [String],
+    description:
+      'Array of delivery dates for the message, if the message has multiple delivery dates, for example after being snoozed',
+  })
+  deliveredAt?: string[];
+
+  @ApiPropertyOptional({
     type: String,
     description: 'Last seen date of the message, if available',
   })
@@ -216,10 +225,14 @@ export class MessageResponseDto implements IMessage {
   })
   lastReadDate?: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
+    nullable: true,
     oneOf: [
       {
-        $ref: getSchemaPath(EmailBlock),
+        type: 'array',
+        items: {
+          $ref: getSchemaPath(EmailBlock),
+        },
       },
       {
         type: 'string',
@@ -260,6 +273,12 @@ export class MessageResponseDto implements IMessage {
     description: 'Indicates if the message has been seen',
   })
   seen: boolean;
+
+  @ApiPropertyOptional({
+    type: String,
+    description: 'Date when the message will be unsnoozed',
+  })
+  snoozedUntil?: string;
 
   @ApiPropertyOptional({
     type: String,

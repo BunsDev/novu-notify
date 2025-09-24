@@ -2,17 +2,16 @@ import { Module } from '@nestjs/common';
 import {
   analyticsService,
   BulkCreateExecutionDetails,
-  cacheService,
   ComputeJobWaitDurationService,
   CreateExecutionDetails,
-  createNestLoggingModuleOptions,
   CreateNotificationJobs,
   CreateOrUpdateSubscriberUseCase,
   CreateTenant,
+  cacheService,
+  clickHouseService,
+  createNestLoggingModuleOptions,
   DalServiceHealthIndicator,
   DigestFilterSteps,
-  distributedLockService,
-  EventsDistributedLockService,
   ExecuteBridgeRequest,
   featureFlagsService,
   GetDecryptedSecretKey,
@@ -22,11 +21,14 @@ import {
   MetricsModule,
   ProcessTenant,
   QueuesModule,
+  StepRunRepository,
   StorageHelperService,
   storageService,
+  TraceLogRepository,
   UpdateSubscriber,
   UpdateSubscriberChannel,
   UpdateTenant,
+  WorkflowRunRepository,
 } from '@novu/application-generic';
 import {
   ControlValuesRepository,
@@ -77,11 +79,21 @@ const dalService = {
   useFactory: async () => {
     const service = new DalService();
 
-    await service.connect(process.env.MONGO_URL);
+    await service.connect(process.env.MONGO_URL!);
 
     return service;
   },
 };
+
+const ANALYTICS_PROVIDERS = [
+  // Repositories
+  TraceLogRepository,
+  StepRunRepository,
+  WorkflowRunRepository,
+
+  // Services
+  clickHouseService,
+];
 
 const PROVIDERS = [
   analyticsService,
@@ -94,8 +106,6 @@ const PROVIDERS = [
   dalService,
   DalServiceHealthIndicator,
   DigestFilterSteps,
-  distributedLockService,
-  EventsDistributedLockService,
   featureFlagsService,
   InvalidateCacheService,
   StorageHelperService,
@@ -110,6 +120,7 @@ const PROVIDERS = [
   ActiveJobsMetricService,
   ExecuteBridgeRequest,
   GetDecryptedSecretKey,
+  ...ANALYTICS_PROVIDERS,
 ];
 
 @Module({

@@ -11,9 +11,10 @@ import {
   OrdinalValueEnum,
   ProvidersIdEnum,
   ProvidersIdEnumConst,
+  ResourceOriginEnum,
+  SeverityLevelEnum,
   StepTypeEnum,
   TriggerTypeEnum,
-  WorkflowOriginEnum,
 } from '@novu/shared';
 import { IsArray, IsEnum, IsNumber, IsOptional, IsString } from 'class-validator';
 import { StepFilterDto } from '../../shared/dtos/step-filter-dto';
@@ -24,7 +25,15 @@ export class DigestTimedConfigDto {
   @IsString()
   atTime?: string;
 
-  @ApiPropertyOptional({ description: 'Days of the week for the digest', type: [String], enum: DaysEnum })
+  @ApiPropertyOptional({
+    description: 'Days of the week for the digest',
+    type: 'array',
+    items: {
+      type: 'string',
+      enum: Object.values(DaysEnum),
+    },
+    enumName: 'DaysEnum',
+  })
   @IsOptional()
   @IsArray()
   @IsEnum(DaysEnum, { each: true })
@@ -187,15 +196,16 @@ export class ActivityNotificationExecutionDetailResponseDto {
   @ApiProperty({ description: 'Whether the execution is a test or not', type: Boolean })
   isTest: boolean;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     enum: [...new Set([...Object.values(ProvidersIdEnumConst).flatMap((enumObj) => Object.values(enumObj))])],
     enumName: 'ProvidersIdEnum',
     description: 'Provider ID of the execution',
     type: String,
   })
   @IsString()
+  @IsOptional()
   @IsEnum(ProvidersIdEnumConst)
-  providerId: ProvidersIdEnum;
+  providerId?: ProvidersIdEnum;
 
   @ApiPropertyOptional({ description: 'Raw data of the execution', type: String })
   raw?: string | null;
@@ -265,6 +275,12 @@ export class ActivityNotificationJobResponseDto {
 
   @ApiPropertyOptional({ description: 'Updated time of the notification', type: String })
   updatedAt?: string;
+
+  @ApiPropertyOptional({
+    description: 'The number of times the digest/delay job has been extended to align with the subscribers schedule',
+    type: Number,
+  })
+  scheduleExtensionsCount?: number;
 }
 
 // Activity Notification Subscriber Response DTO
@@ -327,20 +343,28 @@ export class ActivityNotificationTemplateResponseDto {
   name: string;
 
   @ApiProperty({
-    enum: [...Object.values(WorkflowOriginEnum)],
-    enumName: 'WorkflowOriginEnum',
+    enum: [...Object.values(ResourceOriginEnum)],
+    enumName: 'ResourceOriginEnum',
     description: 'Origin of the workflow',
     type: String,
   })
   @IsString()
-  @IsEnum(WorkflowOriginEnum)
-  origin?: WorkflowOriginEnum;
+  @IsEnum(ResourceOriginEnum)
+  origin?: ResourceOriginEnum;
 
   @ApiProperty({
     description: 'Triggers of the template',
     type: [NotificationTriggerDto],
   })
   triggers: NotificationTriggerDto[];
+}
+
+export class ActivityTopicDto {
+  @ApiProperty({ description: 'Internal Topic ID of the notification', type: String })
+  _topicId: string;
+
+  @ApiProperty({ description: 'Topic Key of the notification', type: String })
+  topicKey: string;
 }
 
 // Activity Notification Response DTO
@@ -401,9 +425,11 @@ export class ActivityNotificationResponseDto {
 
   @ApiPropertyOptional({
     description: 'Payload of the notification',
-    type: Object, // Adjust type as necessary
+    type: 'object',
+    required: false,
+    additionalProperties: true,
   })
-  payload?: any; // Added to align with NotificationEntity
+  payload?: Record<string, unknown>; // Added to align with NotificationEntity
 
   @ApiPropertyOptional({
     description: 'Tags associated with the notification',
@@ -413,16 +439,34 @@ export class ActivityNotificationResponseDto {
 
   @ApiPropertyOptional({
     description: 'Controls associated with the notification',
-    type: Object, // Adjust type as necessary
+    type: 'object',
+    required: false,
+    additionalProperties: true,
   })
-  controls?: any; // Added to align with NotificationEntity
+  controls?: Record<string, unknown>; // Added to align with NotificationEntity
 
   @ApiPropertyOptional({
     description: 'To field for subscriber definition',
-    type: Object, // Adjust type as necessary
+    type: 'object',
+    required: false,
+    additionalProperties: true,
   })
-  to?: any; // Added to align with NotificationEntity
+  to?: Record<string, unknown>; // Added to align with NotificationEntity
+
+  @ApiPropertyOptional({ description: 'Topics of the notification', type: [ActivityTopicDto] })
+  topics?: ActivityTopicDto[];
+
+  @ApiPropertyOptional({
+    description: 'Severity of the notification',
+    enum: [...Object.values(SeverityLevelEnum)],
+    enumName: 'SeverityLevelEnum',
+  })
+  severity: SeverityLevelEnum;
+
+  @ApiPropertyOptional({ description: 'Criticality of the notification', type: Boolean })
+  critical?: boolean;
 }
+
 // Activities Response DTO
 export class ActivitiesResponseDto {
   @ApiProperty({ description: 'Indicates if there are more activities in the result set', type: Boolean })

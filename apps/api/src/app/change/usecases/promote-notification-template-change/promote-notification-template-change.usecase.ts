@@ -1,4 +1,14 @@
-import { forwardRef, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { forwardRef, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  buildGroupedBlueprintsKey,
+  DeletePreferencesCommand,
+  DeletePreferencesUseCase,
+  InvalidateCacheService,
+  PinoLogger,
+  UpsertPreferences,
+  UpsertUserWorkflowPreferencesCommand,
+  UpsertWorkflowPreferencesCommand,
+} from '@novu/application-generic';
 import {
   ChangeRepository,
   EnvironmentRepository,
@@ -16,17 +26,9 @@ import {
   IPreferenceChannels,
   PreferencesTypeEnum,
 } from '@novu/shared';
-import {
-  buildGroupedBlueprintsKey,
-  DeletePreferencesCommand,
-  DeletePreferencesUseCase,
-  InvalidateCacheService,
-  UpsertPreferences,
-  UpsertUserWorkflowPreferencesCommand,
-  UpsertWorkflowPreferencesCommand,
-} from '@novu/application-generic';
 import { ApplyChange, ApplyChangeCommand } from '../apply-change';
 import { PromoteTypeChangeCommand } from '../promote-type-change.command';
+import { INotificationTemplateChangeService } from '../shared';
 
 /**
  * Promote a notification template change to a workflow
@@ -38,7 +40,7 @@ import { PromoteTypeChangeCommand } from '../promote-type-change.command';
  * - DeleteWorkflow
  */
 @Injectable()
-export class PromoteNotificationTemplateChange {
+export class PromoteNotificationTemplateChange implements INotificationTemplateChangeService {
   constructor(
     private invalidateCache: InvalidateCacheService,
     private notificationTemplateRepository: NotificationTemplateRepository,
@@ -48,8 +50,11 @@ export class PromoteNotificationTemplateChange {
     @Inject(forwardRef(() => ApplyChange)) private applyChange: ApplyChange,
     private changeRepository: ChangeRepository,
     private upsertPreferences: UpsertPreferences,
-    private deletePreferences: DeletePreferencesUseCase
-  ) {}
+    private deletePreferences: DeletePreferencesUseCase,
+    private logger: PinoLogger
+  ) {
+    this.logger.setContext(this.constructor.name);
+  }
 
   async execute(command: PromoteTypeChangeCommand) {
     await this.invalidateBlueprints(command);
@@ -79,7 +84,6 @@ export class PromoteNotificationTemplateChange {
       });
 
       if (step.variants && step.variants.length > 0) {
-        // eslint-disable-next-line no-param-reassign
         step.variants = step.variants
           ?.map(mapNewVariantItem)
           .filter((variant): variant is NotificationStepData => variant !== undefined);
@@ -92,7 +96,6 @@ export class PromoteNotificationTemplateChange {
       }
 
       if (step?._templateId && oldMessage._id) {
-        // eslint-disable-next-line no-param-reassign
         step._templateId = oldMessage._id;
       }
 
@@ -111,7 +114,6 @@ export class PromoteNotificationTemplateChange {
       }
 
       if (step?._templateId && oldMessage._id) {
-        // eslint-disable-next-line no-param-reassign
         step._templateId = oldMessage._id;
       }
 
@@ -123,7 +125,7 @@ export class PromoteNotificationTemplateChange {
       : [];
 
     if (missingMessages.length > 0 && steps.length > 0 && item) {
-      Logger.error(
+      this.logger.error(
         `Message templates with ids ${missingMessages.join(', ')} are missing for notification template ${item._id}`
       );
     }

@@ -1,7 +1,9 @@
-import { WorkflowOriginEnum, JSONSchemaDto, StepTypeEnum } from '@novu/shared';
-import { NotificationTemplateEntity } from '@novu/dal';
 import { EnvironmentWithUserObjectCommand } from '@novu/application-generic';
-import { IsEnum, IsObject, IsDefined, IsString, IsOptional } from 'class-validator';
+import { NotificationTemplateEntity } from '@novu/dal';
+import { ResourceOriginEnum, StepTypeEnum } from '@novu/shared';
+import { IsDefined, IsEnum, IsObject, IsOptional, IsString } from 'class-validator';
+import { JSONSchemaDto } from '../../../shared/dtos/json-schema.dto';
+import { IOptimisticStepInfo } from '../build-variable-schema/build-available-variable-schema.command';
 
 export class BuildStepIssuesCommand extends EnvironmentWithUserObjectCommand {
   /**
@@ -9,8 +11,8 @@ export class BuildStepIssuesCommand extends EnvironmentWithUserObjectCommand {
    * before workflow creation
    */
   @IsDefined()
-  @IsEnum(WorkflowOriginEnum)
-  workflowOrigin: WorkflowOriginEnum;
+  @IsEnum(ResourceOriginEnum)
+  workflowOrigin: ResourceOriginEnum;
 
   @IsOptional()
   workflow?: NotificationTemplateEntity;
@@ -30,4 +32,11 @@ export class BuildStepIssuesCommand extends EnvironmentWithUserObjectCommand {
   @IsObject()
   @IsDefined()
   controlSchema: JSONSchemaDto;
+
+  /**
+   * Optimistic step information for sync scenarios where steps aren't persisted yet
+   * but need to be considered for variable schema building
+   */
+  @IsOptional()
+  optimisticSteps?: IOptimisticStepInfo[];
 }

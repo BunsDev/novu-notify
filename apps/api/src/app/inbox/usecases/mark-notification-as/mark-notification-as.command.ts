@@ -1,4 +1,4 @@
-import { IsBoolean, IsOptional, IsDefined, IsMongoId } from 'class-validator';
+import { IsBoolean, IsDate, IsDefined, IsMongoId, IsOptional } from 'class-validator';
 
 import { EnvironmentWithSubscriber } from '../../../shared/commands/project.command';
 
@@ -14,4 +14,8 @@ export class MarkNotificationAsCommand extends EnvironmentWithSubscriber {
   @IsOptional()
   @IsBoolean()
   readonly archived?: boolean;
+
+  @IsOptional()
+  @IsDate()
+  readonly snoozedUntil?: Date | null;
 }

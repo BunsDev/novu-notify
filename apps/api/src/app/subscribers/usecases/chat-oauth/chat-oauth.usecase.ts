@@ -1,11 +1,9 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-
-import { ChannelTypeEnum } from '@novu/stateless';
-import { IntegrationEntity, IntegrationRepository, EnvironmentRepository, ICredentialsEntity } from '@novu/dal';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { createHash } from '@novu/application-generic';
+import { EnvironmentRepository, ICredentialsEntity, IntegrationEntity, IntegrationRepository } from '@novu/dal';
+import { ChannelTypeEnum } from '@novu/stateless';
 
 import { ChatOauthCommand } from './chat-oauth.command';
-import { ApiException } from '../../../shared/exceptions/api.exception';
 
 @Injectable()
 export class ChatOauth {
@@ -41,7 +39,9 @@ export class ChatOauth {
   }) {
     if (credentialHmac) {
       if (!externalHmacHash) {
-        throw new ApiException('Hmac is enabled on the integration, please provide a HMAC hash on the request params');
+        throw new BadRequestException(
+          'Hmac is enabled on the integration, please provide a HMAC hash on the request params'
+        );
       }
 
       const apiKey = await this.getEnvironmentApiKey(environmentId);
@@ -134,6 +134,6 @@ export function validateEncryption({
 }) {
   const hmacHash = createHash(apiKey, subscriberId);
   if (hmacHash !== externalHmacHash) {
-    throw new ApiException('Hmac is enabled on the integration, please provide a valid HMAC hash');
+    throw new BadRequestException('Hmac is enabled on the integration, please provide a valid HMAC hash');
   }
 }

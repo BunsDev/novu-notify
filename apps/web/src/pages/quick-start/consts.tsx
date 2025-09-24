@@ -2,9 +2,7 @@ import React, { Dispatch } from 'react';
 import { Stack } from '@mantine/core';
 import { NavigateFunction } from 'react-router-dom';
 import { ChannelTypeEnum, UTM_CAMPAIGN_QUERY_PARAM } from '@novu/shared';
-import { Bell, Chat, Mail, Mobile, Sms } from '@novu/design-system';
 
-import { ROUTES } from '../../constants/routes';
 import { WIDGET_EMBED_PATH } from '../../config';
 
 export const onBoardingSubscriberId = 'on-boarding-subscriber-id-123';
@@ -15,7 +13,6 @@ export const APPLICATION_IDENTIFIER = '<APPLICATION_IDENTIFIER>';
 export const API_KEY = '<API_KEY>';
 export const BACKEND_API_URL = '<BACKEND_API_URL>';
 export const BACKEND_SOCKET_URL = '<BACKEND_SOCKET_URL>';
-// eslint-disable-next-line max-len
 export const setupProject = `cd notification-center-demo && npm run setup:onboarding -- ${APPLICATION_IDENTIFIER} ${API_KEY} ${BACKEND_API_URL} ${BACKEND_SOCKET_URL}`;
 export const npmRunCommand = 'npm run dev';
 export const frameworkSetupTitle = 'Choose your go-to framework';
@@ -23,8 +20,6 @@ export const faqUrl = `https://docs.novu.co/notification-center/introduction${UT
 export const notificationCenterDocsUrl = `https://docs.novu.co/notification-center/introduction${UTM_CAMPAIGN_QUERY_PARAM}`;
 export const discordInviteUrl = 'https://discord.gg/novu';
 export const demoSetupSecondaryTitle = 'Follow the installation steps to connect your app';
-
-export const getStartedSteps = { first: ROUTES.GET_STARTED, second: ROUTES.GET_STARTED_PREVIEW };
 
 interface ISnippetInstructions {
   instruction: React.ReactNode | string;
@@ -313,59 +308,6 @@ export enum FlowTypeEnum {
   IN_APP = 'in_app',
   OTHER = 'other',
 }
-
-export const quickStartChannels: IQuickStartChannelConfiguration[] = [
-  {
-    Icon: Mail,
-    title: 'Email',
-    displayName: 'Email',
-    type: ChannelTypeEnum.EMAIL,
-    description: '🎉  Try our gift: 300 emails Use Novu provider for free or change the provider to yours',
-    clickHandler: (options) => {
-      options.setClickedChannel({ open: true, channelType: options.channelType });
-    },
-  },
-  {
-    Icon: Bell,
-    title: 'In-App notifications',
-    displayName: 'In-App',
-    type: ChannelTypeEnum.IN_APP,
-    description: 'A set of APIs and components to create a customized notification center',
-    clickHandler: (options) => {
-      options.navigate(ROUTES.QUICK_START_NOTIFICATION_CENTER);
-    },
-  },
-  {
-    Icon: Mobile,
-    title: 'Push',
-    displayName: 'Push',
-    type: ChannelTypeEnum.PUSH,
-    description: 'Set up an integration with FCM, APNS or any other mobile push provider',
-    clickHandler: (options) => {
-      options.setClickedChannel({ open: true, channelType: options.channelType });
-    },
-  },
-  {
-    Icon: Chat,
-    title: 'Chat',
-    displayName: 'Chat',
-    type: ChannelTypeEnum.CHAT,
-    description: 'Connect chat apps such as Slack, Discord and Teams.',
-    clickHandler: (container) => {
-      container.setClickedChannel({ open: true, channelType: container.channelType });
-    },
-  },
-  {
-    Icon: Sms,
-    title: 'SMS',
-    displayName: 'SMS',
-    type: ChannelTypeEnum.SMS,
-    description: 'Connect to a SMS provider to start sending SMS programmatically',
-    clickHandler: (options) => {
-      options.setClickedChannel({ open: true, channelType: options.channelType });
-    },
-  },
-];
 
 export interface IQuickStartChannelConfiguration {
   Icon: React.FC<any>;

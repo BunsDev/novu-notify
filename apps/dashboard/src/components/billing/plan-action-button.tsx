@@ -1,16 +1,15 @@
-import { Button } from '@/components/primitives/button';
-import { ApiServiceLevelEnum, FeatureNameEnum, getFeatureForTierAsNumber } from '@novu/shared';
+import { ApiServiceLevelEnum, FeatureNameEnum, getFeatureForTierAsNumber, PermissionsEnum } from '@novu/shared';
+import { RiArrowRightSLine } from 'react-icons/ri';
 import { useBillingPortal } from '../../hooks/use-billing-portal';
 import { useCheckoutSession } from '../../hooks/use-checkout-session';
 import { useFetchSubscription } from '../../hooks/use-fetch-subscription';
 import { cn } from '../../utils/ui';
+import { PermissionButton } from '../primitives/permission-button';
+import { ContactSalesButton } from './contact-sales-button';
 
 interface PlanActionButtonProps {
   billingInterval: 'month' | 'year';
   requestedServiceLevel: ApiServiceLevelEnum;
-  activeServiceLevel?: ApiServiceLevelEnum;
-  mode?: 'outline' | 'filled';
-  showIcon?: boolean;
   className?: string;
   size?: 'sm' | 'md' | 'xs' | '2xs';
 }
@@ -18,67 +17,90 @@ interface PlanActionButtonProps {
 export function PlanActionButton({
   billingInterval,
   requestedServiceLevel,
-  activeServiceLevel,
-  mode = 'filled',
   className,
   size = 'md',
 }: PlanActionButtonProps) {
-  const { subscription: data, isLoading: isLoadingSubscription } = useFetchSubscription();
+  const { subscription, isLoading: isLoadingSubscription } = useFetchSubscription();
   const { navigateToCheckout, isLoading: isCheckingOut } = useCheckoutSession();
   const { navigateToPortal, isLoading: isLoadingPortal } = useBillingPortal(billingInterval);
 
-  const isPaidSubscriptionActive = () => {
-    return (
-      data?.isActive &&
-      !data?.trial?.isActive &&
-      data?.apiServiceLevel !== ApiServiceLevelEnum.FREE &&
-      requestedServiceLevel === data?.apiServiceLevel
-    );
-  };
+  // Enterprise plans show contact sales
+  if (requestedServiceLevel === ApiServiceLevelEnum.ENTERPRISE) {
+    return <ContactSalesButton />;
+  }
 
-  const handleAction = () => {
-    if (isPaidSubscriptionActive()) {
-      navigateToPortal();
-    } else {
-      navigateToCheckout({ billingInterval, requestedServiceLevel });
-    }
-  };
-
+  // Free tier has no button
   if (requestedServiceLevel === ApiServiceLevelEnum.FREE) {
     return null;
   }
 
-  function buildLabel() {
-    if (isPaidSubscriptionActive()) {
-      return <> {'Manage Account'}</>;
-    }
+  const isOnTrial = subscription?.trial?.isActive;
+  const currentServiceLevel = subscription?.apiServiceLevel || ApiServiceLevelEnum.FREE;
 
-    const indexRequested = getFeatureForTierAsNumber(
-      FeatureNameEnum.TIERS_ORDER_INDEX,
-      requestedServiceLevel || ApiServiceLevelEnum.FREE
+  // During trial, treat Pro as current level
+  const effectiveCurrentLevel = isOnTrial ? ApiServiceLevelEnum.PRO : currentServiceLevel;
+  const isCurrentPlan = requestedServiceLevel === effectiveCurrentLevel;
+
+  // Current plan - show manage button
+  if (isCurrentPlan && !isOnTrial) {
+    return (
+      <PermissionButton
+        permission={PermissionsEnum.BILLING_WRITE}
+        mode="outline"
+        size={size}
+        className={cn('gap-2', className)}
+        onClick={() => navigateToPortal()}
+        disabled={isLoadingPortal}
+        isLoading={isLoadingSubscription}
+      >
+        Manage
+      </PermissionButton>
     );
-    const indexActive = getFeatureForTierAsNumber(
-      FeatureNameEnum.TIERS_ORDER_INDEX,
-      activeServiceLevel || ApiServiceLevelEnum.FREE
-    );
-
-    if (indexRequested >= indexActive) {
-      return <> {'Upgrade plan'}</>;
-    }
-
-    return <> {'Downgrade plan'}</>;
   }
 
+  // Special case: Pro plan during trial should show "Upgrade plan"
+  if (isOnTrial && requestedServiceLevel === ApiServiceLevelEnum.PRO) {
+    return (
+      <PermissionButton
+        permission={PermissionsEnum.BILLING_WRITE}
+        mode="gradient"
+        variant="primary"
+        size={size}
+        className={cn('gap-2', className)}
+        trailingIcon={RiArrowRightSLine}
+        onClick={() => navigateToCheckout({ billingInterval, requestedServiceLevel })}
+        isLoading={isCheckingOut || isLoadingSubscription}
+      >
+        Upgrade plan
+      </PermissionButton>
+    );
+  }
+
+  // Get tier indices for comparison
+  const requestedIndex = getFeatureForTierAsNumber(FeatureNameEnum.TIERS_ORDER_INDEX, requestedServiceLevel);
+  const currentIndex = getFeatureForTierAsNumber(FeatureNameEnum.TIERS_ORDER_INDEX, effectiveCurrentLevel);
+
+  const isUpgrade = requestedIndex > currentIndex;
+
+  // Don't show downgrade during trial
+  if (isOnTrial && !isUpgrade) {
+    return null;
+  }
+
+  const buttonLabel = isUpgrade ? 'Upgrade plan' : 'Downgrade plan';
+
   return (
-    <Button
-      mode={isPaidSubscriptionActive() ? 'outline' : mode}
+    <PermissionButton
+      permission={PermissionsEnum.BILLING_WRITE}
+      mode={isUpgrade ? 'gradient' : 'lighter'}
+      variant={isUpgrade ? 'primary' : 'secondary'}
       size={size}
       className={cn('gap-2', className)}
-      onClick={handleAction}
-      disabled={isLoadingPortal}
+      trailingIcon={isUpgrade ? RiArrowRightSLine : undefined}
+      onClick={() => navigateToCheckout({ billingInterval, requestedServiceLevel })}
       isLoading={isCheckingOut || isLoadingSubscription}
     >
-      {buildLabel()}
-    </Button>
+      {buttonLabel}
+    </PermissionButton>
   );
 }

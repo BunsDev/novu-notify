@@ -1,16 +1,15 @@
 FROM node:20-alpine3.19 AS dev_base
-RUN apk add g++ make py3-pip
-
+RUN apk add --no-cache g++ make py3-pip
 ENV NX_DAEMON=false
 
-RUN npm i pm2 -g
-RUN npm --no-update-notifier --no-fund --global install pnpm@9.11.0
-RUN pnpm --version
+# Install global dependencies
+RUN npm --no-update-notifier --no-fund --global install pm2 pnpm@10.11.0&& \
+    pnpm --version
 
+# Set non-root user
 USER 1000
 WORKDIR /usr/src/app
 
-# ------- DEV BUILD ----------
 FROM dev_base AS dev
 ARG PACKAGE_PATH
 
@@ -70,4 +69,4 @@ RUN --mount=type=cache,id=pnpm-store-api,target=/root/.pnpm-store\
 ENV NEW_RELIC_NO_CONFIG_FILE=true
 
 WORKDIR /usr/src/app/apps/api
-ENTRYPOINT [ "sh", "-c", "node dist/dotenvcreate.mjs -s=novu/api -r=$NOVU_REGION -e=$NOVU_ENTERPRISE -v=$NODE_ENV && pm2-runtime start dist/main.js" ]
+ENTRYPOINT [ "sh", "-c", "node dist/dotenvcreate.mjs -s=novu/api -r=$NOVU_REGION -e=$NOVU_ENTERPRISE -v=$NODE_ENV -h=$IS_SELF_HOSTED && pm2-runtime start dist/main.js -i max" ]

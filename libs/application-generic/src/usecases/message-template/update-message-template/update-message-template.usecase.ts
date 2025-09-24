@@ -1,14 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 
-import { ChangeRepository, MessageTemplateEntity, MessageTemplateRepository, MessageRepository } from '@novu/dal';
+import { ChangeRepository, MessageRepository, MessageTemplateEntity, MessageTemplateRepository } from '@novu/dal';
 import { ChangeEntityTypeEnum, isBridgeWorkflow } from '@novu/shared';
-
-import { UpdateMessageTemplateCommand } from './update-message-template.command';
+import { sanitizeMessageContentV0 } from '../../../services';
+import { normalizeVariantDefault } from '../../../utils';
 import { CreateChange, CreateChangeCommand } from '../../create-change';
 import { UpdateChange, UpdateChangeCommand } from '../../update-change';
-import { sanitizeMessageContentV0 } from '../../../services';
-import { normalizeVariantDefault } from '../../../utils/variants';
 import { shouldSanitize } from '../shared';
+import { UpdateMessageTemplateCommand } from './update-message-template.command';
 
 @Injectable()
 export class UpdateMessageTemplate {

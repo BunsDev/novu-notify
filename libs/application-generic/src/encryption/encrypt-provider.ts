@@ -1,9 +1,4 @@
-import {
-  EncryptedSecret,
-  ICredentialsDto,
-  NOVU_ENCRYPTION_SUB_MASK,
-  secureCredentials,
-} from '@novu/shared';
+import { EncryptedSecret, ICredentialsDto, NOVU_ENCRYPTION_SUB_MASK, secureCredentials } from '@novu/shared';
 
 import { decrypt, encrypt } from './cipher';
 
@@ -23,12 +18,9 @@ export function decryptSecret(text: string | EncryptedSecret): string {
   return decrypt(encryptedSecret);
 }
 
-export function encryptCredentials(
-  credentials: ICredentialsDto,
-): ICredentialsDto {
+export function encryptCredentials(credentials: ICredentialsDto): ICredentialsDto {
   const encryptedCredentials: ICredentialsDto = {};
 
-  // eslint-disable-next-line guard-for-in
   for (const key in credentials) {
     encryptedCredentials[key] = isCredentialEncryptionRequired(key)
       ? encryptSecret(credentials[key])
@@ -38,12 +30,9 @@ export function encryptCredentials(
   return encryptedCredentials;
 }
 
-export function decryptCredentials(
-  credentials: ICredentialsDto,
-): ICredentialsDto {
+export function decryptCredentials(credentials: ICredentialsDto): ICredentialsDto {
   const decryptedCredentials: ICredentialsDto = {};
 
-  // eslint-disable-next-line guard-for-in
   for (const key in credentials) {
     decryptedCredentials[key] =
       typeof credentials[key] === 'string' && isNovuEncrypted(credentials[key])

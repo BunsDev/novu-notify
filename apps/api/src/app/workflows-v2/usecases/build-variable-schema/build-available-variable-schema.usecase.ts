@@ -1,67 +1,135 @@
 import { Injectable } from '@nestjs/common';
-import { NotificationStepEntity, NotificationTemplateEntity } from '@novu/dal';
-import { JSONSchemaDto } from '@novu/shared';
-import { Instrument } from '@novu/application-generic';
+import { FeatureFlagsService, Instrument, InstrumentUsecase } from '@novu/application-generic';
+import {
+  ControlValuesRepository,
+  JsonSchemaTypeEnum,
+  NotificationStepEntity,
+  NotificationTemplateEntity,
+} from '@novu/dal';
+import { ControlValuesLevelEnum, FeatureFlagsKeysEnum, StepTypeEnum } from '@novu/shared';
+import { JSONSchemaDto } from '../../../shared/dtos/json-schema.dto';
+import { CreateVariablesObjectCommand } from '../../../shared/usecases/create-variables-object/create-variables-object.command';
+import { CreateVariablesObject } from '../../../shared/usecases/create-variables-object/create-variables-object.usecase';
+import { buildSubscriberSchema, buildVariablesSchema, buildWorkflowSchema } from '../../../shared/utils/create-schema';
 import { computeResultSchema } from '../../shared';
-import { BuildVariableSchemaCommand } from './build-available-variable-schema.command';
 import { parsePayloadSchema } from '../../shared/parse-payload-schema';
-import { ExtractVariablesCommand } from '../extract-variables/extract-variables.command';
-import { ExtractVariables } from '../extract-variables/extract-variables.usecase';
 import { emptyJsonSchema } from '../../util/jsonToSchema';
-import { buildVariablesSchema } from '../../util/create-schema';
+import { BuildVariableSchemaCommand, IOptimisticStepInfo } from './build-available-variable-schema.command';
 
 @Injectable()
 export class BuildVariableSchemaUsecase {
-  constructor(private readonly extractVariables: ExtractVariables) {}
+  constructor(
+    private readonly createVariablesObject: CreateVariablesObject,
+    private readonly controlValuesRepository: ControlValuesRepository,
+    private readonly featureFlagsService: FeatureFlagsService
+  ) {}
 
+  @InstrumentUsecase()
   async execute(command: BuildVariableSchemaCommand): Promise<JSONSchemaDto> {
-    const { workflow, stepInternalId } = command;
-    const previousSteps = workflow?.steps.slice(
-      0,
-      workflow?.steps.findIndex((stepItem) => stepItem._id === stepInternalId)
-    );
-    const { payload, subscriber } = await this.extractVariables.execute(
-      ExtractVariablesCommand.create({
+    const { workflow, stepInternalId, optimisticSteps } = command;
+
+    let workflowControlValues: unknown[] = [];
+    if (workflow) {
+      const controls = await this.controlValuesRepository.find(
+        {
+          _environmentId: command.environmentId,
+          _organizationId: command.organizationId,
+          _workflowId: workflow._id,
+          level: ControlValuesLevelEnum.STEP_CONTROLS,
+          controls: { $ne: null },
+        },
+        {
+          controls: 1,
+          _id: 0,
+        }
+      );
+
+      workflowControlValues = controls
+        .flatMap((item) => item.controls)
+        .flatMap((obj) => Object.values(obj as Record<string, unknown>));
+    }
+
+    const optimisticControlValues = Object.values(command.optimisticControlValues || {});
+    const { payload, subscriber } = await this.createVariablesObject.execute(
+      CreateVariablesObjectCommand.create({
         environmentId: command.environmentId,
         organizationId: command.organizationId,
-        userId: command.userId,
-        workflowId: workflow?._id,
-        ...(command.optimisticControlValues ? { controlValues: command.optimisticControlValues } : {}),
+        controlValues: optimisticControlValues.length > 0 ? optimisticControlValues : workflowControlValues,
       })
     );
 
+    // Build effective steps by combining persisted steps with optimistic steps
+    const effectiveSteps = this.buildEffectiveSteps(workflow, optimisticSteps);
+
+    const previousSteps = effectiveSteps?.slice(0, this.findStepIndex(effectiveSteps, stepInternalId));
+
+    const isNotificationSeverityEnabled = await this.featureFlagsService.getFlag({
+      key: FeatureFlagsKeysEnum.IS_NOTIFICATION_SEVERITY_ENABLED,
+      organization: { _id: command.organizationId },
+      environment: { _id: command.environmentId },
+      user: { _id: command.userId },
+      defaultValue: false,
+    });
+
     return {
-      type: 'object',
+      type: JsonSchemaTypeEnum.OBJECT,
       properties: {
-        subscriber: {
-          type: 'object',
-          description: 'Schema representing the subscriber entity',
-          properties: {
-            firstName: { type: 'string', description: "Subscriber's first name" },
-            lastName: { type: 'string', description: "Subscriber's last name" },
-            email: { type: 'string', description: "Subscriber's email address" },
-            phone: { type: 'string', description: "Subscriber's phone number (optional)" },
-            avatar: { type: 'string', description: "URL to the subscriber's avatar image (optional)" },
-            locale: { type: 'string', description: 'Locale for the subscriber (optional)' },
-            subscriberId: { type: 'string', description: 'Unique identifier for the subscriber' },
-            isOnline: { type: 'boolean', description: 'Indicates if the subscriber is online (optional)' },
-            lastOnlineAt: {
-              type: 'string',
-              format: 'date-time',
-              description: 'The last time the subscriber was online (optional)',
-            },
-            data: buildVariablesSchema(
-              subscriber && typeof subscriber === 'object' && 'data' in subscriber ? subscriber.data : {}
-            ),
-          },
-          required: ['firstName', 'lastName', 'email', 'subscriberId'],
-          additionalProperties: false,
-        },
-        steps: buildPreviousStepsSchema(previousSteps, workflow?.payloadSchema),
+        ...(isNotificationSeverityEnabled ? { workflow: buildWorkflowSchema() } : {}),
+        subscriber: buildSubscriberSchema(subscriber),
+        steps: buildPreviousStepsSchema({
+          previousSteps,
+          payloadSchema: workflow?.payloadSchema,
+        }),
         payload: await this.resolvePayloadSchema(workflow, payload),
       },
       additionalProperties: false,
     } as const satisfies JSONSchemaDto;
+  }
+
+  /**
+   * Builds effective steps for schema generation by combining persisted workflow steps
+   * with optimistic steps (used during sync scenarios)
+   */
+  private buildEffectiveSteps(
+    workflow: NotificationTemplateEntity | undefined,
+    optimisticSteps: IOptimisticStepInfo[] | undefined
+  ): Array<NotificationStepEntity | IOptimisticStepInfo> | undefined {
+    if (!optimisticSteps) {
+      return workflow?.steps;
+    }
+
+    // During sync, we need to consider both existing steps and optimistic steps
+    const existingSteps = workflow?.steps || [];
+
+    // Create a map of existing step IDs to avoid duplicates
+    const existingStepIds = new Set(existingSteps.map((step) => step.stepId).filter(Boolean));
+
+    // Add optimistic steps that don't already exist
+    const newOptimisticSteps = optimisticSteps.filter((step) => !existingStepIds.has(step.stepId));
+
+    return [...existingSteps, ...newOptimisticSteps];
+  }
+
+  /**
+   * Finds the index of a step in the effective steps array
+   */
+  private findStepIndex(
+    effectiveSteps: Array<NotificationStepEntity | IOptimisticStepInfo> | undefined,
+    stepInternalId: string | undefined
+  ): number {
+    if (!effectiveSteps || !stepInternalId) {
+      return effectiveSteps?.length || 0;
+    }
+
+    /*
+     * For persisted steps, match by _id; for optimistic steps, this will return -1
+     * which means we include all steps when validating optimistic steps
+     */
+    const index = effectiveSteps.findIndex((step) =>
+      'stepId' in step && '_id' in step ? step._id === stepInternalId : false
+    );
+
+    return index === -1 ? effectiveSteps.length : index;
   }
 
   @Instrument()
@@ -71,7 +139,7 @@ export class BuildVariableSchemaUsecase {
   ): Promise<JSONSchemaDto> {
     if (workflow && workflow.steps.length === 0) {
       return {
-        type: 'object',
+        type: JsonSchemaTypeEnum.OBJECT,
         properties: {},
         additionalProperties: true,
       };
@@ -85,14 +153,34 @@ export class BuildVariableSchemaUsecase {
   }
 }
 
-function buildPreviousStepsProperties(
-  previousSteps: NotificationStepEntity[] | undefined,
-  payloadSchema?: JSONSchemaDto
-) {
+function buildPreviousStepsProperties({
+  previousSteps,
+  payloadSchema,
+}: {
+  previousSteps: Array<NotificationStepEntity | IOptimisticStepInfo> | undefined;
+  payloadSchema?: JSONSchemaDto;
+}) {
   return (previousSteps || []).reduce(
     (acc, step) => {
-      if (step.stepId && step.template?.type) {
-        acc[step.stepId] = computeResultSchema(step.template.type, payloadSchema);
+      // Handle both persisted steps and optimistic steps
+      let stepId: string | undefined;
+      let stepType: StepTypeEnum | undefined;
+
+      if ('template' in step && step.template?.type) {
+        // Persisted step
+        stepId = step.stepId;
+        stepType = step.template.type;
+      } else if ('type' in step) {
+        // Optimistic step
+        stepId = step.stepId;
+        stepType = step.type;
+      }
+
+      if (stepId && stepType) {
+        acc[stepId] = computeResultSchema({
+          stepType,
+          payloadSchema,
+        });
       }
 
       return acc;
@@ -101,13 +189,19 @@ function buildPreviousStepsProperties(
   );
 }
 
-function buildPreviousStepsSchema(
-  previousSteps: NotificationStepEntity[] | undefined,
-  payloadSchema?: JSONSchemaDto
-): JSONSchemaDto {
+function buildPreviousStepsSchema({
+  previousSteps,
+  payloadSchema,
+}: {
+  previousSteps: Array<NotificationStepEntity | IOptimisticStepInfo> | undefined;
+  payloadSchema?: JSONSchemaDto;
+}): JSONSchemaDto {
   return {
-    type: 'object',
-    properties: buildPreviousStepsProperties(previousSteps, payloadSchema),
+    type: JsonSchemaTypeEnum.OBJECT,
+    properties: buildPreviousStepsProperties({
+      previousSteps,
+      payloadSchema,
+    }),
     required: [],
     additionalProperties: false,
     description: 'Previous Steps Results',

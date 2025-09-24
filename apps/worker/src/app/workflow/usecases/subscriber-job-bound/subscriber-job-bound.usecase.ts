@@ -1,15 +1,19 @@
-import { Injectable, Logger } from '@nestjs/common';
-
+import { BadRequestException, Injectable, Logger } from '@nestjs/common';
+import type { EventType, Trace } from '@novu/application-generic';
 import {
   AnalyticsService,
-  ApiException,
   CreateNotificationJobs,
   CreateNotificationJobsCommand,
   CreateOrUpdateSubscriberCommand,
   CreateOrUpdateSubscriberUseCase,
+  GetPreferences,
+  GetPreferencesCommand,
   Instrument,
   InstrumentUsecase,
+  LogRepository,
+  mapEventTypeToTitle,
   PinoLogger,
+  TraceLogRepository,
 } from '@novu/application-generic';
 import { IntegrationRepository, NotificationTemplateEntity, NotificationTemplateRepository } from '@novu/dal';
 import {
@@ -18,8 +22,9 @@ import {
   InAppProviderIdEnum,
   ISubscribersDefine,
   ProvidersIdEnum,
+  ResourceTypeEnum,
+  SeverityLevelEnum,
   STEP_TYPE_TO_CHANNEL_TYPE,
-  WorkflowTypeEnum,
 } from '@novu/shared';
 import { StoreSubscriberJobs, StoreSubscriberJobsCommand } from '../store-subscriber-jobs';
 import { SubscriberJobBoundCommand } from './subscriber-job-bound.command';
@@ -32,11 +37,12 @@ export class SubscriberJobBound {
     private storeSubscriberJobs: StoreSubscriberJobs,
     private createNotificationJobs: CreateNotificationJobs,
     private createOrUpdateSubscriberUsecase: CreateOrUpdateSubscriberUseCase,
-
     private integrationRepository: IntegrationRepository,
     private notificationTemplateRepository: NotificationTemplateRepository,
     private logger: PinoLogger,
-    private analyticsService: AnalyticsService
+    private analyticsService: AnalyticsService,
+    private traceLogRepository: TraceLogRepository,
+    private getPreferences: GetPreferences
   ) {}
 
   @InstrumentUsecase()
@@ -59,22 +65,23 @@ export class SubscriberJobBound {
       _subscriberSource,
       requestCategory,
       environmentName,
+      topics,
     } = command;
 
-    const template =
-      this.mapBridgeWorkflow(command) ??
-      (await this.getNotificationTemplate({
-        _id: templateId,
-        environmentId,
-      }));
+    const template = command.bridge?.workflow
+      ? await this.getCodeFirstWorkflow(command)
+      : await this.getWorkflow({
+          _id: templateId,
+          environmentId,
+        });
 
     if (!template) {
-      throw new ApiException(`Workflow id ${templateId} was not found`);
+      throw new BadRequestException(`Workflow id ${templateId} was not found`);
     }
 
     const templateProviderIds = await this.getProviderIdsForTemplate(environmentId, template);
 
-    await this.validateSubscriberIdProperty(subscriber);
+    await this.validateSubscriberIdProperty(command, subscriber);
 
     /**
      * Due to Mixpanel HotSharding, we don't want to pass userId for production volume
@@ -87,7 +94,7 @@ export class SubscriberJobBound {
 
     this.analyticsService.mixpanelTrack('Notification event trigger - [Triggers]', segmentUserId, {
       name: template.name,
-      type: template?.type || WorkflowTypeEnum.REGULAR,
+      type: template?.type || ResourceTypeEnum.REGULAR,
       origin: template?.origin,
       transactionId: command.transactionId,
       _template: template._id,
@@ -125,7 +132,31 @@ export class SubscriberJobBound {
         LOG_CONTEXT
       );
 
+      await this.createSubscriberTrace(
+        command,
+        'subscriber_validation_failed',
+        'warning',
+        `Subscriber ${subscriber.subscriberId} was not processed, workflow run execution halted.`
+      );
+
       return;
+    }
+
+    const severity = command.overrides.severity ?? template.severity ?? SeverityLevelEnum.NONE;
+
+    let critical = false;
+    if (command.bridge?.workflow) {
+      critical = command.bridge.workflow.preferences?.all?.readOnly ?? false;
+    } else {
+      const preferences = await this.getPreferences.safeExecute(
+        GetPreferencesCommand.create({
+          environmentId,
+          organizationId,
+          subscriberId: subscriberProcessed._id,
+          templateId,
+        })
+      );
+      critical = preferences.preferences.all.readOnly;
     }
 
     const createNotificationJobsCommand: CreateNotificationJobsCommand = {
@@ -141,6 +172,7 @@ export class SubscriberJobBound {
       transactionId: command.transactionId,
       userId,
       tenant,
+      topics,
       bridgeUrl: command.bridge?.url,
       /*
        * Only populate preferences if the command contains a `bridge` property,
@@ -152,6 +184,8 @@ export class SubscriberJobBound {
       ...(command.bridge?.workflow && {
         preferences: buildWorkflowPreferences(command.bridge?.workflow?.preferences),
       }),
+      severity,
+      critical,
     };
 
     if (actor) {
@@ -171,12 +205,19 @@ export class SubscriberJobBound {
     );
   }
 
-  private mapBridgeWorkflow(command: SubscriberJobBoundCommand): NotificationTemplateEntity | null {
+  private async getCodeFirstWorkflow(command: SubscriberJobBoundCommand): Promise<NotificationTemplateEntity | null> {
     const bridgeWorkflow = command.bridge?.workflow;
 
     if (!bridgeWorkflow) {
       return null;
     }
+
+    const syncedWorkflowId = (
+      await this.notificationTemplateRepository.findByTriggerIdentifier(
+        command.environmentId,
+        bridgeWorkflow.workflowId
+      )
+    )?._id;
 
     /*
      * Cast used to convert data type for further processing.
@@ -184,7 +225,8 @@ export class SubscriberJobBound {
      */
     return {
       ...bridgeWorkflow,
-      type: WorkflowTypeEnum.BRIDGE,
+      type: ResourceTypeEnum.BRIDGE,
+      _id: syncedWorkflowId,
       steps: bridgeWorkflow.steps.map((step) => {
         const stepControlVariables = command.controls?.steps?.[step.stepId];
 
@@ -216,11 +258,20 @@ export class SubscriberJobBound {
   }
 
   @Instrument()
-  private async validateSubscriberIdProperty(subscriber: ISubscribersDefine): Promise<boolean> {
+  private async validateSubscriberIdProperty(
+    command: SubscriberJobBoundCommand,
+    subscriber: ISubscribersDefine
+  ): Promise<boolean> {
     const subscriberIdExists = typeof subscriber === 'string' ? subscriber : subscriber.subscriberId;
 
     if (!subscriberIdExists) {
-      throw new ApiException(
+      await this.createSubscriberTrace(
+        command,
+        'subscriber_validation_failed',
+        'warning',
+        `Subscriber ${subscriber.subscriberId} is missing a valid subscriberId, workflow run execution halted.`
+      );
+      throw new BadRequestException(
         'subscriberId under property to is not configured, please make sure all subscribers contains subscriberId property'
       );
     }
@@ -228,7 +279,7 @@ export class SubscriberJobBound {
     return true;
   }
 
-  private async getNotificationTemplate({ _id, environmentId }: { _id: string; environmentId: string }) {
+  private async getWorkflow({ _id, environmentId }: { _id: string; environmentId: string }) {
     return await this.notificationTemplateRepository.findById(_id, environmentId);
   }
 
@@ -239,7 +290,6 @@ export class SubscriberJobBound {
   ): Promise<Record<ChannelTypeEnum, ProvidersIdEnum>> {
     const providers = {} as Record<ChannelTypeEnum, ProvidersIdEnum>;
 
-    // eslint-disable-next-line no-unsafe-optional-chaining
     for (const step of template?.steps) {
       const type = step.template?.type;
       if (!type) continue;
@@ -261,5 +311,49 @@ export class SubscriberJobBound {
     }
 
     return providers;
+  }
+
+  private async createSubscriberTrace(
+    command: SubscriberJobBoundCommand,
+    eventType: EventType,
+    status: 'success' | 'error' | 'warning' = 'success',
+    message?: string,
+    rawData?: any
+  ): Promise<void> {
+    if (!command.requestId) {
+      return;
+    }
+
+    try {
+      const traceData: Omit<Trace, 'id' | 'expires_at'> = {
+        created_at: LogRepository.formatDateTime64(new Date()),
+        organization_id: command.organizationId,
+        environment_id: command.environmentId,
+        user_id: command.userId,
+        subscriber_id: null,
+        external_subscriber_id: command.subscriber?.subscriberId || null,
+        event_type: eventType,
+        title: mapEventTypeToTitle(eventType),
+        message: message || null,
+        raw_data: rawData ? JSON.stringify(rawData) : null,
+        status,
+        entity_type: 'request',
+        entity_id: command.requestId,
+        workflow_run_identifier: command.identifier,
+      };
+
+      await this.traceLogRepository.createRequest([traceData]);
+    } catch (error) {
+      this.logger.error(
+        {
+          error,
+          eventType,
+          transactionId: command.transactionId,
+          organizationId: command.organizationId,
+          environmentId: command.environmentId,
+        },
+        'Failed to create subscriber trace'
+      );
+    }
   }
 }

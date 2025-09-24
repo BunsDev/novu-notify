@@ -1,19 +1,20 @@
 import { Injectable } from '@nestjs/common';
+import { areNovuEmailCredentialsSet, areNovuSlackCredentialsSet, FeatureFlagsService } from '@novu/application-generic';
 import { EnvironmentEntity, IntegrationRepository, OrganizationEntity, UserEntity } from '@novu/dal';
-import { areNovuEmailCredentialsSet, areNovuSmsCredentialsSet, FeatureFlagsService } from '@novu/application-generic';
 
 import {
   ChannelTypeEnum,
+  ChatProviderIdEnum,
   EmailProviderIdEnum,
+  EnvironmentEnum,
   FeatureFlagsKeysEnum,
   InAppProviderIdEnum,
-  SmsProviderIdEnum,
 } from '@novu/shared';
-import { CreateNovuIntegrationsCommand } from './create-novu-integrations.command';
-import { CreateIntegration } from '../create-integration/create-integration.usecase';
 import { CreateIntegrationCommand } from '../create-integration/create-integration.command';
-import { SetIntegrationAsPrimary } from '../set-integration-as-primary/set-integration-as-primary.usecase';
+import { CreateIntegration } from '../create-integration/create-integration.usecase';
 import { SetIntegrationAsPrimaryCommand } from '../set-integration-as-primary/set-integration-as-primary.command';
+import { SetIntegrationAsPrimary } from '../set-integration-as-primary/set-integration-as-primary.usecase';
+import { CreateNovuIntegrationsCommand } from './create-novu-integrations.command';
 
 @Injectable()
 export class CreateNovuIntegrations {
@@ -25,7 +26,7 @@ export class CreateNovuIntegrations {
   ) {}
 
   private async createEmailIntegration(command: CreateNovuIntegrationsCommand) {
-    if (!areNovuEmailCredentialsSet()) {
+    if (!areNovuEmailCredentialsSet() || command.name !== EnvironmentEnum.DEVELOPMENT) {
       return;
     }
 
@@ -54,42 +55,6 @@ export class CreateNovuIntegrations {
           organizationId: command.organizationId,
           environmentId: command.environmentId,
           integrationId: novuEmailIntegration._id,
-          userId: command.userId,
-        })
-      );
-    }
-  }
-
-  private async createSmsIntegration(command: CreateNovuIntegrationsCommand) {
-    if (!areNovuSmsCredentialsSet()) {
-      return;
-    }
-
-    const smsIntegrationCount = await this.integrationRepository.count({
-      providerId: SmsProviderIdEnum.Novu,
-      channel: ChannelTypeEnum.SMS,
-      _organizationId: command.organizationId,
-      _environmentId: command.environmentId,
-    });
-
-    if (smsIntegrationCount === 0) {
-      const novuSmsIntegration = await this.createIntegration.execute(
-        CreateIntegrationCommand.create({
-          providerId: SmsProviderIdEnum.Novu,
-          channel: ChannelTypeEnum.SMS,
-          name: 'Novu SMS',
-          active: true,
-          check: false,
-          userId: command.userId,
-          environmentId: command.environmentId,
-          organizationId: command.organizationId,
-        })
-      );
-      await this.setIntegrationAsPrimary.execute(
-        SetIntegrationAsPrimaryCommand.create({
-          organizationId: command.organizationId,
-          environmentId: command.environmentId,
-          integrationId: novuSmsIntegration._id,
           userId: command.userId,
         })
       );
@@ -129,9 +94,53 @@ export class CreateNovuIntegrations {
     }
   }
 
+  private async createSlackIntegration(command: CreateNovuIntegrationsCommand) {
+    const isSlackTeamsEnabled = await this.featureFlagService.getFlag({
+      user: { _id: command.userId } as UserEntity,
+      environment: { _id: command.environmentId } as EnvironmentEntity,
+      organization: { _id: command.organizationId } as OrganizationEntity,
+      key: FeatureFlagsKeysEnum.IS_SLACK_TEAMS_ENABLED,
+      defaultValue: false,
+    });
+
+    if (!areNovuSlackCredentialsSet() || command.name !== EnvironmentEnum.DEVELOPMENT || !isSlackTeamsEnabled) {
+      return;
+    }
+
+    const slackIntegrationCount = await this.integrationRepository.count({
+      providerId: ChatProviderIdEnum.Novu,
+      channel: ChannelTypeEnum.CHAT,
+      _organizationId: command.organizationId,
+      _environmentId: command.environmentId,
+    });
+
+    if (slackIntegrationCount === 0) {
+      await this.createIntegration.execute(
+        CreateIntegrationCommand.create({
+          name: 'Novu Slack',
+          providerId: ChatProviderIdEnum.Novu,
+          channel: ChannelTypeEnum.CHAT,
+          active: true,
+          check: false,
+          userId: command.userId,
+          environmentId: command.environmentId,
+          organizationId: command.organizationId,
+        })
+      );
+    }
+  }
+
   async execute(command: CreateNovuIntegrationsCommand): Promise<void> {
-    await this.createEmailIntegration(command);
-    await this.createSmsIntegration(command);
-    await this.createInAppIntegration(command);
+    if (!command.channels || command.channels.includes(ChannelTypeEnum.EMAIL)) {
+      await this.createEmailIntegration(command);
+    }
+
+    if (!command.channels || command.channels.includes(ChannelTypeEnum.IN_APP)) {
+      await this.createInAppIntegration(command);
+    }
+
+    if (!command.channels || command.channels.includes(ChannelTypeEnum.CHAT)) {
+      await this.createSlackIntegration(command);
+    }
   }
 }

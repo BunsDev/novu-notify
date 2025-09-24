@@ -45,7 +45,7 @@ export class NotificationFeedItemDto implements INotificationDto {
   })
   _environmentId: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Identifier for the message template used.',
     example: 'message_template_54321',
     type: String,
@@ -73,12 +73,13 @@ export class NotificationFeedItemDto implements INotificationDto {
   })
   _subscriberId: string;
 
-  @ApiProperty({
+  @ApiPropertyOptional({
     description: 'Identifier for the feed associated with the notification.',
     example: 'feed_445566',
     type: String,
+    nullable: true,
   })
-  _feedId: string;
+  _feedId?: string | null;
 
   @ApiProperty({
     description: 'Identifier for the job that triggered the notification.',
@@ -177,13 +178,6 @@ export class NotificationFeedItemDto implements INotificationDto {
   })
   seen: boolean;
 
-  @ApiProperty({
-    description: 'Indicates whether the notification has been deleted.',
-    example: false,
-    type: Boolean,
-  })
-  deleted: boolean;
-
   @ApiPropertyOptional({
     description: 'Device tokens for push notifications, if applicable.',
     type: [String],
@@ -215,6 +209,15 @@ export class NotificationFeedItemDto implements INotificationDto {
   })
   payload?: Record<string, unknown>;
 
+  @ApiPropertyOptional({
+    description: 'The data sent with the notification.',
+    type: 'object',
+    nullable: true,
+    example: { key: 'value' },
+    additionalProperties: true,
+  })
+  data?: Record<string, unknown> | null;
+
   @ApiProperty({
     description: 'Provider-specific overrides used when triggering the notification.',
     type: 'object',
@@ -223,6 +226,14 @@ export class NotificationFeedItemDto implements INotificationDto {
     example: { overrideKey: 'overrideValue' },
   })
   overrides?: Record<string, unknown>;
+
+  @ApiPropertyOptional({
+    description: 'Tags associated with the workflow that triggered the notification.',
+    type: [String],
+    nullable: true,
+    example: ['tag1', 'tag2'],
+  })
+  tags?: string[] | null;
 }
 
 export class FeedResponseDto {

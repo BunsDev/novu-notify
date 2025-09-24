@@ -1,7 +1,7 @@
 import { useCallback, useMemo } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
-// eslint-disable-next-line import/no-namespace
 import * as mixpanel from 'mixpanel-browser';
+import { INotificationTemplate, IPaginationWithQueryParams } from '@novu/shared';
 import { buildApiHttpClient } from '../api/api.client';
 
 import { useStudioState } from '../studio/StudioStateProvider';
@@ -54,7 +54,6 @@ export const useTelemetry = () => {
       if (mixpanelEnabled) {
         const sessionReplayProperties = mixpanel.get_session_recording_properties();
 
-        // eslint-disable-next-line no-param-reassign
         data = {
           ...(data || {}),
           ...sessionReplayProperties,
@@ -65,4 +64,12 @@ export const useTelemetry = () => {
     },
     [mutate]
   );
+};
+
+export const useWorkflows = (params: IPaginationWithQueryParams) => {
+  const api = useNovuAPI();
+
+  return useQuery<{ data: INotificationTemplate[] }>(['origin-workflows'], async () => {
+    return api.getNotificationsList(params);
+  });
 };

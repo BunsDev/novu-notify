@@ -1,5 +1,30 @@
+import {
+  DEFAULT_LOCALE,
+  EnvironmentTypeEnum,
+  FeatureFlagsKeysEnum,
+  IEnvironment,
+  PermissionsEnum,
+  WorkflowListResponseDto,
+} from '@novu/shared';
+import { FilesIcon } from 'lucide-react';
+import { ComponentProps, useState } from 'react';
+import { CgBolt } from 'react-icons/cg';
+import { FaCode } from 'react-icons/fa6';
+import { LuBookUp2 } from 'react-icons/lu';
+import {
+  RiDeleteBin2Line,
+  RiFlashlightLine,
+  RiMore2Fill,
+  RiPauseCircleLine,
+  RiPlayCircleLine,
+  RiPulseFill,
+  RiRouteFill,
+  RiTranslate2,
+} from 'react-icons/ri';
+
+import { Link, useNavigate } from 'react-router-dom';
+import { type ExternalToast } from 'sonner';
 import { PAUSE_MODAL_TITLE, PauseModalDescription } from '@/components/pause-workflow-dialog';
-import { Badge } from '@/components/primitives/badge';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,40 +43,51 @@ import TruncatedText from '@/components/truncated-text';
 import { WorkflowStatus } from '@/components/workflow-status';
 import { WorkflowSteps } from '@/components/workflow-steps';
 import { WorkflowTags } from '@/components/workflow-tags';
-import { LEGACY_DASHBOARD_URL } from '@/config';
+import { IS_SELF_HOSTED, LEGACY_DASHBOARD_URL, SELF_HOSTED_UPGRADE_REDIRECT_URL } from '@/config';
 import { useAuth } from '@/context/auth/hooks';
 import { useEnvironment, useFetchEnvironments } from '@/context/environment/hooks';
 import { useDeleteWorkflow } from '@/hooks/use-delete-workflow';
+import { useFeatureFlag } from '@/hooks/use-feature-flag';
+import { useHasPermission } from '@/hooks/use-has-permission';
 import { usePatchWorkflow } from '@/hooks/use-patch-workflow';
 import { useSyncWorkflow } from '@/hooks/use-sync-workflow';
-import { WorkflowOriginEnum, WorkflowStatusEnum } from '@/utils/enums';
+import { LocalizationResourceEnum } from '@/types/translations';
+import { ResourceOriginEnum, WorkflowStatusEnum } from '@/utils/enums';
 import { formatDateSimple } from '@/utils/format-date';
+import { Protect } from '@/utils/protect';
 import { buildRoute, ROUTES } from '@/utils/routes';
 import { cn } from '@/utils/ui';
-import { IEnvironment, WorkflowListResponseDto } from '@novu/shared';
-import { ComponentProps, useState } from 'react';
-import { FaCode } from 'react-icons/fa6';
-import {
-  RiDeleteBin2Line,
-  RiFlashlightLine,
-  RiGitPullRequestFill,
-  RiMore2Fill,
-  RiPauseCircleLine,
-  RiPlayCircleLine,
-  RiPulseFill,
-} from 'react-icons/ri';
-import { Link, useNavigate } from 'react-router-dom';
-import { type ExternalToast } from 'sonner';
 import { ConfirmationModal } from './confirmation-modal';
 import { DeleteWorkflowDialog } from './delete-workflow-dialog';
+import { TranslatedWorkflowIcon } from './icons/translated-workflow';
 import { CompactButton } from './primitives/button-compact';
 import { CopyButton } from './primitives/copy-button';
 import { ToastIcon } from './primitives/sonner';
 import { showToast } from './primitives/sonner-helpers';
 import { TimeDisplayHoverCard } from './time-display-hover-card';
 
+// Local type definition for step issues until the shared types are updated
+type RuntimeIssue = {
+  message: string;
+  variableName?: string;
+  issueType: string;
+};
+
+type StepIssue = {
+  controls?: Record<string, RuntimeIssue[]>;
+  integration?: Record<string, RuntimeIssue[]>;
+};
+
+type StepListItem = {
+  slug: string;
+  type: string;
+  issues?: StepIssue;
+};
+
 type WorkflowRowProps = {
-  workflow: WorkflowListResponseDto;
+  workflow: WorkflowListResponseDto & {
+    steps?: StepListItem[];
+  };
 };
 
 const toastOptions: ExternalToast = {
@@ -78,10 +114,16 @@ export const WorkflowRow = ({ workflow }: WorkflowRowProps) => {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isPauseModalOpen, setIsPauseModalOpen] = useState(false);
   const { currentEnvironment } = useEnvironment();
+  const { isUserLoaded } = useAuth();
+  const has = useHasPermission();
   const navigate = useNavigate();
   const { safeSync, isSyncable, tooltipContent, PromoteConfirmModal } = useSyncWorkflow(workflow);
-  const isV1Workflow = workflow.origin === WorkflowOriginEnum.NOVU_CLOUD_V1;
-  const workflowLink = isV1Workflow
+
+  const isNewChangeManagementEnabled = useFeatureFlag(FeatureFlagsKeysEnum.IS_NEW_CHANGE_MECHANISM_ENABLED);
+  const isV0Workflow = workflow.origin === ResourceOriginEnum.NOVU_CLOUD_V1;
+  const isDuplicable =
+    workflow.origin === ResourceOriginEnum.NOVU_CLOUD && currentEnvironment?.type === EnvironmentTypeEnum.DEV;
+  const workflowLink = isV0Workflow
     ? buildRoute(`${LEGACY_DASHBOARD_URL}/workflows/edit/:workflowId`, {
         workflowId: workflow._id,
       })
@@ -89,12 +131,19 @@ export const WorkflowRow = ({ workflow }: WorkflowRowProps) => {
         environmentSlug: currentEnvironment?.slug ?? '',
         workflowSlug: workflow.slug,
       });
-  const triggerWorkflowLink = isV1Workflow
+  const triggerWorkflowLink = isV0Workflow
     ? buildRoute(`${LEGACY_DASHBOARD_URL}/workflows/edit/:workflowId/test-workflow`, { workflowId: workflow._id })
-    : buildRoute(ROUTES.TEST_WORKFLOW, {
+    : buildRoute(ROUTES.TRIGGER_WORKFLOW, {
         environmentSlug: currentEnvironment?.slug ?? '',
         workflowSlug: workflow.slug,
       });
+
+  const translationsUrl = buildRoute(ROUTES.TRANSLATIONS_EDIT, {
+    environmentSlug: currentEnvironment?.slug ?? '',
+    resourceType: LocalizationResourceEnum.WORKFLOW,
+    resourceId: workflow.workflowId,
+    locale: DEFAULT_LOCALE,
+  });
 
   const { deleteWorkflow, isPending: isDeleteWorkflowPending } = useDeleteWorkflow({
     onSuccess: () => {
@@ -180,7 +229,11 @@ export const WorkflowRow = ({ workflow }: WorkflowRowProps) => {
   };
 
   const handleRowClick = () => {
-    if (isV1Workflow) {
+    if (isV0Workflow && IS_SELF_HOSTED) {
+      return;
+    }
+
+    if (isV0Workflow) {
       document.location.href = workflowLink;
     } else {
       navigate(workflowLink);
@@ -192,30 +245,107 @@ export const WorkflowRow = ({ workflow }: WorkflowRowProps) => {
     e.stopPropagation();
   };
 
+  if (!isUserLoaded) {
+    return null;
+  }
+
   return (
     <>
-      <TableRow key={workflow._id} className="group relative isolate cursor-pointer" onClick={handleRowClick}>
-        <WorkflowLinkTableCell className="font-medium">
-          <div className="flex items-center gap-1">
-            {workflow.origin === WorkflowOriginEnum.EXTERNAL && (
-              <Badge color="yellow" size="sm" variant="lighter">
-                <FaCode className="size-3" />
-              </Badge>
-            )}
-            <TruncatedText className="max-w-[32ch]">{workflow.name}</TruncatedText>
-          </div>
-          <div className="flex items-center gap-1 transition-opacity duration-200">
-            <TruncatedText className="text-foreground-400 font-code block text-xs">{workflow.workflowId}</TruncatedText>
+      <TableRow
+        key={workflow._id}
+        className={cn('group relative isolate cursor-pointer', isV0Workflow && IS_SELF_HOSTED && 'cursor-not-allowed')}
+        onClick={handleRowClick}
+      >
+        {isV0Workflow && IS_SELF_HOSTED && (
+          <Tooltip delayDuration={300}>
+            <TooltipTrigger asChild>
+              <div className="absolute inset-0 z-50" />
+            </TooltipTrigger>
+            <TooltipPortal>
+              <TooltipContent side="bottom" align="center" className="z-50">
+                <div className="gap-1">
+                  <span className="font-medium">This workflow is not supported in this version of the dashboard</span>
+                  <a
+                    href={SELF_HOSTED_UPGRADE_REDIRECT_URL + '?utm_campaign=workflow_row_migration_guide'}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary ml-1 text-sm hover:underline"
+                    onClick={stopPropagation}
+                  >
+                    view migration guide.
+                  </a>
+                </div>
+              </TooltipContent>
+            </TooltipPortal>
+          </Tooltip>
+        )}
+        <WorkflowLinkTableCell className="flex items-center gap-2 font-medium">
+          {workflow.origin === ResourceOriginEnum.EXTERNAL ? (
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger>
+                <FaCode className="text-warning size-4" />
+              </TooltipTrigger>
+              <TooltipPortal>
+                <TooltipContent>
+                  <span className="font-medium">Code Workflow</span>
+                  <span className="text-foreground-400 block text-xs">Managed via your codebase</span>
+                  {workflow.isTranslationEnabled && (
+                    <span className="text-foreground-400 block text-xs">Translations enabled</span>
+                  )}
+                </TooltipContent>
+              </TooltipPortal>
+            </Tooltip>
+          ) : workflow.origin === ResourceOriginEnum.NOVU_CLOUD_V1 ? (
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger>
+                <CgBolt className="text-feature size-4" />
+              </TooltipTrigger>
+              <TooltipPortal>
+                <TooltipContent>
+                  <span className="font-medium">Legacy Workflow</span>
+                  <span className="text-foreground-400 block text-xs">Opens in legacy dashboard</span>
+                </TooltipContent>
+              </TooltipPortal>
+            </Tooltip>
+          ) : (
+            <Tooltip delayDuration={300}>
+              <TooltipTrigger>
+                {workflow.isTranslationEnabled ? (
+                  <TranslatedWorkflowIcon className="text-feature size-4" />
+                ) : (
+                  <RiRouteFill className="text-feature size-4" />
+                )}
+              </TooltipTrigger>
+              <TooltipPortal>
+                <TooltipContent>
+                  <span className="font-medium">UI Workflow</span>
+                  <span className="text-foreground-400 block text-xs">Managed in Novu Dashboard</span>
+                  {workflow.isTranslationEnabled && (
+                    <span className="text-foreground-400 block text-xs">Translations enabled</span>
+                  )}
+                </TooltipContent>
+              </TooltipPortal>
+            </Tooltip>
+          )}
+          <div>
+            <div className="flex items-center gap-1">
+              <TruncatedText className="max-w-[32ch]">{workflow.name}</TruncatedText>
+            </div>
+            <div className="flex items-center gap-1 transition-opacity duration-200">
+              <TruncatedText className="text-foreground-400 font-code block max-w-[40ch] text-xs">
+                {workflow.workflowId}
+              </TruncatedText>
 
-            <CopyButton
-              className="z-10 flex size-2 p-0 px-1 opacity-0 group-hover:opacity-100"
-              valueToCopy={workflow.workflowId}
-              size="2xs"
-            />
+              <CopyButton
+                className="z-10 flex size-2 p-0 px-1 opacity-0 group-hover:opacity-100"
+                valueToCopy={workflow.workflowId}
+                size="2xs"
+              />
+            </div>
           </div>
         </WorkflowLinkTableCell>
         <WorkflowLinkTableCell className="min-w-[200px]">
-          <WorkflowStatus status={workflow.status} />
+          <WorkflowStatus status={workflow.status} steps={workflow.steps || []} />
         </WorkflowLinkTableCell>
         <WorkflowLinkTableCell>
           <WorkflowSteps steps={workflow.stepTypeOverviews} />
@@ -225,88 +355,160 @@ export const WorkflowRow = ({ workflow }: WorkflowRowProps) => {
         </WorkflowLinkTableCell>
 
         <WorkflowLinkTableCell className="text-foreground-600 text-sm font-medium">
+          {workflow.lastTriggeredAt ? (
+            <TimeDisplayHoverCard date={new Date(workflow.lastTriggeredAt)}>
+              {formatDateSimple(workflow.lastTriggeredAt)}
+            </TimeDisplayHoverCard>
+          ) : (
+            <span className="text-foreground-400 text-sm font-normal">-</span>
+          )}
+        </WorkflowLinkTableCell>
+        <WorkflowLinkTableCell className="text-foreground-600 text-sm font-medium">
           <TimeDisplayHoverCard date={new Date(workflow.updatedAt)}>
             {formatDateSimple(workflow.updatedAt)}
           </TimeDisplayHoverCard>
         </WorkflowLinkTableCell>
-        {/* <WorkflowLinkTableCell  className="text-foreground-600 text-sm font-medium">
-        {workflow.lastTriggeredAt ? (
-          <TimeDisplayHoverCard date={workflow.lastTriggeredAt}>
-            {formatDateSimple(workflow.lastTriggeredAt)}
-          </TimeDisplayHoverCard>
-        ) : null}
-      </WorkflowLinkTableCell> */}
 
         <WorkflowLinkTableCell className="w-1">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <CompactButton
                 icon={RiMore2Fill}
+                disabled={
+                  !has({ permission: PermissionsEnum.EVENT_WRITE }) &&
+                  !has({ permission: PermissionsEnum.WORKFLOW_WRITE }) &&
+                  currentEnvironment?.type !== EnvironmentTypeEnum.DEV &&
+                  !has({ permission: PermissionsEnum.NOTIFICATION_READ })
+                }
                 variant="ghost"
                 className="z-10 h-8 w-8 p-0"
                 data-testid="workflow-actions-menu"
-              ></CompactButton>
+              />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="w-56" onClick={stopPropagation}>
-              <DropdownMenuGroup>
-                <Link to={triggerWorkflowLink} reloadDocument={isV1Workflow}>
-                  <DropdownMenuItem className="cursor-pointer">
-                    <RiPlayCircleLine />
-                    Trigger workflow
-                  </DropdownMenuItem>
-                </Link>
-                <SyncWorkflowMenuItem
-                  currentEnvironment={currentEnvironment}
-                  isSyncable={isSyncable}
-                  tooltipContent={tooltipContent}
-                  onSync={safeSync}
-                />
-                <Link
-                  to={
-                    buildRoute(ROUTES.ACTIVITY_FEED, {
-                      environmentSlug: currentEnvironment?.slug ?? '',
-                    }) +
-                    '?' +
-                    new URLSearchParams({ workflows: workflow._id }).toString()
-                  }
-                >
-                  <DropdownMenuItem className="cursor-pointer">
-                    <RiPulseFill />
-                    View activity
-                  </DropdownMenuItem>
-                </Link>
-              </DropdownMenuGroup>
-              <DropdownMenuSeparator />
-              <DropdownMenuGroup className="*:cursor-pointer">
-                <DropdownMenuItem
-                  onClick={handlePauseWorkflow}
-                  disabled={workflow.status === WorkflowStatusEnum.ERROR}
-                  data-testid={workflow.status === WorkflowStatusEnum.ACTIVE ? 'pause-workflow' : 'enable-workflow'}
-                >
-                  {workflow.status === WorkflowStatusEnum.ACTIVE ? (
-                    <>
-                      <RiPauseCircleLine />
-                      Pause workflow
-                    </>
-                  ) : (
-                    <>
-                      <RiFlashlightLine />
-                      Enable workflow
-                    </>
+              <Protect
+                condition={(has) =>
+                  has({ permission: PermissionsEnum.EVENT_WRITE }) ||
+                  has({ permission: PermissionsEnum.WORKFLOW_WRITE }) ||
+                  currentEnvironment?.type !== EnvironmentTypeEnum.DEV ||
+                  has({ permission: PermissionsEnum.NOTIFICATION_READ })
+                }
+              >
+                <DropdownMenuGroup>
+                  <Protect permission={PermissionsEnum.EVENT_WRITE}>
+                    <Link to={triggerWorkflowLink} reloadDocument={isV0Workflow}>
+                      <DropdownMenuItem className="cursor-pointer">
+                        <RiPlayCircleLine />
+                        Trigger workflow
+                      </DropdownMenuItem>
+                    </Link>
+                  </Protect>
+                  <Protect permission={PermissionsEnum.WORKFLOW_WRITE}>
+                    <SyncWorkflowMenuItem
+                      currentEnvironment={currentEnvironment}
+                      isSyncable={isNewChangeManagementEnabled ? false : isSyncable}
+                      tooltipContent={
+                        isNewChangeManagementEnabled
+                          ? 'Syncing workflows is now performed in the top right corner of the navigation bar as Publish changes.'
+                          : tooltipContent
+                      }
+                      onSync={safeSync}
+                    />
+                  </Protect>
+                  <Protect permission={PermissionsEnum.NOTIFICATION_READ}>
+                    <Link
+                      to={
+                        buildRoute(ROUTES.ACTIVITY_FEED, {
+                          environmentSlug: currentEnvironment?.slug ?? '',
+                        }) +
+                        '?' +
+                        new URLSearchParams({ workflows: workflow._id }).toString()
+                      }
+                    >
+                      <DropdownMenuItem className="cursor-pointer">
+                        <RiPulseFill />
+                        View activity
+                      </DropdownMenuItem>
+                    </Link>
+                  </Protect>
+                  {workflow.isTranslationEnabled && (
+                    <Link to={translationsUrl}>
+                      <DropdownMenuItem className="cursor-pointer">
+                        <RiTranslate2 />
+                        View translations
+                      </DropdownMenuItem>
+                    </Link>
                   )}
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive"
-                  disabled={workflow.origin === WorkflowOriginEnum.EXTERNAL}
-                  onClick={() => {
-                    setTimeout(() => setIsDeleteModalOpen(true), 0);
-                  }}
-                  data-testid="delete-workflow"
-                >
-                  <RiDeleteBin2Line />
-                  Delete workflow
-                </DropdownMenuItem>
-              </DropdownMenuGroup>
+                  {currentEnvironment?.type === EnvironmentTypeEnum.DEV && (
+                    <Protect permission={PermissionsEnum.WORKFLOW_WRITE}>
+                      {isDuplicable ? (
+                        <Link
+                          to={buildRoute(ROUTES.WORKFLOWS_DUPLICATE, {
+                            environmentSlug: currentEnvironment?.slug ?? '',
+                            workflowId: workflow.workflowId,
+                          })}
+                        >
+                          <DropdownMenuItem className="cursor-pointer">
+                            <FilesIcon />
+                            Duplicate workflow
+                          </DropdownMenuItem>
+                        </Link>
+                      ) : (
+                        <Tooltip>
+                          <TooltipTrigger>
+                            <DropdownMenuItem className="cursor-not-allowed opacity-60">
+                              <FilesIcon />
+                              Duplicate workflow
+                            </DropdownMenuItem>
+                          </TooltipTrigger>
+                          <TooltipPortal>
+                            <TooltipContent>
+                              {workflow.origin === ResourceOriginEnum.NOVU_CLOUD_V1
+                                ? 'V1 workflows cannot be duplicated using dashboard. Please visit the legacy portal.'
+                                : 'External workflows cannot be duplicated using dashboard.'}
+                            </TooltipContent>
+                          </TooltipPortal>
+                        </Tooltip>
+                      )}
+                    </Protect>
+                  )}
+                </DropdownMenuGroup>
+              </Protect>
+              <Protect permission={PermissionsEnum.WORKFLOW_WRITE}>
+                <DropdownMenuSeparator />
+                <DropdownMenuGroup className="*:cursor-pointer">
+                  <DropdownMenuItem
+                    onClick={handlePauseWorkflow}
+                    disabled={workflow.status === WorkflowStatusEnum.ERROR}
+                    data-testid={workflow.status === WorkflowStatusEnum.ACTIVE ? 'pause-workflow' : 'enable-workflow'}
+                  >
+                    {workflow.status === WorkflowStatusEnum.ACTIVE ? (
+                      <>
+                        <RiPauseCircleLine />
+                        Pause workflow
+                      </>
+                    ) : (
+                      <>
+                        <RiFlashlightLine />
+                        Enable workflow
+                      </>
+                    )}
+                  </DropdownMenuItem>
+                  {currentEnvironment?.type === EnvironmentTypeEnum.DEV && (
+                    <DropdownMenuItem
+                      className="text-destructive"
+                      disabled={workflow.origin === ResourceOriginEnum.EXTERNAL}
+                      onClick={() => {
+                        setTimeout(() => setIsDeleteModalOpen(true), 0);
+                      }}
+                      data-testid="delete-workflow"
+                    >
+                      <RiDeleteBin2Line />
+                      Delete workflow
+                    </DropdownMenuItem>
+                  )}
+                </DropdownMenuGroup>
+              </Protect>
             </DropdownMenuContent>
           </DropdownMenu>
         </WorkflowLinkTableCell>
@@ -355,7 +557,7 @@ const SyncWorkflowMenuItem = ({
       <Tooltip>
         <TooltipTrigger>
           <DropdownMenuItem disabled>
-            <RiGitPullRequestFill />
+            <LuBookUp2 />
             Sync workflow
           </DropdownMenuItem>
         </TooltipTrigger>
@@ -369,7 +571,7 @@ const SyncWorkflowMenuItem = ({
   if (otherEnvironments.length === 1) {
     return (
       <DropdownMenuItem onClick={() => onSync(otherEnvironments[0]._id)}>
-        <RiGitPullRequestFill />
+        <LuBookUp2 />
         {`Sync to ${otherEnvironments[0].name}`}
       </DropdownMenuItem>
     );
@@ -378,7 +580,7 @@ const SyncWorkflowMenuItem = ({
   return (
     <DropdownMenuSub>
       <DropdownMenuSubTrigger className="gap-2">
-        <RiGitPullRequestFill />
+        <LuBookUp2 />
         Sync workflow
       </DropdownMenuSubTrigger>
       <DropdownMenuPortal>

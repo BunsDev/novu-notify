@@ -1,13 +1,7 @@
+import { JSONSchemaEntity } from '@novu/dal';
+import { DigestUnitEnum, TimeUnitEnum, UiComponentEnum, UiSchema, UiSchemaGroupEnum } from '@novu/shared';
 import { z } from 'zod';
 import { zodToJsonSchema } from 'zod-to-json-schema';
-import {
-  DigestUnitEnum,
-  JSONSchemaDto,
-  TimeUnitEnum,
-  UiComponentEnum,
-  UiSchema,
-  UiSchemaGroupEnum,
-} from '@novu/shared';
 import { defaultOptions, skipStepUiSchema, skipZodSchema } from './shared';
 
 export const delayControlZodSchema = z
@@ -16,15 +10,13 @@ export const delayControlZodSchema = z
     type: z.enum(['regular']),
     amount: z.number().min(1),
     unit: z.nativeEnum(TimeUnitEnum),
+    extendToSchedule: z.boolean().optional(),
   })
   .strict();
 
 export type DelayControlType = z.infer<typeof delayControlZodSchema>;
 
-export const delayControlSchema = zodToJsonSchema(
-  delayControlZodSchema,
-  defaultOptions,
-) as JSONSchemaDto;
+export const delayControlSchema = zodToJsonSchema(delayControlZodSchema, defaultOptions) as JSONSchemaEntity;
 export const delayUiSchema: UiSchema = {
   group: UiSchemaGroupEnum.DELAY,
   properties: {
@@ -40,6 +32,10 @@ export const delayUiSchema: UiSchema = {
     type: {
       component: UiComponentEnum.DELAY_TYPE,
       placeholder: 'regular',
+    },
+    extendToSchedule: {
+      component: UiComponentEnum.EXTEND_TO_SCHEDULE,
+      placeholder: false,
     },
   },
 };

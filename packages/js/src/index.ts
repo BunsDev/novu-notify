@@ -1,4 +1,35 @@
 export type { EventHandler, Events, SocketEventNames } from './event-emitter';
 export { Novu } from './novu';
-export * from './types';
-export { areTagsEqual, isSameFilter } from './utils/notification-utils';
+export {
+  ChannelPreference,
+  ChannelType,
+  DaySchedule,
+  DefaultSchedule,
+  FiltersCountResponse,
+  InboxNotification,
+  ListNotificationsResponse,
+  Notification,
+  NotificationFilter,
+  NotificationStatus,
+  NovuError,
+  NovuOptions,
+  Preference,
+  PreferenceLevel,
+  PreferencesResponse,
+  Schedule,
+  SeverityLevelEnum,
+  StandardNovuOptions,
+  Subscriber,
+  TimeRange,
+  UnreadCount,
+  WebSocketEvent,
+  WeeklySchedule,
+  WorkflowCriticalityEnum,
+} from './types';
+export {
+  areSeveritiesEqual,
+  areTagsEqual,
+  checkNotificationDataFilter,
+  checkNotificationMatchesFilter,
+  isSameFilter,
+} from './utils/notification-utils';

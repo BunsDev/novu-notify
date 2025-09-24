@@ -1,5 +1,5 @@
-import { IsArray, IsBoolean, IsDefined, IsOptional, IsString, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
+import { IsArray, IsBoolean, IsDefined, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 import { EnvironmentWithSubscriber } from '../../../shared/commands/project.command';
 import { NotificationFilter } from '../../utils/types';
@@ -17,6 +17,10 @@ class Filter implements NotificationFilter {
   @IsOptional()
   @IsBoolean()
   archived?: boolean;
+
+  @IsOptional()
+  @IsString()
+  data?: string;
 }
 
 export class UpdateAllNotificationsCommand extends EnvironmentWithSubscriber {

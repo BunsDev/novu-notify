@@ -1,18 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { AnalyticsService, CreateChange, CreateChangeCommand } from '@novu/application-generic';
 import { ChangeRepository, DalException, NotificationTemplateEntity, NotificationTemplateRepository } from '@novu/dal';
 import { ChangeEntityTypeEnum } from '@novu/shared';
-import {
-  AnalyticsService,
-  CreateChange,
-  CreateChangeCommand,
-  DeleteWorkflowUseCase,
-  DeleteWorkflowCommand,
-  GetWorkflowByIdsUseCase,
-  GetWorkflowByIdsCommand,
-} from '@novu/application-generic';
-
+import { DeleteWorkflowCommand } from '../delete-workflow/delete-workflow.command';
+import { DeleteWorkflowUseCase } from '../delete-workflow/delete-workflow.usecase';
 import { DeleteNotificationTemplateCommand } from './delete-notification-template.command';
-import { ApiException } from '../../../shared/exceptions/api.exception';
 
 /**
  * @deprecated
@@ -75,7 +67,7 @@ export class DeleteNotificationTemplate {
       });
     } catch (e) {
       if (e instanceof DalException) {
-        throw new ApiException(e.message);
+        throw new BadRequestException(e.message);
       }
       throw e;
     }

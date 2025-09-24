@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { CustomDataType, WorkflowPreferences } from '@novu/shared';
+import { CustomDataType, IPaginationWithQueryParams, WorkflowPreferences } from '@novu/shared';
 import { API_ROOT } from '../config';
 import { getToken } from '../components/providers/AuthProvider';
 import { getEnvironmentId, clearEnvironmentId } from '../components/providers/EnvironmentProvider';
@@ -115,7 +115,6 @@ export function buildApiHttpClient({
   });
 
   const get = async (url, params?: Record<string, string | string[] | number>) => {
-    // eslint-disable-next-line no-useless-catch
     try {
       const response = await httpClient.get(url, { params });
 
@@ -127,7 +126,6 @@ export function buildApiHttpClient({
   };
 
   const post = async (url, data = {}) => {
-    // eslint-disable-next-line no-useless-catch
     try {
       const response = await httpClient.post(url, data);
 
@@ -139,7 +137,6 @@ export function buildApiHttpClient({
   };
 
   const del = async (url, data = {}) => {
-    // eslint-disable-next-line no-useless-catch
     try {
       const response = await httpClient.delete(url, data);
 
@@ -153,6 +150,12 @@ export function buildApiHttpClient({
   return {
     async getNotifications(params?: { page?: number; transactionId?: string }) {
       return get(`/v1/notifications`, params);
+    },
+
+    async getNotificationsList({ page = 0, limit = 10, query }: IPaginationWithQueryParams) {
+      const params = { page, limit, ...(query && { query }) };
+
+      return get(`/v1/notification-templates`, params);
     },
 
     async getNotification(notificationId: string) {

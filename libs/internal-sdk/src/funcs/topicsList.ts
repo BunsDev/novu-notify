@@ -18,17 +18,20 @@ import {
   UnexpectedClientError,
 } from "../models/errors/httpclienterrors.js";
 import * as errors from "../models/errors/index.js";
-import { SDKError } from "../models/errors/sdkerror.js";
+import { NovuError } from "../models/errors/novuerror.js";
+import { ResponseValidationError } from "../models/errors/responsevalidationerror.js";
 import { SDKValidationError } from "../models/errors/sdkvalidationerror.js";
 import * as operations from "../models/operations/index.js";
 import { APICall, APIPromise } from "../types/async.js";
 import { Result } from "../types/fp.js";
 
 /**
- * Get topic list filtered
+ * List all topics
  *
  * @remarks
- * Returns a list of topics that can be paginated using the `page` query parameter and filtered by the topic key with the `key` query parameter
+ * This api returns a paginated list of topics.
+ *     Topics can be filtered by **key**, **name**, or **includeCursor** to paginate through the list.
+ *     Checkout all available filters in the query section.
  */
 export function topicsList(
   client: NovuCore,
@@ -38,16 +41,15 @@ export function topicsList(
   Result<
     operations.TopicsControllerListTopicsResponse,
     | errors.ErrorDto
-    | errors.ErrorDto
     | errors.ValidationErrorDto
-    | errors.ErrorDto
-    | SDKError
-    | SDKValidationError
-    | UnexpectedClientError
-    | InvalidRequestError
+    | NovuError
+    | ResponseValidationError
+    | ConnectionError
     | RequestAbortedError
     | RequestTimeoutError
-    | ConnectionError
+    | InvalidRequestError
+    | UnexpectedClientError
+    | SDKValidationError
   >
 > {
   return new APIPromise($do(
@@ -66,16 +68,15 @@ async function $do(
     Result<
       operations.TopicsControllerListTopicsResponse,
       | errors.ErrorDto
-      | errors.ErrorDto
       | errors.ValidationErrorDto
-      | errors.ErrorDto
-      | SDKError
-      | SDKValidationError
-      | UnexpectedClientError
-      | InvalidRequestError
+      | NovuError
+      | ResponseValidationError
+      | ConnectionError
       | RequestAbortedError
       | RequestTimeoutError
-      | ConnectionError
+      | InvalidRequestError
+      | UnexpectedClientError
+      | SDKValidationError
     >,
     APICall,
   ]
@@ -92,12 +93,17 @@ async function $do(
   const payload = parsed.value;
   const body = null;
 
-  const path = pathToFunc("/v1/topics")();
+  const path = pathToFunc("/v2/topics")();
 
   const query = encodeFormQuery({
+    "after": payload.after,
+    "before": payload.before,
+    "includeCursor": payload.includeCursor,
     "key": payload.key,
-    "page": payload.page,
-    "pageSize": payload.pageSize,
+    "limit": payload.limit,
+    "name": payload.name,
+    "orderBy": payload.orderBy,
+    "orderDirection": payload.orderDirection,
   });
 
   const headers = new Headers(compactMap({
@@ -113,6 +119,7 @@ async function $do(
   const requestSecurity = resolveGlobalSecurity(securityInput);
 
   const context = {
+    options: client._options,
     baseURL: options?.serverURL ?? client._baseURL ?? "",
     operationID: "TopicsController_listTopics",
     oAuth2Scopes: [],
@@ -144,6 +151,7 @@ async function $do(
     headers: headers,
     query: query,
     body: body,
+    userAgent: client._options.userAgent,
     timeoutMs: options?.timeoutMs || client._options.timeoutMs || -1,
   }, options);
   if (!requestRes.ok) {
@@ -185,16 +193,15 @@ async function $do(
   const [result] = await M.match<
     operations.TopicsControllerListTopicsResponse,
     | errors.ErrorDto
-    | errors.ErrorDto
     | errors.ValidationErrorDto
-    | errors.ErrorDto
-    | SDKError
-    | SDKValidationError
-    | UnexpectedClientError
-    | InvalidRequestError
+    | NovuError
+    | ResponseValidationError
+    | ConnectionError
     | RequestAbortedError
     | RequestTimeoutError
-    | ConnectionError
+    | InvalidRequestError
+    | UnexpectedClientError
+    | SDKValidationError
   >(
     M.json(200, operations.TopicsControllerListTopicsResponse$inboundSchema, {
       hdrs: true,
@@ -212,7 +219,7 @@ async function $do(
     M.fail(503),
     M.fail("4XX"),
     M.fail("5XX"),
-  )(response, { extraFields: responseFields });
+  )(response, req, { extraFields: responseFields });
   if (!result.ok) {
     return [result, { status: "complete", request: req, response }];
   }

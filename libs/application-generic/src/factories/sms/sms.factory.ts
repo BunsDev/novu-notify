@@ -1,37 +1,42 @@
 import { IntegrationEntity } from '@novu/dal';
-import { ISmsFactory, ISmsHandler } from './interfaces';
 import {
-  SnsHandler,
-  TelnyxHandler,
-  TwilioHandler,
-  Sms77Handler,
-  TermiiSmsHandler,
-  PlivoHandler,
-  GupshupSmsHandler,
-  FiretextSmsHandler,
-  InfobipSmsHandler,
+  AfricasTalkingSmsHandler,
+  AfroSmsHandler,
+  AzureSmsHandler,
+  BandwidthHandler,
+  BrevoSmsHandler,
+  BulkSmsHandler,
   BurstSmsHandler,
   ClickatellHandler,
+  ClicksendSmsHandler,
+  EazySmsHandler,
+  FiretextSmsHandler,
   FortySixElksHandler,
+  GenericSmsHandler,
+  GupshupSmsHandler,
+  IMediaHandler,
+  InfobipSmsHandler,
+  ISendSmsHandler,
   KannelSmsHandler,
   MaqsamHandler,
-  SmsCentralHandler,
-  AfricasTalkingSmsHandler,
-  SendchampSmsHandler,
-  ClicksendSmsHandler,
-  SimpletextingSmsHandler,
-  BandwidthHandler,
-  GenericSmsHandler,
   MessageBirdHandler,
-  AzureSmsHandler,
-  NovuSmsHandler,
-  NexmoHandler,
-  ISendSmsHandler,
-  RingCentralHandler,
-  BrevoSmsHandler,
-  EazySmsHandler,
   MobishastraHandler,
+  NexmoHandler,
+  NovuSmsHandler,
+  PlivoHandler,
+  RingCentralHandler,
+  SendchampSmsHandler,
+  SimpletextingSmsHandler,
+  Sms77Handler,
+  SmsCentralHandler,
+  SnsHandler,
+  TelnyxHandler,
+  TermiiSmsHandler,
+  TwilioHandler,
+  UnifonicHandler,
 } from './handlers';
+import { SmsmodeHandler } from './handlers/smsmode.handler';
+import { ISmsFactory, ISmsHandler } from './interfaces';
 
 export class SmsFactory implements ISmsFactory {
   handlers: ISmsHandler[] = [
@@ -44,6 +49,7 @@ export class SmsFactory implements ISmsFactory {
     new ClickatellHandler(),
     new GupshupSmsHandler(),
     new FiretextSmsHandler(),
+    new IMediaHandler(),
     new InfobipSmsHandler(),
     new BurstSmsHandler(),
     new FortySixElksHandler(),
@@ -65,13 +71,15 @@ export class SmsFactory implements ISmsFactory {
     new BrevoSmsHandler(),
     new EazySmsHandler(),
     new MobishastraHandler(),
+    new AfroSmsHandler(),
+    new UnifonicHandler(),
+    new SmsmodeHandler(),
+    new BulkSmsHandler(),
   ];
 
-  getHandler(integration: IntegrationEntity) {
+  getHandler(integration: Pick<IntegrationEntity, 'credentials' | 'channel' | 'providerId' | 'configurations'>) {
     const handler =
-      this.handlers.find((handlerItem) =>
-        handlerItem.canHandle(integration.providerId, integration.channel),
-      ) ?? null;
+      this.handlers.find((handlerItem) => handlerItem.canHandle(integration.providerId, integration.channel)) ?? null;
 
     if (!handler) return null;
 

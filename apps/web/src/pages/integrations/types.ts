@@ -1,6 +1,6 @@
 import type {
   ChannelTypeEnum,
-  IConfigCredentials,
+  IConfigCredential,
   ICredentials,
   ILogoFileName,
   IProviderConfig,
@@ -30,11 +30,10 @@ export interface IIntegratedProvider {
   displayName: string;
   channel: ChannelTypeEnum;
   hasCredentials?: boolean;
-  credentials: IConfigCredentials[];
+  credentials: IConfigCredential[];
   docReference: string;
   comingSoon: boolean;
   active: boolean;
-  removeNovuBranding?: boolean;
   connected: boolean;
   conditions?: IConditions[];
   logoFileName: ILogoFileName;
@@ -57,7 +56,6 @@ export interface IntegrationEntity {
   credentials: ICredentials;
   conditions?: IConditions[];
   active: boolean;
-  removeNovuBranding?: boolean;
   deleted: boolean;
   order: number;
   primary: boolean;

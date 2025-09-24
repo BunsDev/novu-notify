@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import { useMutation } from '@tanstack/react-query';
 import { useForm } from 'react-hook-form';
 import { Center } from '@mantine/core';
@@ -9,14 +9,14 @@ import { PasswordInput, Button, colors, Input, Text, Checkbox } from '@novu/desi
 
 import { useAuth } from '../../../hooks/useAuth';
 import { api } from '../../../api/api.client';
-import { useRedirectURL, useVercelParams } from '../../../hooks';
+import { useRedirectURL } from '../../../hooks';
 import { useAcceptInvite } from './useAcceptInvite';
 import { PasswordRequirementPopover } from './PasswordRequirementPopover';
 import { ROUTES } from '../../../constants/routes';
 import { OAuth } from './OAuth';
 import { useSegment } from '../../../components/providers/SegmentProvider';
 import { useStudioState } from '../../../studio/hooks';
-import { navigateToAuthApplication } from '../../../utils';
+import { navigateToWorkflows } from '../../../utils';
 
 type SignUpFormProps = {
   invitationToken?: string;
@@ -30,16 +30,12 @@ export type SignUpFormInputType = {
 };
 
 export function SignUpForm({ invitationToken, email }: SignUpFormProps) {
-  const navigate = useNavigate();
   const { setRedirectURL } = useRedirectURL();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => setRedirectURL(), []);
   const location = useLocation();
 
   const { login } = useAuth();
   const { isLoading: isAcceptInviteLoading, acceptInvite } = useAcceptInvite();
-  const { params, isFromVercel } = useVercelParams();
-  const loginLink = isFromVercel ? `${ROUTES.AUTH_LOGIN}?${params.toString()}` : ROUTES.AUTH_LOGIN;
   const segment = useSegment();
   const state = useStudioState();
 
@@ -60,7 +56,6 @@ export function SignUpForm({ invitationToken, email }: SignUpFormProps) {
     const origin = parsedSearchParams.get('origin');
     const anonymousId = parsedSearchParams.get('anonymous_id');
 
-    // eslint-disable-next-line no-unsafe-optional-chaining
     const [firstName, lastName] = data?.fullName.trim().split(' ');
     const itemData = {
       firstName,
@@ -84,10 +79,9 @@ export function SignUpForm({ invitationToken, email }: SignUpFormProps) {
       if (updatedToken) {
         await login(updatedToken);
       }
-      navigateToAuthApplication();
+      navigateToWorkflows();
     } else {
-      const navigateParams = isFromVercel ? `?${params.toString()}` : '';
-      navigateToAuthApplication(navigateParams);
+      navigateToWorkflows();
     }
   };
 
@@ -167,7 +161,6 @@ export function SignUpForm({ invitationToken, email }: SignUpFormProps) {
               pattern: {
                 value: passwordConstraints.pattern,
                 message:
-                  // eslint-disable-next-line max-len
                   'The password must contain minimum 8 and maximum 64 characters, at least one uppercase letter, one lowercase letter, one number and one special character #?!@$%^&*()-',
               },
             })}
@@ -206,7 +199,7 @@ export function SignUpForm({ invitationToken, email }: SignUpFormProps) {
           <Text mr={10} size="md" color={colors.B60}>
             Already have an account?
           </Text>
-          <Link to={loginLink}>
+          <Link to={ROUTES.AUTH_LOGIN}>
             <Text gradient> Sign In</Text>
           </Link>
         </Center>

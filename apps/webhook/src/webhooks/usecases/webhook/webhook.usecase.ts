@@ -1,22 +1,12 @@
-import { Injectable, Logger, NotFoundException, Scope } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException, Scope } from '@nestjs/common';
+import { AnalyticsService, IMailHandler, ISmsHandler, MailFactory, SmsFactory } from '@novu/application-generic';
 import { IntegrationEntity, IntegrationQuery, IntegrationRepository, MessageRepository } from '@novu/dal';
 import { ChannelTypeEnum, providers } from '@novu/shared';
 import { IEmailProvider, ISmsProvider } from '@novu/stateless';
-import {
-  AnalyticsService,
-  ApiException,
-  IMailHandler,
-  ISmsHandler,
-  MailFactory,
-  SmsFactory,
-} from '@novu/application-generic';
-
-import { WebhookCommand } from './webhook.command';
-
-import { CreateExecutionDetails } from '../execution-details/create-execution-details.usecase';
-
 import { IWebhookResult } from '../../dtos/webhooks-response.dto';
 import { WebhookTypes } from '../../interfaces/webhook.interface';
+import { CreateExecutionDetails } from '../execution-details/create-execution-details.usecase';
+import { WebhookCommand } from './webhook.command';
 
 @Injectable({ scope: Scope.REQUEST })
 export class Webhook {
@@ -51,7 +41,7 @@ export class Webhook {
 
     const hasNoCredentials = !integration.credentials || Object.keys(integration.credentials).length === 0;
     if (hasNoCredentials) {
-      throw new ApiException(`Integration ${integration._id} doesn't have credentials set up`);
+      throw new BadRequestException(`Integration ${integration._id} doesn't have credentials set up`);
     }
 
     this.analyticsService.track('[Webhook] - Provider Webhook called', '', {

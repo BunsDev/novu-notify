@@ -1,3 +1,174 @@
+## v3.9.3 (2025-09-03)
+
+This was a version bump only for @novu/react to align it with other projects, there were no code changes.
+
+## v3.9.2 (2025-09-03)
+
+### 🚀 Features
+
+- **js,react,api-service:** inbox allow filtering preferences by workflow criticality fixes NV-6577 ([#9011](https://github.com/novuhq/novu/pull/9011))
+
+### 🩹 Fixes
+
+- **js,react:** re-export types for the react-native package; fix partysocket event target polyfill fixes NV-6448 ([#9036](https://github.com/novuhq/novu/pull/9036))
+
+### ❤️ Thank You
+
+- Paweł Tymczuk @LetItRock
+
+## v3.9.1 (2025-08-27)
+
+### 🚀 Features
+
+- **js,react,nextjs:** inbox appearance keys as a callback with the context prop fixes NV-6447 ([#8983](https://github.com/novuhq/novu/pull/8983))
+- **js,react:** inbox render props for avatar, default and custom actions fixes NV-6535 ([#8977](https://github.com/novuhq/novu/pull/8977))
+- **js,react,api-service,ws:** support severity in inbox components and hooks fixes NV-6470 ([#8913](https://github.com/novuhq/novu/pull/8913))
+
+### ❤️ Thank You
+
+- Paweł Tymczuk @LetItRock
+
+## v3.8.1 (2025-08-13)
+
+### 🚀 Features
+
+- **js,react:** useNotifications hook realtime updates fixes NV-5502 ([#8892](https://github.com/novuhq/novu/pull/8892))
+
+### 🩹 Fixes
+
+- **root:** nx release publish issue for syntax error fixes NV-6506 ([#8922](https://github.com/novuhq/novu/pull/8922))
+- **react:** stale filters in closures fixes NV-6479 ([#8893](https://github.com/novuhq/novu/pull/8893))
+
+### ❤️ Thank You
+
+- Adam Chmara @ChmaraX
+- Himanshu Garg @merrcury
+
+## v3.7.0 (2025-07-22)
+
+### 🚀 Features
+
+- **react,js,api-service:** Add seen status and behaviour to inbox component fixes NV-6179 ([#8704](https://github.com/novuhq/novu/pull/8704))
+- **worker,js,react:** subscriber timezone aware delivery fixes NV-6239 ([#8674](https://github.com/novuhq/novu/pull/8674))
+- **react,js,nextjs,react-native:** create new inbox session on subscriber change ([#8417](https://github.com/novuhq/novu/pull/8417))
+- **root:** create keyless environment ([#8276](https://github.com/novuhq/novu/pull/8276))
+- **api-service:** add data attribute filtering for inbox notifications ([#8338](https://github.com/novuhq/novu/pull/8338))
+
+### 🩹 Fixes
+
+- **root:** bring back eslint and web app build ([#8505](https://github.com/novuhq/novu/pull/8505))
+- version bump react packages ([62ff7ee154](https://github.com/novuhq/novu/commit/62ff7ee154))
+- novu react rc 4 release ([b737df7335](https://github.com/novuhq/novu/commit/b737df7335))
+
+### ❤️ Thank You
+
+- Dima Grossman @scopsy
+- George Djabarov @djabarovgeorge
+- Paweł Tymczuk @LetItRock
+
+## v3.4.0 (2025-05-16)
+
+### 🚀 Features
+
+- **js,react:** inbox preference grouping ([#8310](https://github.com/novuhq/novu/pull/8310))
+- **js,react:** inbox and styles under the shadow root ([#8262](https://github.com/novuhq/novu/pull/8262))
+
+### 🩹 Fixes
+
+- **react:** inbox hydration issue for shadow root detector ([#8321](https://github.com/novuhq/novu/pull/8321))
+
+### ❤️ Thank You
+
+- Paweł Tymczuk @LetItRock
+
+# v3.3.1 (2025-05-07)
+
+### 🧱 Updated Dependencies
+
+- Updated @novu/js to 3.3.1
+
+### ❤️ Thank You
+
+- Adam Chmara @ChmaraX
+
+## v3.3.0 (2025-05-07)
+
+### 🚀 Features
+
+- **js,react:** add snooze functionality ([#8230](https://github.com/novuhq/novu/pull/8230))
+- **repo:** Polish changelogs for packages ([a932bd38e4](https://github.com/novuhq/novu/commit/a932bd38e4))
+
+### 🧱 Updated Dependencies
+
+- Updated @novu/js to 3.3.0
+
+### ❤️ Thank You
+
+- Adam Chmara @ChmaraX
+- George Desipris @desiprisg
+- Paweł Tymczuk @LetItRock
+
+## v3.2.0 (2025-04-30)
+
+### 🚀 Features
+
+- **react:** upsert firstName, lastName, and email on session init ([#8142](https://github.com/novuhq/novu/pull/8142))
+
+### ❤️ Thank You
+
+- George Djabarov @djabarovgeorge
+
+## v3.1.0 (2025-04-11)
+
+### 🩹 Fixes
+
+- **react:** apiUrl prop passing to novu/js ([#8104](https://github.com/novuhq/novu/pull/8104))
+
+### 🧱 Updated Dependencies
+
+- Updated @novu/js to 3.1.0
+
+### ❤️ Thank You
+
+- Dima Grossman @scopsy
+- Sokratis Vidros @SokratisVidros
+
+## v3.0.3 (2025-03-31)
+
+### 🚀 Features
+
+- **react,nextjs:** better dist folders structure and tsup config improvements ([#7914](https://github.com/novuhq/novu/pull/7914))
+- **js,react:** inbox subject, body render props ([#7886](https://github.com/novuhq/novu/pull/7886))
+- **js:** Inbox retheme ([#7759](https://github.com/novuhq/novu/pull/7759))
+- **api-service:** system limits & update pricing pages ([#7718](https://github.com/novuhq/novu/pull/7718))
+- **root:** add no only github action ([#7692](https://github.com/novuhq/novu/pull/7692))
+
+### 🩹 Fixes
+
+- **api-service:** Remove lock from cached entity 2nd try ([#7979](https://github.com/novuhq/novu/pull/7979))
+- **root:** simplify service dependencies in docker-compose.yml ([#7993](https://github.com/novuhq/novu/pull/7993))
+- **root:** Stop updating lock-file when releasing new packages ([2107336ae2](https://github.com/novuhq/novu/commit/2107336ae2))
+- **api-service:** remove-lock-from-cached-entity ([#7923](https://github.com/novuhq/novu/pull/7923))
+- **root:** add NEW_RELIC_ENABLED to docker community ([#7943](https://github.com/novuhq/novu/pull/7943))
+- **root:** remove healthcheck option in docker-compose.yml ([#7929](https://github.com/novuhq/novu/pull/7929))
+- **react,nextjs:** Add use-client to exports ([#7934](https://github.com/novuhq/novu/pull/7934))
+- **react:** use counts hooks used with not existing tags ([#7933](https://github.com/novuhq/novu/pull/7933))
+- **api-service:** Remove redlock ([#7845](https://github.com/novuhq/novu/pull/7845))
+- **api-service:** fix idices not created in mongo-test ([#7857](https://github.com/novuhq/novu/pull/7857))
+- **root:** unhandled promise reject and undefined ff kind ([#7732](https://github.com/novuhq/novu/pull/7732))
+- **api-service:** remove only on e2e ([#7691](https://github.com/novuhq/novu/pull/7691))
+
+### ❤️ Thank You
+
+- Aaron Ritter @Aaron-Ritter
+- GalTidhar @tatarco
+- George Desipris @desiprisg
+- George Djabarov @djabarovgeorge
+- Himanshu Garg @merrcury
+- Pawan Jain
+- Paweł Tymczuk @LetItRock
+- Sokratis Vidros @SokratisVidros
+
 ## 3.0.1 (2025-03-24)
 
 ### 🩹 Fixes
@@ -17,7 +188,6 @@
 - Pawan Jain
 - Paweł Tymczuk @LetItRock
 - Sokratis Vidros @SokratisVidros
-
 
 # 3.0.0 (2025-03-17)
 

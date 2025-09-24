@@ -1,4 +1,5 @@
 import { getSubscription } from '@/api/billing';
+import { IS_ENTERPRISE, IS_SELF_HOSTED } from '@/config';
 import { useAuth } from '@/context/auth/hooks';
 import { useEnvironment } from '@/context/environment/hooks';
 import { QueryKeys } from '@/utils/query-keys';
@@ -18,7 +19,7 @@ export const useFetchSubscription = () => {
   const { data: subscription, isLoading: isLoadingSubscription } = useQuery<GetSubscriptionDto>({
     queryKey: [QueryKeys.billingSubscription, currentOrganization?._id],
     queryFn: () => getSubscription({ environment: currentEnvironment! }),
-    enabled: !!currentOrganization,
+    enabled: !!currentOrganization && (!IS_SELF_HOSTED || IS_ENTERPRISE),
     meta: {
       showError: false,
     },

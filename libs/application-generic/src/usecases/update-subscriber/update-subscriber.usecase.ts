@@ -1,12 +1,10 @@
-import { Injectable } from '@nestjs/common';
+import { BadRequestException, Injectable } from '@nestjs/common';
 import { SubscriberEntity, SubscriberRepository } from '@novu/dal';
 
-import { buildSubscriberKey, CachedEntity, InvalidateCacheService } from '../../services/cache';
-import { subscriberNeedUpdate } from '../../utils/subscriber';
-
-import { UpdateSubscriberCommand } from './update-subscriber.command';
-import { ApiException } from '../../utils/exceptions';
+import { buildSubscriberKey, CachedResponse, InvalidateCacheService } from '../../services';
+import { subscriberNeedUpdate } from '../../utils';
 import { OAuthHandlerEnum, UpdateSubscriberChannel, UpdateSubscriberChannelCommand } from '../subscribers';
+import { UpdateSubscriberCommand } from './update-subscriber.command';
 
 @Injectable()
 export class UpdateSubscriber {
@@ -25,7 +23,7 @@ export class UpdateSubscriber {
         });
 
     if (!foundSubscriber) {
-      throw new ApiException(`SubscriberId: ${command.subscriberId} not found`);
+      throw new BadRequestException(`SubscriberId: ${command.subscriberId} not found`);
     }
 
     const updatePayload: Partial<SubscriberEntity> = {};
@@ -122,7 +120,7 @@ export class UpdateSubscriber {
     }
   }
 
-  @CachedEntity({
+  @CachedResponse({
     builder: (command: { subscriberId: string; _environmentId: string }) =>
       buildSubscriberKey({
         _environmentId: command._environmentId,

@@ -1,31 +1,31 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
-  NotificationTemplateRepository,
-  SubscriberRepository,
-  PreferencesRepository,
+  filteredPreference,
+  GetPreferences,
+  GetPreferencesResponseDto,
+  Instrument,
+  InstrumentUsecase,
+  MergePreferences,
+  MergePreferencesCommand,
+  mapTemplateConfiguration,
+  overridePreferences,
+  PreferenceSet,
+} from '@novu/application-generic';
+import {
   NotificationTemplateEntity,
+  NotificationTemplateRepository,
   PreferencesEntity,
+  PreferencesRepository,
+  SubscriberRepository,
 } from '@novu/dal';
 import {
   ChannelTypeEnum,
   IPreferenceChannels,
   ISubscriberPreferenceResponse,
   PreferencesTypeEnum,
-  StepTypeEnum,
+  WorkflowCriticalityEnum,
 } from '@novu/shared';
-
-import {
-  Instrument,
-  InstrumentUsecase,
-  MergePreferences,
-  GetPreferences,
-  GetPreferencesResponseDto,
-  PreferenceSet,
-  filteredPreference,
-  overridePreferences,
-  MergePreferencesCommand,
-  mapTemplateConfiguration,
-} from '@novu/application-generic';
+import { chunk } from 'es-toolkit';
 import { GetSubscriberPreferenceCommand } from './get-subscriber-preference.command';
 
 @Injectable()
@@ -38,7 +38,9 @@ export class GetSubscriberPreference {
 
   @InstrumentUsecase()
   async execute(command: GetSubscriberPreferenceCommand): Promise<ISubscriberPreferenceResponse[]> {
-    const subscriber = await this.subscriberRepository.findBySubscriberId(command.environmentId, command.subscriberId);
+    const subscriber =
+      command.subscriber ??
+      (await this.subscriberRepository.findBySubscriberId(command.environmentId, command.subscriberId));
     if (!subscriber) {
       throw new NotFoundException(`Subscriber with id: ${command.subscriberId} not found`);
     }
@@ -47,34 +49,22 @@ export class GetSubscriberPreference {
       organizationId: command.organizationId,
       environmentId: command.environmentId,
       tags: command.tags,
+      severity: command.severity,
     });
 
     const workflowIds = workflowList.map((wf) => wf._id);
 
-    const [
+    const {
       workflowResourcePreferences,
       workflowUserPreferences,
       subscriberWorkflowPreferences,
       subscriberGlobalPreference,
-    ] = await Promise.all([
-      this.findWorkflowPreferences({
-        environmentId: command.environmentId,
-        workflowIds,
-      }),
-      this.findUserWorkflowPreferences({
-        environmentId: command.environmentId,
-        workflowIds,
-      }),
-      this.findSubscriberWorkflowPreferences({
-        environmentId: command.environmentId,
-        subscriberId: subscriber._id,
-        workflowIds,
-      }),
-      this.findSubscriberGlobalPreferences({
-        environmentId: command.environmentId,
-        subscriberId: subscriber._id,
-      }),
-    ]);
+    } = await this.findAllPreferences({
+      environmentId: command.environmentId,
+      organizationId: command.organizationId,
+      subscriberId: subscriber._id,
+      workflowIds,
+    });
 
     const allWorkflowPreferences = [
       ...workflowResourcePreferences,
@@ -113,7 +103,7 @@ export class GetSubscriberPreference {
       return acc;
     }, {});
 
-    const workflowPreferences: (ISubscriberPreferenceResponse | undefined)[] = this.calculateWorkflowPreferences(
+    const workflowPreferences = await this.calculateWorkflowPreferences(
       workflowList,
       workflowPreferenceSets,
       subscriberGlobalPreference,
@@ -121,57 +111,88 @@ export class GetSubscriberPreference {
     );
 
     const nonCriticalWorkflowPreferences = workflowPreferences.filter(
-      (preference): preference is ISubscriberPreferenceResponse =>
-        preference !== undefined && !preference.template.critical
+      (preference): preference is ISubscriberPreferenceResponse => {
+        if (preference === undefined) {
+          return false;
+        }
+
+        if (command.criticality === WorkflowCriticalityEnum.ALL) {
+          return true;
+        }
+
+        if (command.criticality === WorkflowCriticalityEnum.CRITICAL) {
+          return preference.template.critical === true;
+        }
+
+        return preference.template.critical === false;
+      }
     );
 
     return nonCriticalWorkflowPreferences;
   }
 
   @Instrument()
-  private calculateWorkflowPreferences(
+  private async calculateWorkflowPreferences(
     workflowList: NotificationTemplateEntity[],
     workflowPreferenceSets: Record<string, PreferenceSet>,
     subscriberGlobalPreference: PreferencesEntity | null,
     includeInactiveChannels: boolean
-  ): (ISubscriberPreferenceResponse | undefined)[] {
-    return workflowList.map((workflow) => {
-      const preferences = workflowPreferenceSets[workflow._id];
+  ): Promise<(ISubscriberPreferenceResponse | undefined)[]> {
+    const chunkSize = 30;
+    const results: (ISubscriberPreferenceResponse | undefined)[] = [];
 
-      if (!preferences) {
-        return;
-      }
+    const chunks = chunk(workflowList, chunkSize);
 
-      const merged = this.mergePreferences(preferences, subscriberGlobalPreference);
+    for (const chunk of chunks) {
+      // Use setImmediate to yield to the event loop between chunks
+      await new Promise<void>((resolve) => {
+        setImmediate(() => resolve());
+      });
 
-      const includedChannels = this.getChannels(workflow, includeInactiveChannels);
+      const chunkResults = chunk
+        .map((workflow) => {
+          const preferences = workflowPreferenceSets[workflow._id];
 
-      const initialChannels = filteredPreference(
-        {
-          email: true,
-          sms: true,
-          in_app: true,
-          chat: true,
-          push: true,
-        },
-        includedChannels
-      );
+          if (!preferences) {
+            return null;
+          }
 
-      const { channels, overrides } = this.calculateChannelsAndOverrides(merged, initialChannels);
+          const merged = this.mergePreferences(preferences, subscriberGlobalPreference);
 
-      return {
-        preference: {
-          channels,
-          enabled: true,
-          overrides,
-        },
-        template: mapTemplateConfiguration({
-          ...workflow,
-          critical: merged.preferences.all.readOnly,
-        }),
-        type: PreferencesTypeEnum.SUBSCRIBER_WORKFLOW,
-      };
-    });
+          const includedChannels = this.getChannels(workflow, includeInactiveChannels);
+
+          const initialChannels = filteredPreference(
+            {
+              email: true,
+              sms: true,
+              in_app: true,
+              chat: true,
+              push: true,
+            },
+            includedChannels
+          );
+
+          const { channels, overrides } = this.calculateChannelsAndOverrides(merged, initialChannels);
+
+          return {
+            preference: {
+              channels,
+              enabled: true,
+              overrides,
+            },
+            template: mapTemplateConfiguration({
+              ...workflow,
+              critical: merged.preferences.all.readOnly,
+            }),
+            type: PreferencesTypeEnum.SUBSCRIBER_WORKFLOW,
+          };
+        })
+        .filter((item): item is ISubscriberPreferenceResponse => item !== null);
+
+      results.push(...chunkResults);
+    }
+
+    return results;
   }
 
   @Instrument()
@@ -203,82 +224,96 @@ export class GetSubscriberPreference {
       return Object.values(ChannelTypeEnum);
     }
 
-    const activeSteps = workflow.steps.filter((step) => step.active === true);
+    const channelSet = new Set<ChannelTypeEnum>();
 
-    const channels = activeSteps
-      .map((item) => item.template?.type as StepTypeEnum)
-      .reduce<StepTypeEnum[]>((list, channel) => {
-        if (list.includes(channel)) {
-          return list;
-        }
-        list.push(channel);
+    for (const step of workflow.steps) {
+      if (step.active && step.template?.type) {
+        channelSet.add(step.template.type as unknown as ChannelTypeEnum);
+      }
+    }
 
-        return list;
-      }, []);
-
-    return channels as unknown as ChannelTypeEnum[];
+    return Array.from(channelSet);
   }
 
   @Instrument()
-  private async findWorkflowPreferences({
+  private async findAllPreferences({
     environmentId,
-    workflowIds,
-  }: {
-    environmentId: string;
-    workflowIds: string[];
-  }) {
-    return this.preferencesRepository.find({
-      _templateId: { $in: workflowIds },
-      _environmentId: environmentId,
-      type: PreferencesTypeEnum.WORKFLOW_RESOURCE,
-    });
-  }
-
-  @Instrument()
-  private async findUserWorkflowPreferences({
-    environmentId,
-    workflowIds,
-  }: {
-    environmentId: string;
-    workflowIds: string[];
-  }) {
-    return this.preferencesRepository.find({
-      _templateId: { $in: workflowIds },
-      _environmentId: environmentId,
-      type: PreferencesTypeEnum.USER_WORKFLOW,
-    });
-  }
-
-  @Instrument()
-  private async findSubscriberWorkflowPreferences({
-    environmentId,
+    organizationId,
     subscriberId,
     workflowIds,
   }: {
     environmentId: string;
+    organizationId: string;
     subscriberId: string;
     workflowIds: string[];
   }) {
-    return this.preferencesRepository.find({
-      _templateId: { $in: workflowIds },
-      _subscriberId: subscriberId,
-      _environmentId: environmentId,
-      type: PreferencesTypeEnum.SUBSCRIBER_WORKFLOW,
-    });
-  }
+    // Build query conditions for all preference types
+    const queryConditions: Array<{
+      _templateId?: { $in: string[] } | string;
+      _subscriberId?: string;
+      type: PreferencesTypeEnum;
+    }> = [
+      // Workflow resource preferences
+      {
+        _templateId: { $in: workflowIds },
+        type: PreferencesTypeEnum.WORKFLOW_RESOURCE,
+      },
+      // User workflow preferences
+      {
+        _templateId: { $in: workflowIds },
+        type: PreferencesTypeEnum.USER_WORKFLOW,
+      },
+      // Subscriber workflow preferences
+      {
+        _subscriberId: subscriberId,
+        _templateId: { $in: workflowIds },
+        type: PreferencesTypeEnum.SUBSCRIBER_WORKFLOW,
+      },
+      // Subscriber global preferences
+      {
+        _subscriberId: subscriberId,
+        type: PreferencesTypeEnum.SUBSCRIBER_GLOBAL,
+      },
+    ];
 
-  @Instrument()
-  private async findSubscriberGlobalPreferences({
-    environmentId,
-    subscriberId,
-  }: {
-    environmentId: string;
-    subscriberId: string;
-  }) {
-    return this.preferencesRepository.findOne({
-      _subscriberId: subscriberId,
-      _environmentId: environmentId,
-      type: PreferencesTypeEnum.SUBSCRIBER_GLOBAL,
-    });
+    const allPreferences = await this.preferencesRepository.find(
+      {
+        _environmentId: environmentId,
+        _organizationId: organizationId,
+        $or: queryConditions,
+      },
+      undefined,
+      { readPreference: 'secondaryPreferred' }
+    );
+
+    // Map results back to expected structure
+    const workflowResourcePreferences: PreferencesEntity[] = [];
+    const workflowUserPreferences: PreferencesEntity[] = [];
+    const subscriberWorkflowPreferences: PreferencesEntity[] = [];
+    let subscriberGlobalPreference: PreferencesEntity | null = null;
+
+    for (const preference of allPreferences) {
+      switch (preference.type) {
+        case PreferencesTypeEnum.WORKFLOW_RESOURCE:
+          workflowResourcePreferences.push(preference);
+          break;
+        case PreferencesTypeEnum.USER_WORKFLOW:
+          workflowUserPreferences.push(preference);
+          break;
+        case PreferencesTypeEnum.SUBSCRIBER_WORKFLOW:
+          subscriberWorkflowPreferences.push(preference);
+          break;
+        case PreferencesTypeEnum.SUBSCRIBER_GLOBAL:
+          subscriberGlobalPreference = preference;
+          break;
+      }
+    }
+
+    return {
+      workflowResourcePreferences,
+      workflowUserPreferences,
+      subscriberWorkflowPreferences,
+      subscriberGlobalPreference,
+    };
   }
 }

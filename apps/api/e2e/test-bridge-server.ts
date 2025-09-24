@@ -1,6 +1,6 @@
-import http from 'http';
+import http from 'node:http';
+import { Client, serve } from '@novu/framework/express';
 import express from 'express';
-import { serve, Client } from '@novu/framework/express';
 
 export class TestBridgeServer {
   private server: express.Express;
@@ -14,8 +14,7 @@ export class TestBridgeServer {
   }
 
   private log(level: 'info' | 'error' | 'warn', message: string, ...args: any[]) {
-    // eslint-disable-next-line no-console
-    console[level](`[BridgeServer] ${message}`, ...args);
+    // console[level](`[BridgeServer] ${message}`, ...args);
   }
 
   get serverPath() {

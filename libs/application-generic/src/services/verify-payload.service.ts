@@ -1,17 +1,11 @@
-import { TemplateSystemVariables, ITemplateVariable } from '@novu/shared';
-
-import { ApiException } from '../utils/exceptions';
+import { BadRequestException } from '@nestjs/common';
+import { ITemplateVariable, TemplateSystemVariables } from '@novu/shared';
 
 export class VerifyPayloadService {
-  checkRequired(
-    variables: ITemplateVariable[],
-    payload: Record<string, unknown>,
-  ): string[] {
+  checkRequired(variables: ITemplateVariable[], payload: Record<string, unknown>): string[] {
     const invalidKeys: string[] = [];
 
-    for (const variable of variables.filter(
-      (vari) => vari.required && !this.isSystemVariable(vari.name),
-    )) {
+    for (const variable of variables.filter((vari) => vari.required && !this.isSystemVariable(vari.name))) {
       let value;
 
       try {
@@ -33,16 +27,13 @@ export class VerifyPayloadService {
           if (!Array.isArray(value)) invalidKeys.push(variableErrorHumanize);
           break;
         case 'Boolean':
-          if (value !== true && value !== false)
-            invalidKeys.push(variableErrorHumanize);
+          if (value !== true && value !== false) invalidKeys.push(variableErrorHumanize);
           break;
         case 'String':
-          if (!['string', 'number'].includes(typeof value))
-            invalidKeys.push(variableErrorHumanize);
+          if (!['string', 'number'].includes(typeof value)) invalidKeys.push(variableErrorHumanize);
           break;
         default:
-          if (value === null || value === undefined)
-            invalidKeys.push(variableErrorHumanize);
+          if (value === null || value === undefined) invalidKeys.push(variableErrorHumanize);
       }
     }
 
@@ -53,16 +44,9 @@ export class VerifyPayloadService {
     const payload = {};
 
     for (const variable of variables.filter(
-      (elem) =>
-        elem.defaultValue !== undefined &&
-        elem.defaultValue !== null &&
-        !this.isSystemVariable(elem.name),
+      (elem) => elem.defaultValue !== undefined && elem.defaultValue !== null && !this.isSystemVariable(elem.name)
     )) {
-      this.setNestedKey(
-        payload,
-        variable.name.split('.'),
-        variable.defaultValue,
-      );
+      this.setNestedKey(payload, variable.name.split('.'), variable.defaultValue);
     }
 
     return payload;
@@ -71,7 +55,6 @@ export class VerifyPayloadService {
   private setNestedKey(obj, path, value) {
     if (path.length === 1) {
       if (value !== '') {
-        // eslint-disable-next-line no-param-reassign
         obj[path[0]] = value;
       }
 
@@ -79,7 +62,6 @@ export class VerifyPayloadService {
     }
 
     if (!obj[path[0]]) {
-      // eslint-disable-next-line no-param-reassign
       obj[path[0]] = {};
     }
 
@@ -87,23 +69,14 @@ export class VerifyPayloadService {
   }
 
   isSystemVariable(variableName: string): boolean {
-    return TemplateSystemVariables.includes(
-      variableName.includes('.') ? variableName.split('.')[0] : variableName,
-    );
+    return TemplateSystemVariables.includes(variableName.includes('.') ? variableName.split('.')[0] : variableName);
   }
 
-  verifyPayload(
-    variables: ITemplateVariable[],
-    payload: Record<string, unknown>,
-  ): Record<string, unknown> {
+  verifyPayload(variables: ITemplateVariable[], payload: Record<string, unknown>): Record<string, unknown> {
     const invalidKeys: string[] = [];
     invalidKeys.push(...this.checkRequired(variables || [], payload));
     if (invalidKeys.length) {
-      throw new ApiException(
-        `payload is missing required key(s) and type(s): ${invalidKeys.join(
-          ', ',
-        )}`,
-      );
+      throw new BadRequestException(`payload is missing required key(s) and type(s): ${invalidKeys.join(', ')}`);
     }
 
     return this.fillDefaults(variables || []);

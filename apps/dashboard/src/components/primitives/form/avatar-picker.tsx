@@ -1,4 +1,4 @@
-import { forwardRef, useMemo, useState } from 'react';
+import { forwardRef, useState } from 'react';
 import { RiImageEditFill } from 'react-icons/ri';
 
 import { Avatar, AvatarImage } from '@/components/primitives/avatar';
@@ -8,26 +8,12 @@ import { Label } from '@/components/primitives/label';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/primitives/popover';
 import { Separator } from '@/components/primitives/separator';
 import TextSeparator from '@/components/primitives/text-separator';
+import { ControlInput } from '@/components/workflow-editor/control-input';
 import { useWorkflow } from '@/components/workflow-editor/workflow-provider';
-import { parseStepVariablesToLiquidVariables } from '@/utils/parseStepVariablesToLiquidVariables';
+import { useParseVariables } from '@/hooks/use-parse-variables';
+import { DEFAULT_AVATARS } from '@/utils/avatars';
 import { InputRoot } from '../input';
 import { useFormField } from './form-context';
-import { ControlInput } from '../control-input';
-
-const DEFAULT_AVATARS = Object.freeze([
-  `/images/avatar.svg`,
-  `/images/building.svg`,
-  `/images/info.svg`,
-  `/images/speaker.svg`,
-  `/images/confetti.svg`,
-  `/images/novu.svg`,
-  `/images/info-2.svg`,
-  `/images/bell.svg`,
-  `/images/error.svg`,
-  `/images/warning.svg`,
-  `/images/question.svg`,
-  `/images/error-warning.svg`,
-]);
 
 type AvatarPickerProps = {
   name: string;
@@ -36,9 +22,10 @@ type AvatarPickerProps = {
   onPick?: (value: string) => void;
 };
 
-export const AvatarPicker = forwardRef<HTMLInputElement, AvatarPickerProps>(({ name, value, onChange, onPick }) => {
-  const { step } = useWorkflow();
-  const variables = useMemo(() => (step ? parseStepVariablesToLiquidVariables(step.variables) : []), [step]);
+export const AvatarPicker = forwardRef<HTMLInputElement, AvatarPickerProps>((props, _) => {
+  const { name, value, onChange, onPick } = props;
+  const { step, digestStepBeforeCurrent } = useWorkflow();
+  const { variables, isAllowedVariable } = useParseVariables(step?.variables, digestStepBeforeCurrent?.stepId);
   const [isOpen, setIsOpen] = useState(false);
   const { error } = useFormField();
 
@@ -94,6 +81,7 @@ export const AvatarPicker = forwardRef<HTMLInputElement, AvatarPickerProps>(({ n
                 className="flex h-full items-center"
                 multiline={false}
                 variables={variables}
+                isAllowedVariable={isAllowedVariable}
               />
             </InputRoot>
           </div>

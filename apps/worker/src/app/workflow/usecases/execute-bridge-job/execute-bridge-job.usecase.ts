@@ -1,39 +1,43 @@
 import { Injectable } from '@nestjs/common';
-
-import {
-  ControlValuesRepository,
-  NotificationTemplateEntity,
-  EnvironmentRepository,
-  JobRepository,
-  NotificationTemplateRepository,
-  MessageRepository,
-  JobEntity,
-} from '@novu/dal';
-import {
-  ControlValuesLevelEnum,
-  ExecutionDetailsSourceEnum,
-  ExecutionDetailsStatusEnum,
-  ITriggerPayload,
-  JobStatusEnum,
-  WorkflowOriginEnum,
-  WorkflowTypeEnum,
-} from '@novu/shared';
-import { Event, State, PostActionEnum, ExecuteOutput } from '@novu/framework/internal';
-
 import {
   CreateExecutionDetails,
   CreateExecutionDetailsCommand,
-  dashboardSanitizeControlValues,
   DetailEnum,
+  dashboardSanitizeControlValues,
   ExecuteBridgeRequest,
   ExecuteBridgeRequestCommand,
   Instrument,
   InstrumentUsecase,
   PinoLogger,
 } from '@novu/application-generic';
+import {
+  ControlValuesRepository,
+  EnvironmentRepository,
+  JobEntity,
+  JobRepository,
+  MessageRepository,
+  NotificationTemplateEntity,
+  NotificationTemplateRepository,
+} from '@novu/dal';
+import {
+  DelayResult,
+  DigestResult,
+  Event,
+  ExecuteOutput,
+  InAppResult,
+  PostActionEnum,
+  State,
+} from '@novu/framework/internal';
+import {
+  ControlValuesLevelEnum,
+  ExecutionDetailsSourceEnum,
+  ExecutionDetailsStatusEnum,
+  ITriggerPayload,
+  JobStatusEnum,
+  ResourceOriginEnum,
+  ResourceTypeEnum,
+} from '@novu/shared';
 import { ExecuteBridgeJobCommand } from './execute-bridge-job.command';
-
-const LOG_CONTEXT = 'ExecuteBridgeJob';
 
 @Injectable()
 export class ExecuteBridgeJob {
@@ -46,7 +50,9 @@ export class ExecuteBridgeJob {
     private createExecutionDetails: CreateExecutionDetails,
     private executeBridgeRequest: ExecuteBridgeRequest,
     private logger: PinoLogger
-  ) {}
+  ) {
+    this.logger.setContext(this.constructor.name);
+  }
 
   @InstrumentUsecase()
   async execute(command: ExecuteBridgeJobCommand): Promise<ExecuteOutput | null> {
@@ -61,7 +67,7 @@ export class ExecuteBridgeJob {
           _id: command.job._templateId,
           _environmentId: command.environmentId,
           type: {
-            $in: [WorkflowTypeEnum.ECHO, WorkflowTypeEnum.BRIDGE],
+            $in: [ResourceTypeEnum.ECHO, ResourceTypeEnum.BRIDGE],
           },
         },
         '_id triggers type origin'
@@ -88,7 +94,7 @@ export class ExecuteBridgeJob {
       throw new Error(`Environment id ${command.environmentId} is not found`);
     }
 
-    if (!environment?.echo?.url && isStateful && workflow?.origin === WorkflowOriginEnum.EXTERNAL) {
+    if (!environment?.echo?.url && isStateful && workflow?.origin === ResourceOriginEnum.EXTERNAL) {
       throw new Error(`Bridge URL is not set for environment id: ${environment._id}`);
     }
 
@@ -118,13 +124,14 @@ export class ExecuteBridgeJob {
        * TODO: We fallback to external due to lack of backfilling origin for existing Workflows.
        * Once we backfill the origin field for existing Workflows, we should remove the fallback.
        */
-      workflowOrigin: workflow?.origin || WorkflowOriginEnum.EXTERNAL,
+      workflowOrigin: workflow?.origin || ResourceOriginEnum.EXTERNAL,
       statelessBridgeUrl: command.job.step.bridgeUrl,
       event: bridgeEvent,
       job: command.job,
       searchParams: {
         workflowId,
         stepId,
+        jobId: command.job._id,
       },
     });
 
@@ -151,7 +158,7 @@ export class ExecuteBridgeJob {
       level: ControlValuesLevelEnum.STEP_CONTROLS,
     });
 
-    if (workflow?.origin === WorkflowOriginEnum.NOVU_CLOUD) {
+    if (workflow?.origin === ResourceOriginEnum.NOVU_CLOUD) {
       return controls?.controls
         ? dashboardSanitizeControlValues(this.logger, controls.controls, command.job?.step?.template?.type)
         : {};
@@ -162,7 +169,6 @@ export class ExecuteBridgeJob {
 
   private normalizePayload(originalPayload: ITriggerPayload = {}) {
     // Remove internal params
-    // eslint-disable-next-line @typescript-eslint/naming-convention
     const { __source, ...payload } = originalPayload;
 
     return payload;
@@ -234,16 +240,12 @@ export class ExecuteBridgeJob {
     }) as Promise<ExecuteOutput>;
   }
 
-  @Instrument()
-  private async mapState(job: JobEntity) {
-    let output = {};
-
+  private async mapOutput(job: JobEntity) {
     switch (job.type) {
       case 'delay': {
-        output = {
+        return {
           duration: Date.now() - new Date(job.createdAt).getTime(),
-        };
-        break;
+        } satisfies DelayResult;
       }
       case 'digest': {
         const digestJobs = await this.jobRepository.find(
@@ -260,20 +262,21 @@ export class ExecuteBridgeJob {
             transactionId: 1,
           }
         );
-        output = {
-          events: [...digestJobs, job]
-            .map((digestJob) => ({
-              id: digestJob._id,
-              time: digestJob.createdAt,
-              payload: digestJob.payload ?? {},
-            }))
-            .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime()),
-        };
-        break;
+        const events = [...digestJobs, job]
+          .map((digestJob) => ({
+            id: digestJob._id,
+            time: digestJob.createdAt,
+            payload: digestJob.payload ?? {},
+          }))
+          .sort((a, b) => new Date(a.time).getTime() - new Date(b.time).getTime());
+
+        return {
+          events,
+          eventCount: events.length,
+        } satisfies DigestResult;
       }
       case 'custom': {
-        output = job.stepOutput || {};
-        break;
+        return job.stepOutput || {};
       }
       case 'in_app': {
         const message = await this.messageRepository.findOne(
@@ -281,30 +284,34 @@ export class ExecuteBridgeJob {
           'seen read lastSeenDate lastReadDate'
         );
         if (message) {
-          output = {
+          return {
             seen: message.seen,
             read: message.read,
             lastSeenDate: message.lastSeenDate || null,
             lastReadDate: message.lastReadDate || null,
-          };
+          } satisfies InAppResult;
         } else {
           /*
            * Provide fallback state for in-app messages to satisfy framework inAppResultSchema validation
            * when message is not found (e.g., cancelled jobs, nv-5120)
            */
-          output = {
+          return {
             seen: false,
             read: false,
             lastSeenDate: null,
             lastReadDate: null,
-          };
+          } satisfies InAppResult;
         }
-        break;
       }
       default: {
-        break;
+        return {};
       }
     }
+  }
+
+  @Instrument()
+  private async mapState(job: JobEntity) {
+    const output = await this.mapOutput(job);
 
     return {
       stepId: job?.step.stepId || job?.step.uuid || '',

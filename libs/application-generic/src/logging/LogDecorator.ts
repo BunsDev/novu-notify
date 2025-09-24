@@ -13,15 +13,10 @@ const DEFAULT_OPTIONS: IOptions = {
 };
 
 export const LogDecorator = (options = DEFAULT_OPTIONS) => {
-  return (
-    target: any,
-    propertyName: string,
-    descriptor: TypedPropertyDescriptor<any>,
-  ): void => {
+  return (target: any, propertyName: string, descriptor: TypedPropertyDescriptor<any>): void => {
     const logger = options?.logger || new Logger(target?.constructor?.name);
     const method = descriptor?.value;
 
-    // eslint-disable-next-line no-param-reassign
     descriptor.value = async function <T>(...args: unknown[]): Promise<T> {
       const currentTime = Date.now();
       logger.debug(
@@ -30,21 +25,19 @@ export const LogDecorator = (options = DEFAULT_OPTIONS) => {
             ...((options?.transform ? options?.transform(args) : args) || {}),
           },
         },
-        `"${target?.constructor?.name}.${propertyName}" invoke`,
+        `"${target?.constructor?.name}.${propertyName}" invoke`
       );
 
       const data = await method.apply(this, args);
 
-      const executeTime = options?.timestamp
-        ? `${Date.now() - currentTime}`
-        : '';
+      const executeTime = options?.timestamp ? `${Date.now() - currentTime}` : '';
 
       logger.debug(
         {
           executionTimeMs: executeTime,
           result: { ...(options?.transform ? options?.transform(data) : data) },
         },
-        `"${target?.constructor?.name}.${propertyName}" result`,
+        `"${target?.constructor?.name}.${propertyName}" result`
       );
 
       return data;

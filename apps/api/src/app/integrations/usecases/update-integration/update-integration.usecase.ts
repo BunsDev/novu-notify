@@ -1,22 +1,17 @@
-import { BadRequestException, ConflictException, Inject, Injectable, Logger, NotFoundException } from '@nestjs/common';
-import {
-  CommunityOrganizationRepository,
-  IntegrationEntity,
-  IntegrationRepository,
-  OrganizationEntity,
-} from '@novu/dal';
+import { BadRequestException, ConflictException, Inject, Injectable, NotFoundException } from '@nestjs/common';
 import {
   AnalyticsService,
   buildIntegrationKey,
   encryptCredentials,
-  InvalidateCacheService,
   FeatureFlagsService,
+  InvalidateCacheService,
+  PinoLogger,
 } from '@novu/application-generic';
-import { ApiServiceLevelEnum, CHANNELS_WITH_PRIMARY, FeatureFlagsKeysEnum } from '@novu/shared';
-
-import { UpdateIntegrationCommand } from './update-integration.command';
-import { CheckIntegration } from '../check-integration/check-integration.usecase';
+import { IntegrationEntity, IntegrationRepository, OrganizationEntity } from '@novu/dal';
+import { CHANNELS_WITH_PRIMARY, FeatureFlagsKeysEnum } from '@novu/shared';
 import { CheckIntegrationCommand } from '../check-integration/check-integration.command';
+import { CheckIntegration } from '../check-integration/check-integration.usecase';
+import { UpdateIntegrationCommand } from './update-integration.command';
 
 @Injectable()
 export class UpdateIntegration {
@@ -27,8 +22,10 @@ export class UpdateIntegration {
     private integrationRepository: IntegrationRepository,
     private analyticsService: AnalyticsService,
     private featureFlagService: FeatureFlagsService,
-    private communityOrganizationRepository: CommunityOrganizationRepository
-  ) {}
+    private logger: PinoLogger
+  ) {
+    this.logger.setContext(this.constructor.name);
+  }
 
   private async calculatePriorityAndPrimaryForActive({
     existingIntegration,
@@ -101,29 +98,8 @@ export class UpdateIntegration {
     return result;
   }
 
-  private async shouldUpdateRemoveNovuBranding(
-    command: UpdateIntegrationCommand,
-    existingIntegration: IntegrationEntity
-  ): Promise<boolean> {
-    const organization = await this.communityOrganizationRepository.findOne({ _id: command.organizationId });
-
-    const isRemoveNovuBrandingDefined = typeof command.removeNovuBranding !== 'undefined';
-    const isRemoveNovuBrandingChanged =
-      isRemoveNovuBrandingDefined && existingIntegration.removeNovuBranding !== command.removeNovuBranding;
-
-    if (!isRemoveNovuBrandingChanged) {
-      return false;
-    }
-
-    if (!organization || organization.apiServiceLevel === ApiServiceLevelEnum.FREE) {
-      return false;
-    }
-
-    return true;
-  }
-
   async execute(command: UpdateIntegrationCommand): Promise<IntegrationEntity> {
-    Logger.verbose('Executing Update Integration Command');
+    this.logger.trace('Executing Update Integration Command');
 
     const existingIntegration = await this.integrationRepository.findOne({
       _id: command.integrationId,
@@ -204,13 +180,12 @@ export class UpdateIntegration {
       updatePayload.credentials = encryptCredentials(command.credentials);
     }
 
-    if (command.conditions) {
-      updatePayload.conditions = command.conditions;
+    if (command.configurations) {
+      updatePayload.configurations = command.configurations;
     }
 
-    const shouldUpdateRemoveNovuBranding = await this.shouldUpdateRemoveNovuBranding(command, existingIntegration);
-    if (shouldUpdateRemoveNovuBranding) {
-      updatePayload.removeNovuBranding = command.removeNovuBranding;
+    if (command.conditions) {
+      updatePayload.conditions = command.conditions;
     }
 
     if (!Object.keys(updatePayload).length) {

@@ -1,4 +1,4 @@
-import { Injectable, Scope } from '@nestjs/common';
+import { BadRequestException, Inject, Injectable } from '@nestjs/common';
 import { AnalyticsService } from '@novu/application-generic';
 import { OrganizationEntity, OrganizationRepository, UserRepository } from '@novu/dal';
 import { ApiServiceLevelEnum, EnvironmentEnum, JobTitleEnum, MemberRoleEnum } from '@novu/shared';
@@ -11,11 +11,7 @@ import { AddMemberCommand } from '../membership/add-member/add-member.command';
 import { AddMember } from '../membership/add-member/add-member.usecase';
 import { CreateOrganizationCommand } from './create-organization.command';
 
-import { ApiException } from '../../../shared/exceptions/api.exception';
-
-@Injectable({
-  scope: Scope.REQUEST,
-})
+@Injectable()
 export class CreateOrganization {
   constructor(
     private readonly organizationRepository: OrganizationRepository,
@@ -28,12 +24,17 @@ export class CreateOrganization {
 
   async execute(command: CreateOrganizationCommand): Promise<OrganizationEntity> {
     const user = await this.userRepository.findById(command.userId);
-    if (!user) throw new ApiException('User not found');
+    if (!user) throw new BadRequestException('User not found');
+
+    const isSelfHosted = process.env.IS_SELF_HOSTED === 'true';
+    const isEnterprise = process.env.NOVU_ENTERPRISE === 'true' || process.env.CI_EE_TEST === 'true';
+    const defaultApiServiceLevel =
+      isSelfHosted && isEnterprise ? ApiServiceLevelEnum.UNLIMITED : ApiServiceLevelEnum.FREE;
 
     const createdOrganization = await this.organizationRepository.create({
       logo: command.logo,
       name: command.name,
-      apiServiceLevel: ApiServiceLevelEnum.FREE,
+      apiServiceLevel: command.apiServiceLevel || defaultApiServiceLevel,
       domain: command.domain,
       language: command.language,
     });
@@ -44,7 +45,7 @@ export class CreateOrganization {
 
     await this.addMemberUsecase.execute(
       AddMemberCommand.create({
-        roles: [MemberRoleEnum.ADMIN],
+        roles: [MemberRoleEnum.OSS_ADMIN],
         organizationId: createdOrganization._id,
         userId: command.userId,
       })

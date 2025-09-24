@@ -1,11 +1,10 @@
-/* eslint-disable global-require */
-import { Test } from '@nestjs/testing';
-import { expect } from 'chai';
-import { EnvironmentRepository } from '@novu/dal';
-import sinon from 'sinon';
-import { ApiAuthSchemeEnum, UserSessionData } from '@novu/shared';
-import { HttpRequestHeaderKeysEnum } from '@novu/application-generic';
 import { UnauthorizedException } from '@nestjs/common';
+import { Test } from '@nestjs/testing';
+import { HttpRequestHeaderKeysEnum } from '@novu/application-generic';
+import { EnvironmentRepository } from '@novu/dal';
+import { ALL_PERMISSIONS, ApiAuthSchemeEnum, MemberRoleEnum, UserSessionData } from '@novu/shared';
+import { expect } from 'chai';
+import sinon from 'sinon';
 
 describe('ClerkStrategy', () => {
   let eeAuth: any;
@@ -35,7 +34,8 @@ describe('ClerkStrategy', () => {
     lastName: 'Doe',
     profilePicture: 'https://example.com/profile.png',
     email: 'john@example.com',
-    org_role: 'org:admin',
+    org_role: MemberRoleEnum.OWNER,
+    org_permissions: ALL_PERMISSIONS,
     externalId: undefined,
     externalOrgId: undefined,
   };
@@ -73,7 +73,8 @@ describe('ClerkStrategy', () => {
         lastName: 'Doe',
         email: 'john@example.com',
         organizationId: 'internal-org-123',
-        roles: ['admin'],
+        roles: [MemberRoleEnum.OWNER],
+        permissions: ALL_PERMISSIONS,
         environmentId: 'env-123',
         scheme: ApiAuthSchemeEnum.BEARER,
       });

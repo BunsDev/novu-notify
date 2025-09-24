@@ -1,17 +1,16 @@
-import { Logger } from '@nestjs/common';
-import { differenceInMilliseconds } from 'date-fns';
+import { BadRequestException, Logger } from '@nestjs/common';
 import {
-  DigestUnitEnum,
   DelayTypeEnum,
+  DigestTypeEnum,
+  DigestUnitEnum,
+  IDelayRegularMetadata,
+  IDelayScheduledMetadata,
   IDigestRegularMetadata,
   IDigestTimedMetadata,
   IWorkflowStepMetadata,
-  DigestTypeEnum,
-  IDelayScheduledMetadata,
-  IDelayRegularMetadata,
 } from '@novu/shared';
+import { differenceInMilliseconds } from 'date-fns';
 
-import { ApiException } from '../../utils/exceptions';
 import { isRegularDigest } from '../../utils/digest';
 import { TimedDigestDelayService } from './timed-digest-delay.service';
 
@@ -20,26 +19,28 @@ export class ComputeJobWaitDurationService {
     stepMetadata,
     payload,
     overrides,
+    timezone,
   }: {
     stepMetadata?: IWorkflowStepMetadata;
     payload: any;
     overrides: any;
+    timezone?: string;
   }): number {
     if (!stepMetadata) {
-      throw new ApiException(`Step metadata not found`);
+      throw new BadRequestException(`Step metadata not found`);
     }
 
     const digestType = stepMetadata.type;
 
     if (digestType === DelayTypeEnum.SCHEDULED) {
       const { delayPath } = stepMetadata as IDelayScheduledMetadata;
-      if (!delayPath) throw new ApiException(`Delay path not found`);
+      if (!delayPath) throw new BadRequestException(`Delay path not found`);
 
       const delayDate = payload[delayPath];
       const delay = differenceInMilliseconds(new Date(delayDate), new Date());
 
       if (delay < 0) {
-        throw new ApiException({
+        throw new BadRequestException({
           message: `Delay date at path must be a future date`,
           delayPath,
         });
@@ -63,6 +64,7 @@ export class ComputeJobWaitDurationService {
         timeConfig: {
           ...timedDigestMeta.timed,
         },
+        timezone,
       });
     } else if ((stepMetadata as IDelayRegularMetadata)?.unit && (stepMetadata as IDelayRegularMetadata)?.amount) {
       if (this.isValidDelayOverride(overrides)) {

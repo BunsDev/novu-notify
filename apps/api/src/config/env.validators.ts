@@ -11,12 +11,17 @@ const processEnv = process.env as Record<string, string>; // Hold the initial pr
 export const envValidators = {
   TZ: str({ default: 'UTC' }),
   NODE_ENV: str({ choices: ['dev', 'test', 'production', 'ci', 'local'], default: 'local' }),
+  LOG_LEVEL: str({ choices: ['trace', 'debug', 'info', 'warn', 'error', 'fatal', 'none'] }),
   PORT: port(),
-  FRONT_BASE_URL: url(),
+  FRONT_BASE_URL: str(),
   DISABLE_USER_REGISTRATION: bool({ default: false }),
   REDIS_HOST: str(),
   REDIS_PORT: port(),
   REDIS_TLS: json({ default: undefined }),
+  REDIS_MASTER_HOST: str({ default: '' }),
+  REDIS_MASTER_PORT: str({ default: '' }),
+  REDIS_SLAVE_HOST: str({ default: '' }),
+  REDIS_SLAVE_PORT: str({ default: '' }),
   JWT_SECRET: str(),
   SENDGRID_API_KEY: str({ default: '' }),
   MONGO_AUTO_CREATE_INDEXES: bool({ default: false }),
@@ -36,13 +41,12 @@ export const envValidators = {
   WORKER_DEFAULT_LOCK_DURATION: num({ default: undefined }),
   ENABLE_OTEL: bool({ default: false }),
   NOTIFICATION_RETENTION_DAYS: num({ default: DEFAULT_NOTIFICATION_RETENTION_DAYS }),
-  LEGACY_STAGING_DASHBOARD_URL: url({ default: undefined }),
   API_ROOT_URL: url(),
   NOVU_INVITE_TEAM_MEMBER_NUDGE_TRIGGER_IDENTIFIER: str({ default: undefined }),
   SUBSCRIBER_WIDGET_JWT_EXPIRATION_TIME: str({ default: '15 days' }),
   NOVU_REGION: str({ default: 'local' }),
   NOVU_SECRET_KEY: str({ default: '' }),
-
+  INTERNAL_SERVICES_API_KEY: str({ default: undefined }),
   // Novu Cloud third party services
   ...(processEnv.IS_SELF_HOSTED !== 'true' &&
     processEnv.NOVU_ENTERPRISE === 'true' && {
@@ -57,6 +61,13 @@ export const envValidators = {
       STRIPE_API_KEY: str({ default: undefined }),
       STRIPE_CONNECT_SECRET: str({ default: undefined }),
       NOVU_INTERNAL_SECRET_KEY: str({ default: '' }),
+      KEYLESS_ORGANIZATION_ID: str({ desc: 'Required organizationId for Keyless authentication', default: undefined }),
+      KEYLESS_USER_EMAIL: str({ desc: 'Required email for Keyless authentication', default: undefined }),
+
+      CLICK_HOUSE_URL: str({ default: '' }),
+      CLICK_HOUSE_DATABASE: str({ default: '' }),
+      CLICK_HOUSE_USER: str({ default: '' }),
+      CLICK_HOUSE_PASSWORD: str({ default: '' }),
     }),
 
   // Feature Flags
@@ -89,8 +100,6 @@ export const envValidators = {
     S3_LOCAL_STACK: str({ default: '' }),
     S3_BUCKET_NAME: str(),
     S3_REGION: str(),
-    AWS_ACCESS_KEY_ID: str(),
-    AWS_SECRET_ACCESS_KEY: str(),
   }),
 
   // Production validators

@@ -1,21 +1,24 @@
-/* eslint-disable local-rules/no-class-without-style */
 import { createMemo, For, Show } from 'solid-js';
 import { useInboxContext, useUnreadCounts } from '../../context';
 import { cn, getTagsFromTab, useStyle } from '../../helpers';
 import { useTabsDropdown } from '../../helpers/useTabsDropdown';
-import { Check } from '../../icons';
-import { ArrowDown } from '../../icons/ArrowDown';
+import { Check as DefaultCheck } from '../../icons';
+import { ArrowDown as DefaultArrowDown } from '../../icons/ArrowDown';
 import {
+  AvatarRenderer,
+  BodyRenderer,
+  CustomActionsRenderer,
+  DefaultActionsRenderer,
   NotificationActionClickHandler,
   NotificationClickHandler,
   NotificationRenderer,
   NotificationStatus,
   SubjectRenderer,
-  BodyRenderer,
   Tab,
 } from '../../types';
 import { NotificationList } from '../Notification';
 import { Button, Dropdown, Tabs } from '../primitives';
+import { IconRendererWrapper } from '../shared/IconRendererWrapper';
 import { InboxDropdownTab, InboxTab as InboxTabComponent, InboxTabUnreadNotificationsCount } from './InboxTab';
 
 const tabsDropdownTriggerVariants = () =>
@@ -23,8 +26,11 @@ const tabsDropdownTriggerVariants = () =>
   `after:nt-w-full after:nt-h-[2px] after:nt-border-b-2 nt-mb-[0.625rem]`;
 type InboxTabsProps = {
   renderNotification?: NotificationRenderer;
+  renderAvatar?: AvatarRenderer;
   renderSubject?: SubjectRenderer;
   renderBody?: BodyRenderer;
+  renderDefaultActions?: DefaultActionsRenderer;
+  renderCustomActions?: CustomActionsRenderer;
   onNotificationClick?: NotificationClickHandler;
   onPrimaryActionClick?: NotificationActionClickHandler;
   onSecondaryActionClick?: NotificationActionClickHandler;
@@ -35,15 +41,24 @@ export const InboxTabs = (props: InboxTabsProps) => {
   const { activeTab, status, setActiveTab, filter } = useInboxContext();
   const { dropdownTabs, setTabsList, visibleTabs } = useTabsDropdown({ tabs: props.tabs });
   const dropdownTabsUnreadCounts = useUnreadCounts({
-    filters: dropdownTabs().map((tab) => ({ tags: getTagsFromTab(tab) })),
+    filters: dropdownTabs().map((tab) => ({ tags: getTagsFromTab(tab), data: tab.filter?.data })),
   });
 
+  const checkIconClass = style({
+    key: 'moreTabs__dropdownItemRight__icon',
+    className: 'nt-size-3',
+    iconKey: 'check',
+  });
   const options = createMemo(() =>
     dropdownTabs().map((tab) => ({
       ...tab,
       rightIcon:
         tab.label === activeTab() ? (
-          <Check class={style('moreTabs__dropdownItemRight__icon', 'nt-size-3')} />
+          <IconRendererWrapper
+            iconKey="check"
+            class={checkIconClass}
+            fallback={<DefaultCheck class={checkIconClass} />}
+          />
         ) : undefined,
     }))
   );
@@ -56,6 +71,12 @@ export const InboxTabs = (props: InboxTabsProps) => {
       .map((tab) => tab.label)
       .includes(activeTab())
   );
+
+  const moreTabsIconClass = style({
+    key: 'moreTabs__icon',
+    className: 'nt-size-5',
+    iconKey: 'arrowDown',
+  });
 
   return (
     <Tabs.Root
@@ -98,7 +119,11 @@ export const InboxTabs = (props: InboxTabsProps) => {
                         : 'after:nt-border-b-transparent nt-text-foreground-alpha-700'
                     )}
                   >
-                    <ArrowDown class={style('moreTabs__icon', 'nt-size-5')} />
+                    <IconRendererWrapper
+                      iconKey="arrowDown"
+                      class={moreTabsIconClass}
+                      fallback={<DefaultArrowDown class={moreTabsIconClass} />}
+                    />
                     <Show when={status() !== NotificationStatus.ARCHIVED && dropdownTabsUnreadSum()}>
                       <InboxTabUnreadNotificationsCount count={dropdownTabsUnreadSum()} />
                     </Show>
@@ -118,22 +143,25 @@ export const InboxTabs = (props: InboxTabsProps) => {
       {props.tabs.map((tab) => (
         <Tabs.Content
           value={tab.label}
-          class={style(
-            'notificationsTabs__tabsContent',
-            cn(
+          class={style({
+            key: 'notificationsTabs__tabsContent',
+            className: cn(
               activeTab() === tab.label ? 'nt-block' : 'nt-hidden',
               'nt-overflow-auto nt-flex-1 nt-flex nt-flex-col nt-min-h-0'
-            )
-          )}
+            ),
+          })}
         >
           <NotificationList
             renderNotification={props.renderNotification}
+            renderAvatar={props.renderAvatar}
             renderSubject={props.renderSubject}
             renderBody={props.renderBody}
+            renderDefaultActions={props.renderDefaultActions}
+            renderCustomActions={props.renderCustomActions}
             onNotificationClick={props.onNotificationClick}
             onPrimaryActionClick={props.onPrimaryActionClick}
             onSecondaryActionClick={props.onSecondaryActionClick}
-            filter={{ ...filter(), tags: getTagsFromTab(tab) }}
+            filter={{ ...filter(), tags: getTagsFromTab(tab), data: tab.filter?.data, severity: tab.filter?.severity }}
           />
         </Tabs.Content>
       ))}

@@ -1,6 +1,6 @@
-import { cn } from '@/utils/ui';
 import { cva, VariantProps } from 'class-variance-authority';
 import { HTMLAttributes } from 'react';
+import { cn } from '@/utils/ui';
 
 type SidebarHeaderProps = HTMLAttributes<HTMLDivElement>;
 
@@ -32,5 +32,5 @@ type SidebarFooterProps = HTMLAttributes<HTMLDivElement>;
 
 export const SidebarFooter = (props: SidebarFooterProps) => {
   const { className, ...rest } = props;
-  return <div className={cn('mt-auto space-y-2.5 px-2 py-3.5', className)} {...rest} />;
+  return <div className={cn('border-t-border-weak mt-auto space-y-2.5 border-t p-2', className)} {...rest} />;
 };

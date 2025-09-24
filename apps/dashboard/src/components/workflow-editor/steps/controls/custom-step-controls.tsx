@@ -1,3 +1,10 @@
+import { type Controls } from '@novu/shared';
+import { RJSFSchema } from '@rjsf/utils';
+import { motion } from 'motion/react';
+import { useState } from 'react';
+import { useFormContext } from 'react-hook-form';
+import { RiBookMarkedLine, RiInputField, RiQuestionLine } from 'react-icons/ri';
+import { Link } from 'react-router-dom';
 import { ConfirmationModal } from '@/components/confirmation-modal';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/primitives/accordion';
 import { InlineToast } from '@/components/primitives/inline-toast';
@@ -5,22 +12,15 @@ import { Separator } from '@/components/primitives/separator';
 import { Switch } from '@/components/primitives/switch';
 import { SidebarContent } from '@/components/side-navigation/sidebar';
 import { useSaveForm } from '@/components/workflow-editor/steps/save-form-context';
-import { WorkflowOriginEnum } from '@/utils/enums';
+import { ResourceOriginEnum } from '@/utils/enums';
 import { buildDefaultValuesOfDataSchema } from '@/utils/schema';
 import { cn } from '@/utils/ui';
-import { type ControlsMetadata } from '@novu/shared';
-import { RJSFSchema } from '@rjsf/utils';
-import { motion } from 'motion/react';
-import { useState } from 'react';
-import { useFormContext } from 'react-hook-form';
-import { RiBookMarkedLine, RiInputField, RiQuestionLine } from 'react-icons/ri';
-import { Link } from 'react-router-dom';
 import { useWorkflow } from '../../workflow-provider';
 import { JsonForm } from './json-form';
 
 type CustomStepControlsProps = {
-  dataSchema: ControlsMetadata['dataSchema'];
-  origin: WorkflowOriginEnum;
+  dataSchema: Controls['dataSchema'];
+  origin: ResourceOriginEnum;
   className?: string;
 };
 
@@ -34,7 +34,7 @@ export const CustomStepControls = (props: CustomStepControlsProps) => {
   const { reset } = useFormContext();
   const { saveForm } = useSaveForm();
 
-  if (origin !== WorkflowOriginEnum.EXTERNAL || Object.keys(dataSchema?.properties ?? {}).length === 0) {
+  if (origin !== ResourceOriginEnum.EXTERNAL || Object.keys(dataSchema?.properties ?? {}).length === 0) {
     return (
       <SidebarContent size="md">
         <Accordion
@@ -93,14 +93,14 @@ export const CustomStepControls = (props: CustomStepControlsProps) => {
   }
 
   return (
-    <SidebarContent size="md">
+    <SidebarContent size="md" className="p-0">
       <ConfirmationModal
         open={isRestoreDefaultModalOpen}
         onOpenChange={setIsRestoreDefaultModalOpen}
         onConfirm={async () => {
           const defaultValues = buildDefaultValuesOfDataSchema(step?.controls.dataSchema ?? {});
           reset(defaultValues);
-          saveForm(true);
+          saveForm({ forceSubmit: true });
           setIsRestoreDefaultModalOpen(false);
           setIsOverridden(false);
         }}

@@ -10,7 +10,6 @@ export default function OrganizationListPage() {
 
   useEffect(() => {
     setRedirectURL();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -26,8 +25,8 @@ export default function OrganizationListPage() {
         }}
         hidePersonal
         skipInvitationScreen
-        afterSelectOrganizationUrl={ROUTES.GET_STARTED}
-        afterCreateOrganizationUrl={ROUTES.AUTH_APPLICATION}
+        afterSelectOrganizationUrl={ROUTES.WORKFLOWS}
+        afterCreateOrganizationUrl={ROUTES.WORKFLOWS}
       />
     </AuthLayout>
   );

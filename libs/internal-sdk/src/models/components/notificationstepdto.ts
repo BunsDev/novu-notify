@@ -59,11 +59,11 @@ import {
 /**
  * Metadata associated with the workflow step. Can vary based on the type of step.
  */
-export type NotificationStepDtoMetadata =
+export type Metadata =
   | DelayScheduledMetadata
-  | DelayRegularMetadata
+  | DigestRegularMetadata
   | DigestTimedMetadata
-  | DigestRegularMetadata;
+  | DelayRegularMetadata;
 
 export type NotificationStepDto = {
   /**
@@ -107,9 +107,9 @@ export type NotificationStepDto = {
    */
   metadata?:
     | DelayScheduledMetadata
-    | DelayRegularMetadata
-    | DigestTimedMetadata
     | DigestRegularMetadata
+    | DigestTimedMetadata
+    | DelayRegularMetadata
     | undefined;
   /**
    * Callback information for replies, including whether it is active and the callback URL.
@@ -119,66 +119,60 @@ export type NotificationStepDto = {
 };
 
 /** @internal */
-export const NotificationStepDtoMetadata$inboundSchema: z.ZodType<
-  NotificationStepDtoMetadata,
+export const Metadata$inboundSchema: z.ZodType<
+  Metadata,
   z.ZodTypeDef,
   unknown
 > = z.union([
   DelayScheduledMetadata$inboundSchema,
-  DelayRegularMetadata$inboundSchema,
-  DigestTimedMetadata$inboundSchema,
   DigestRegularMetadata$inboundSchema,
+  DigestTimedMetadata$inboundSchema,
+  DelayRegularMetadata$inboundSchema,
 ]);
 
 /** @internal */
-export type NotificationStepDtoMetadata$Outbound =
+export type Metadata$Outbound =
   | DelayScheduledMetadata$Outbound
-  | DelayRegularMetadata$Outbound
+  | DigestRegularMetadata$Outbound
   | DigestTimedMetadata$Outbound
-  | DigestRegularMetadata$Outbound;
+  | DelayRegularMetadata$Outbound;
 
 /** @internal */
-export const NotificationStepDtoMetadata$outboundSchema: z.ZodType<
-  NotificationStepDtoMetadata$Outbound,
+export const Metadata$outboundSchema: z.ZodType<
+  Metadata$Outbound,
   z.ZodTypeDef,
-  NotificationStepDtoMetadata
+  Metadata
 > = z.union([
   DelayScheduledMetadata$outboundSchema,
-  DelayRegularMetadata$outboundSchema,
-  DigestTimedMetadata$outboundSchema,
   DigestRegularMetadata$outboundSchema,
+  DigestTimedMetadata$outboundSchema,
+  DelayRegularMetadata$outboundSchema,
 ]);
 
 /**
  * @internal
  * @deprecated This namespace will be removed in future versions. Use schemas and types that are exported directly from this module.
  */
-export namespace NotificationStepDtoMetadata$ {
-  /** @deprecated use `NotificationStepDtoMetadata$inboundSchema` instead. */
-  export const inboundSchema = NotificationStepDtoMetadata$inboundSchema;
-  /** @deprecated use `NotificationStepDtoMetadata$outboundSchema` instead. */
-  export const outboundSchema = NotificationStepDtoMetadata$outboundSchema;
-  /** @deprecated use `NotificationStepDtoMetadata$Outbound` instead. */
-  export type Outbound = NotificationStepDtoMetadata$Outbound;
+export namespace Metadata$ {
+  /** @deprecated use `Metadata$inboundSchema` instead. */
+  export const inboundSchema = Metadata$inboundSchema;
+  /** @deprecated use `Metadata$outboundSchema` instead. */
+  export const outboundSchema = Metadata$outboundSchema;
+  /** @deprecated use `Metadata$Outbound` instead. */
+  export type Outbound = Metadata$Outbound;
 }
 
-export function notificationStepDtoMetadataToJSON(
-  notificationStepDtoMetadata: NotificationStepDtoMetadata,
-): string {
-  return JSON.stringify(
-    NotificationStepDtoMetadata$outboundSchema.parse(
-      notificationStepDtoMetadata,
-    ),
-  );
+export function metadataToJSON(metadata: Metadata): string {
+  return JSON.stringify(Metadata$outboundSchema.parse(metadata));
 }
 
-export function notificationStepDtoMetadataFromJSON(
+export function metadataFromJSON(
   jsonString: string,
-): SafeParseResult<NotificationStepDtoMetadata, SDKValidationError> {
+): SafeParseResult<Metadata, SDKValidationError> {
   return safeParse(
     jsonString,
-    (x) => NotificationStepDtoMetadata$inboundSchema.parse(JSON.parse(x)),
-    `Failed to parse 'NotificationStepDtoMetadata' from JSON`,
+    (x) => Metadata$inboundSchema.parse(JSON.parse(x)),
+    `Failed to parse 'Metadata' from JSON`,
   );
 }
 
@@ -199,9 +193,9 @@ export const NotificationStepDto$inboundSchema: z.ZodType<
   _parentId: z.string().optional(),
   metadata: z.union([
     DelayScheduledMetadata$inboundSchema,
-    DelayRegularMetadata$inboundSchema,
-    DigestTimedMetadata$inboundSchema,
     DigestRegularMetadata$inboundSchema,
+    DigestTimedMetadata$inboundSchema,
+    DelayRegularMetadata$inboundSchema,
   ]).optional(),
   replyCallback: ReplyCallback$inboundSchema.optional(),
   variants: z.array(NotificationStepData$inboundSchema).optional(),
@@ -226,9 +220,9 @@ export type NotificationStepDto$Outbound = {
   _parentId?: string | undefined;
   metadata?:
     | DelayScheduledMetadata$Outbound
-    | DelayRegularMetadata$Outbound
-    | DigestTimedMetadata$Outbound
     | DigestRegularMetadata$Outbound
+    | DigestTimedMetadata$Outbound
+    | DelayRegularMetadata$Outbound
     | undefined;
   replyCallback?: ReplyCallback$Outbound | undefined;
   variants?: Array<NotificationStepData$Outbound> | undefined;
@@ -251,9 +245,9 @@ export const NotificationStepDto$outboundSchema: z.ZodType<
   parentId: z.string().optional(),
   metadata: z.union([
     DelayScheduledMetadata$outboundSchema,
-    DelayRegularMetadata$outboundSchema,
-    DigestTimedMetadata$outboundSchema,
     DigestRegularMetadata$outboundSchema,
+    DigestTimedMetadata$outboundSchema,
+    DelayRegularMetadata$outboundSchema,
   ]).optional(),
   replyCallback: ReplyCallback$outboundSchema.optional(),
   variants: z.array(NotificationStepData$outboundSchema).optional(),

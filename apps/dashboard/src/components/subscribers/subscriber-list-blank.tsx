@@ -1,11 +1,15 @@
-import { AddSubscriberIllustration } from '@/components/icons/add-subscriber-illustration';
-import { RiBookMarkedLine } from 'react-icons/ri';
+import { PermissionsEnum } from '@novu/shared';
+import { RiBookMarkedLine, RiRouteFill } from 'react-icons/ri';
 import { Link } from 'react-router-dom';
+import { AddSubscriberIllustration } from '@/components/icons/add-subscriber-illustration';
+import { useSubscribersNavigate } from '@/components/subscribers/hooks/use-subscribers-navigate';
 import { LinkButton } from '../primitives/button-link';
+import { PermissionButton } from '../primitives/permission-button';
 
 export const SubscriberListBlank = () => {
+  const { navigateToCreateSubscriberPage } = useSubscribersNavigate();
   return (
-    <div className="flex h-full w-full flex-col items-center justify-center gap-6">
+    <div className="mt-[100px] flex h-full w-full flex-col items-center justify-center gap-6">
       <AddSubscriberIllustration />
       <div className="flex flex-col items-center gap-2 text-center">
         <span className="text-text-sub text-label-md block font-medium">No subscribers yet</span>
@@ -16,18 +20,21 @@ export const SubscriberListBlank = () => {
       </div>
 
       <div className="flex items-center justify-center gap-6">
-        <Link
-          to="https://docs.novu.co/api-reference/subscribers/subscribers-controller_create-subscriber"
-          target="_blank"
-        >
+        <Link to="https://docs.novu.co/api-reference/subscribers/create-a-subscriber" target="_blank">
           <LinkButton variant="gray" trailingIcon={RiBookMarkedLine}>
             Import via API
           </LinkButton>
         </Link>
 
-        {/* <Button variant="primary" leadingIcon={RiRouteFill} className="gap-2">
-        Create subscriber
-      </Button> */}
+        <PermissionButton
+          permission={PermissionsEnum.SUBSCRIBER_WRITE}
+          variant="primary"
+          leadingIcon={RiRouteFill}
+          className="gap-2"
+          onClick={navigateToCreateSubscriberPage}
+        >
+          Create subscriber
+        </PermissionButton>
       </div>
     </div>
   );

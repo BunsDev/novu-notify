@@ -13,9 +13,11 @@ export interface IOrganizationEntity {
     direction?: 'ltr' | 'rtl';
   };
   defaultLocale?: string;
+  targetLocales?: string[];
   domain?: string;
   productUseCases?: ProductUseCases;
   language?: string[];
+  removeNovuBranding?: boolean;
   createdAt: string;
   updatedAt: string;
   externalId?: string;

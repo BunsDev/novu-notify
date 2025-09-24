@@ -1,3 +1,4 @@
+export * from './chat-webhook/chat-webhook.provider';
 export * from './discord/discord.provider';
 export * from './getstream/getstream.provider';
 export * from './grafana-on-call/grafana-on-call.provider';
@@ -6,5 +7,5 @@ export * from './msTeams/msTeams.provider';
 export * from './rocket-chat/rocket-chat.provider';
 export * from './ryver/ryver.provider';
 export * from './slack/slack.provider';
-export * from './zulip/zulip.provider';
 export * from './whatsapp-business/whatsapp-business.provider';
+export * from './zulip/zulip.provider';
