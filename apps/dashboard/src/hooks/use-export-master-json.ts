@@ -1,16 +1,14 @@
+import { GetMasterJsonResponseDto } from '@novu/api/models/components';
 import { useMutation } from '@tanstack/react-query';
 import { getMasterJson } from '@/api/translations';
 import { showErrorToast, showSuccessToast } from '@/components/primitives/sonner-helpers';
-import { useEnvironment } from '@/context/environment/hooks';
+import { requireEnvironment, useEnvironment } from '@/context/environment/hooks';
 
-function countExportedResources(data: Record<string, unknown>): number {
+function countExportedResources(data: GetMasterJsonResponseDto): number {
   let total = 0;
 
-  // Count workflows
-  const workflows = data.workflows as Record<string, unknown> | undefined;
-  total += Object.keys(workflows || {}).length;
-
-  // Future: Add other namespaces
+  total += Object.keys(data.workflows || {}).length;
+  total += Object.keys(data.layouts || {}).length;
 
   return total;
 }
@@ -25,12 +23,10 @@ export function useExportMasterJson({ onSuccess, onError }: UseExportMasterJsonP
 
   return useMutation({
     mutationFn: async ({ locale }: { locale: string }) => {
-      if (!currentEnvironment) {
-        throw new Error('No environment selected');
-      }
+      const environment = requireEnvironment(currentEnvironment, 'No environment selected');
 
       const data = await getMasterJson({
-        environment: currentEnvironment,
+        environment,
         locale,
       });
 

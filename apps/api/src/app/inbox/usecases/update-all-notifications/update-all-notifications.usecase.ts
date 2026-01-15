@@ -66,16 +66,10 @@ export class UpdateAllNotifications {
       subscriberId: subscriber._id,
       from: fromField,
       to: command.to,
+      contextKeys: command.contextKeys,
     });
 
     await this.sendWebhookEvents(command, updatedMessages);
-
-    await this.invalidateCache.invalidateQuery({
-      key: buildFeedKey().invalidate({
-        subscriberId: command.subscriberId,
-        _environmentId: command.environmentId,
-      }),
-    });
 
     await this.invalidateCache.invalidateQuery({
       key: buildMessageCountKey().invalidate({
@@ -89,6 +83,7 @@ export class UpdateAllNotifications {
       _subscriberId: subscriber._id,
       from: command.from,
       to: command.to,
+      contextKeys: command.contextKeys,
     });
 
     this.webSocketsQueueService.add({
@@ -97,6 +92,7 @@ export class UpdateAllNotifications {
         event: WebSocketEventEnum.UNREAD,
         userId: subscriber._id,
         _environmentId: command.environmentId,
+        ...(command.contextKeys && { contextKeys: command.contextKeys }),
       },
       groupId: subscriber._organizationId,
     });

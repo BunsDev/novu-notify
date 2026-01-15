@@ -1,7 +1,11 @@
 import { createSignal } from 'solid-js';
 
-export const defaultLocalization = {
+export const commonLocalization = {
   locale: 'en-US',
+} as const;
+
+export const defaultInboxLocalization = {
+  ...commonLocalization,
   'inbox.filters.dropdownOptions.unread': 'Unread only',
   'inbox.filters.dropdownOptions.default': 'Unread & read',
   'inbox.filters.dropdownOptions.archived': 'Archived',
@@ -31,7 +35,7 @@ export const defaultLocalization = {
   'preferences.schedule.title': 'Schedule',
   'preferences.schedule.description': 'Allow notifications between:',
   'preferences.schedule.headerInfo':
-    'Set your schedule. External notification channels are paused outside this time, except inbox and critical ones.',
+    'Set your schedule. Notifications to external channels will pause outside the schedule. In-app and critical notifications are always delivered.',
   'preferences.schedule.info': 'Critical and In-app notifications still reach you outside your schedule.',
   'preferences.schedule.days': 'Days',
   'preferences.schedule.from': 'From',
@@ -62,6 +66,24 @@ export const defaultLocalization = {
   'snooze.options.customTime': 'Custom time...',
   'snooze.options.inOneDay': 'Tomorrow',
   'snooze.options.inOneWeek': 'Next week',
+} as const;
+
+export const defaultSubscriptionLocalization = {
+  ...commonLocalization,
+  'subscription.subscribe': 'Subscribe',
+  'subscription.unsubscribe': 'Unsubscribe',
+  'subscription.preferences.header': 'Manage subscription',
+  'subscription.preferences.headerInfo':
+    'Manage which updates you’d like to receive. Note: Workflow and global settings control delivery and take precedence when disabled.',
+  'subscription.preferences.notSubscribed.header': 'You’re not subscribed.',
+  'subscription.preferences.notSubscribed.description': 'Subscribe to receive updates on new activity.',
+  'subscription.preferences.empty.header': 'You’re subscribed.',
+  'subscription.preferences.empty.description': 'Nothing to manage right now.',
+} as const;
+
+export const defaultLocalization = {
+  ...defaultInboxLocalization,
+  ...defaultSubscriptionLocalization,
 } as const;
 
 export const [dynamicLocalization, setDynamicLocalization] = createSignal<Record<string, string>>({});

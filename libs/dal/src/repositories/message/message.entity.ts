@@ -23,6 +23,7 @@ export type MessageChannelData<T extends ChannelEndpointType = ChannelEndpointTy
 export class MessageEntity {
   _id: string;
 
+  // WorkflowEntity._id
   _templateId: string;
 
   _environmentId: string;
@@ -132,6 +133,8 @@ export class MessageEntity {
   severity?: SeverityLevelEnum;
 
   channelData?: MessageChannelData[];
+
+  contextKeys?: string[];
 }
 
 export type MessageDBModel = ChangePropsValueType<

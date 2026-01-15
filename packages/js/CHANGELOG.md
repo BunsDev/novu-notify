@@ -1,3 +1,69 @@
+## v3.12.0-rc.1 (2025-12-12)
+
+### 🚀 Features
+
+- **react,nextjs:** subscription hooks fixes NV-6864 ([#9530](https://github.com/novuhq/novu/pull/9530))
+- **js,react,nextjs:** subscription button and preferences standalone components fixes NV-6909 ([#9527](https://github.com/novuhq/novu/pull/9527))
+- **js,react,nextjs:** subscription component fixes NV-6863 ([#9512](https://github.com/novuhq/novu/pull/9512))
+- **js:** subscriptions module fixes NV-6862 ([#9462](https://github.com/novuhq/novu/pull/9462))
+
+### 🩹 Fixes
+
+- **js:** undefined access when severity is not provided ([#9663](https://github.com/novuhq/novu/pull/9663))
+
+### ❤️ Thank You
+
+- Adam Chmara @ChmaraX
+- Paweł Tymczuk @LetItRock
+
+## v3.11.0 (2025-10-27)
+
+### 🚀 Features
+
+- **js,react,api:** context HMAC & Inbox dynamic session change fixes NV-6793 ([#9365](https://github.com/novuhq/novu/pull/9365))
+- **js,react:** context-aware inbox session fixes NV-6789 ([#9344](https://github.com/novuhq/novu/pull/9344))
+
+### 🩹 Fixes
+
+- **js:** notification count display for 99+ fixes NV-6786 ([#9402](https://github.com/novuhq/novu/pull/9402))
+- **js:** correct TypeScript types for notification.delete.pending event ([#9325](https://github.com/novuhq/novu/pull/9325))
+
+### ❤️ Thank You
+
+- Adam Chmara @ChmaraX
+- Dima Grossman @scopsy
+- DipakHalkude @DipakHalkude
+
+## v3.10.1 (2025-09-22)
+
+### 🩹 Fixes
+
+- **js, react:** fix created at date issue ([8af3afee3d](https://github.com/novuhq/novu/commit/8af3afee3d))
+
+### ❤️ Thank You
+
+- Dima Grossman @scopsy
+
+## v3.10.0 (2025-09-22)
+
+### 🚀 Features
+
+- **react, js:** Add preferenceSort support to preferences UI fixes NV-6608 ([#9109](https://github.com/novuhq/novu/pull/9109))
+- **dashboard:** allow updating subscribers schedule fixes NV-6617 ([#9118](https://github.com/novuhq/novu/pull/9118))
+- **react,js:** default schedule and useSchedule hook fixes NV-6616 ([#9110](https://github.com/novuhq/novu/pull/9110))
+- **js:** inbox subscribers schedule fixes NV-6616 ([#9103](https://github.com/novuhq/novu/pull/9103))
+- **js, api-service, react:** add permanent delete option for notifications fixes NV-6613 ([#9095](https://github.com/novuhq/novu/pull/9095))
+- **js:** schedule sub module fixes NV-6615 ([#9080](https://github.com/novuhq/novu/pull/9080))
+
+### 🩹 Fixes
+
+- **api-service,dashboard,worker:** subscriber schedule bug bashing fixes fixes NV-6691 ([#9167](https://github.com/novuhq/novu/pull/9167))
+
+### ❤️ Thank You
+
+- Dima Grossman @scopsy
+- Paweł Tymczuk @LetItRock
+
 ## v3.9.3 (2025-09-03)
 
 ### 🩹 Fixes

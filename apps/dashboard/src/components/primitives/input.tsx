@@ -28,10 +28,12 @@ export const inputVariants = tv({
       // hover
       'hover:shadow-none',
       // focus
-      'has-[input:focus]:shadow-button-important-focus has-[input:focus]:before:ring-stroke-strong',
-      'focus-within:shadow-button-important-focus focus-within:before:ring-stroke-strong',
+      'has-[input:focus]:border-stroke-soft has-[input:focus]:ring-stroke-soft/50 has-[input:focus]:ring-[3px]',
+      'focus-within:border-stroke-soft focus-within:ring-stroke-soft/50 focus-within:ring-[3px]',
       // disabled
       'has-[input:disabled]:shadow-none',
+      // aria-invalid
+      'aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive',
     ],
     wrapper: [
       // base
@@ -46,6 +48,11 @@ export const inputVariants = tv({
       // base
       'w-full bg-transparent bg-none text-paragraph-sm text-text-strong outline-none',
       'transition duration-200 ease-out',
+      // horizontal scroll with fade gradient
+      'overflow-x-auto scrollbar-thin',
+      '[mask-image:linear-gradient(to_right,black_calc(100%-1.5rem),transparent)]',
+      '[mask-size:100%_100%]',
+      '[mask-repeat:no-repeat]',
       // placeholder
       'placeholder:select-none placeholder:text-text-soft placeholder:transition placeholder:duration-200 placeholder:ease-out',
       // hover placeholder
@@ -128,8 +135,8 @@ export const inputVariants = tv({
           // base
           'hover:before:ring-error-base hover:[&:not(&:has(input:focus)):has(>:only-child)]:before:ring-error-base',
           // focus
-          'has-[input:focus]:shadow-button-error-focus has-[input:focus]:before:ring-error-base',
-          'focus-within:shadow-button-error-focus focus-within:before:ring-error-base',
+          'has-[input:focus]:border-destructive has-[input:focus]:ring-destructive/20 dark:has-[input:focus]:ring-destructive/40',
+          'focus-within:border-destructive focus-within:ring-destructive/20 dark:focus-within:ring-destructive/40',
         ],
       },
       false: {

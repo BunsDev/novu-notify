@@ -15,7 +15,7 @@ import {
   WebSocketsQueueService,
 } from '@novu/application-generic';
 import { EnvironmentEntity, EnvironmentRepository, MessageEntity, MessageRepository } from '@novu/dal';
-import { WebhookEventEnum, WebhookObjectTypeEnum, WebSocketEventEnum } from '@novu/shared';
+import { DeliveryLifecycleStatusEnum, WebhookEventEnum, WebhookObjectTypeEnum, WebSocketEventEnum } from '@novu/shared';
 
 import { GetSubscriber } from '../../../subscribers/usecases/get-subscriber';
 import { AnalyticsEventsEnum } from '../../utils';
@@ -39,7 +39,7 @@ export class MarkNotificationsAsSeen {
   }
 
   async execute(command: MarkNotificationsAsSeenCommand): Promise<void> {
-    const { notificationIds, tags, data } = command;
+    const { notificationIds, tags, data, contextKeys } = command;
 
     // Return early if notificationIds is an empty array
     if (notificationIds && notificationIds.length === 0) {
@@ -65,23 +65,30 @@ export class MarkNotificationsAsSeen {
       throw new BadRequestException(`Subscriber with id: ${command.subscriberId} is not found.`);
     }
 
-    let updatedMessages: MessageEntity[] = [];
+    const updatedMessages: MessageEntity[] = [];
     // If notificationIds are provided, use them; otherwise use filters
     if (notificationIds && notificationIds.length > 0) {
-      updatedMessages = await this.messageRepository.updateMessagesStatusByIds({
-        environmentId: command.environmentId,
-        subscriberId: subscriber._id,
-        ids: notificationIds,
-        seen: true,
-      });
+      const BATCH_SIZE = 50;
+      const notificationIdChunks = this.chunkArray(notificationIds, BATCH_SIZE);
 
-      await this.processWebhooksInBatches(updatedMessages, command, subscriber.subscriberId, environment);
+      for (const idChunk of notificationIdChunks) {
+        const batchResults = await this.messageRepository.updateMessagesStatusByIds({
+          environmentId: command.environmentId,
+          subscriberId: subscriber._id,
+          contextKeys,
+          ids: idChunk,
+          seen: true,
+        });
+        updatedMessages.push(...batchResults);
+      }
+
+      this.processWebhooksInBatches(updatedMessages, command, subscriber.subscriberId, environment);
 
       await this.logTraces({
+        messages: updatedMessages,
         command,
         subscriberId: subscriber.subscriberId,
         _subscriberId: subscriber._id,
-        method: 'by_ids',
       });
 
       this.analyticsService.track(AnalyticsEventsEnum.MARK_NOTIFICATIONS_AS_SEEN, '', {
@@ -113,9 +120,10 @@ export class MarkNotificationsAsSeen {
         fromFilters.data = parsedData;
       }
 
-      await this.messageRepository.updateMessagesFromToStatus({
+      const updatedMessages = await this.messageRepository.updateMessagesFromToStatus({
         environmentId: command.environmentId,
         subscriberId: subscriber._id,
+        contextKeys,
         from: fromFilters,
         to: {
           seen: true,
@@ -123,10 +131,10 @@ export class MarkNotificationsAsSeen {
       });
 
       await this.logTraces({
+        messages: updatedMessages,
         command,
         subscriberId: subscriber.subscriberId,
         _subscriberId: subscriber._id,
-        method: 'by_filters',
       });
 
       this.analyticsService.track(AnalyticsEventsEnum.MARK_NOTIFICATIONS_AS_SEEN, '', {
@@ -137,20 +145,14 @@ export class MarkNotificationsAsSeen {
       });
     }
 
-    // Invalidate caches
-    await this.invalidateCache.invalidateQuery({
-      key: buildFeedKey().invalidate({
-        subscriberId: command.subscriberId,
-        _environmentId: command.environmentId,
+    await Promise.all([
+      this.invalidateCache.invalidateQuery({
+        key: buildMessageCountKey().invalidate({
+          subscriberId: command.subscriberId,
+          _environmentId: command.environmentId,
+        }),
       }),
-    });
-
-    await this.invalidateCache.invalidateQuery({
-      key: buildMessageCountKey().invalidate({
-        subscriberId: command.subscriberId,
-        _environmentId: command.environmentId,
-      }),
-    });
+    ]);
 
     this.webSocketsQueueService.add({
       name: 'sendMessage',
@@ -158,6 +160,7 @@ export class MarkNotificationsAsSeen {
         event: WebSocketEventEnum.UNSEEN,
         userId: subscriber._id,
         _environmentId: command.environmentId,
+        ...(contextKeys && { contextKeys }),
       },
       groupId: subscriber._organizationId,
     });
@@ -200,47 +203,16 @@ export class MarkNotificationsAsSeen {
   }
 
   private async logTraces({
+    messages,
     command,
     subscriberId,
     _subscriberId,
-    method,
   }: {
+    messages: MessageEntity[];
     command: MarkNotificationsAsSeenCommand;
     subscriberId: string;
     _subscriberId: string;
-    method: 'by_ids' | 'by_filters';
   }): Promise<void> {
-    let messages: MessageEntity[] = [];
-
-    if (method === 'by_ids' && command.notificationIds && command.notificationIds.length > 0) {
-      messages = await this.messageRepository.find({
-        _environmentId: command.environmentId,
-        _subscriberId,
-        _id: { $in: command.notificationIds },
-      });
-    } else if (method === 'by_filters') {
-      // For filter-based approach, we need to fetch messages that match the filters
-      const fromFilters: Record<string, unknown> = {};
-      if (command.tags) {
-        fromFilters.tags = command.tags;
-      }
-      if (command.data) {
-        try {
-          const parsedData = JSON.parse(command.data);
-          fromFilters.data = parsedData;
-        } catch {
-          // If data parsing fails, skip trace logging for this case
-          return;
-        }
-      }
-
-      messages = await this.messageRepository.find({
-        _environmentId: command.environmentId,
-        _subscriberId,
-        ...fromFilters,
-      });
-    }
-
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return;
     }
@@ -262,7 +234,7 @@ export class MarkNotificationsAsSeen {
 
     if (allTraceData.length > 0) {
       try {
-        await this.messageInteractionService.trace(allTraceData);
+        await this.messageInteractionService.trace(allTraceData, DeliveryLifecycleStatusEnum.INTERACTED);
       } catch (error) {
         this.logger.warn({ err: error }, `Failed to create seen traces for ${allTraceData.length} messages`);
       }
@@ -295,8 +267,9 @@ export class MarkNotificationsAsSeen {
       entity_type: 'step_run',
       entity_id: message._jobId,
       step_run_type: message.channel as StepType,
-      workflow_run_identifier: message.templateIdentifier,
+      workflow_run_identifier: '',
       _notificationId: message._notificationId,
+      workflow_id: message._templateId,
     };
   }
 }

@@ -1,9 +1,11 @@
 import {
+  CHArray,
   CHDateTime64,
   CHLowCardinality,
   CHNullable,
   CHString,
   CHUInt8,
+  CHUInt32,
   ClickhouseSchema,
   InferClickhouseSchemaType,
 } from 'clickhouse-schema';
@@ -21,6 +23,7 @@ const schemaDefinition = {
   step_run_id: { type: CHString() }, // Maps to JobEntity._id
   step_id: { type: CHString() }, // Maps to messageTemplate._id
   workflow_run_id: { type: CHNullable(CHString()) }, // Maps to NotificationEntity._id
+  workflow_id: { type: CHString('') }, // Maps to NotificationTemplateEntity._id
 
   // Context
   organization_id: { type: CHString() },
@@ -29,17 +32,18 @@ const schemaDefinition = {
   subscriber_id: { type: CHString() },
   external_subscriber_id: { type: CHNullable(CHString()) },
   message_id: { type: CHNullable(CHString()) }, // Links to MessageEntity
+  context_keys: { type: CHArray(CHString(), []) }, // Array of context keys (type:identifier)
 
   // Step metadata
   step_type: { type: CHLowCardinality(CHString()) }, // email, sms, in_app, push, etc.
-  step_name: { type: CHNullable(CHString()) }, // todo remove this parameter because we do not have step name at this stage.
+  step_name: { type: CHString() }, // todo remove this parameter because we do not have step name at this stage.
   provider_id: { type: CHNullable(CHString()) },
 
   // Execution details
   status: { type: CHLowCardinality(CHString()) }, // pending, queued, running, completed, failed, skipped, cancelled
 
-  // Digest data
-  digest: { type: CHNullable(CHString()) }, // JSON string of digest metadata
+  // Deferred execution time
+  deferred_ms: { type: CHNullable(CHUInt32()) },
 
   // Error handling
   error_code: { type: CHNullable(CHString()) },
@@ -50,6 +54,9 @@ const schemaDefinition = {
 
   // Data retention
   expires_at: { type: CHDateTime64(3, 'UTC') },
+
+  // Digest data
+  digest: { type: CHNullable(CHString()) }, // JSON string of digest metadata
 
   // Schedule extensions count
   schedule_extensions_count: { type: CHUInt8(0) },

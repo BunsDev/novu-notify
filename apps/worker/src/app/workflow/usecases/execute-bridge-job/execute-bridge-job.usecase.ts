@@ -27,6 +27,7 @@ import {
   InAppResult,
   PostActionEnum,
   State,
+  ThrottleResult,
 } from '@novu/framework/internal';
 import {
   ControlValuesLevelEnum,
@@ -62,16 +63,23 @@ export class ExecuteBridgeJob {
 
     let workflow: NotificationTemplateEntity | null = null;
     if (isStateful) {
-      workflow = await this.notificationTemplateRepository.findOne(
-        {
-          _id: command.job._templateId,
-          _environmentId: command.environmentId,
-          type: {
-            $in: [ResourceTypeEnum.ECHO, ResourceTypeEnum.BRIDGE],
+      if (
+        command.workflow &&
+        (command.workflow.type === ResourceTypeEnum.ECHO || command.workflow.type === ResourceTypeEnum.BRIDGE)
+      ) {
+        workflow = command.workflow;
+      } else {
+        workflow = await this.notificationTemplateRepository.findOne(
+          {
+            _id: command.job._templateId,
+            _environmentId: command.environmentId,
+            type: {
+              $in: [ResourceTypeEnum.ECHO, ResourceTypeEnum.BRIDGE],
+            },
           },
-        },
-        '_id triggers type origin'
-      );
+          '_id triggers type origin'
+        );
+      }
     }
 
     if (!workflow && isStateful) {
@@ -98,7 +106,7 @@ export class ExecuteBridgeJob {
       throw new Error(`Bridge URL is not set for environment id: ${environment._id}`);
     }
 
-    const { subscriber, payload: originalPayload } = command.variables || {};
+    const { subscriber, payload: originalPayload, context } = command.variables || {};
     const payload = this.normalizePayload(originalPayload);
 
     const state = await this.generateState(command);
@@ -112,6 +120,7 @@ export class ExecuteBridgeJob {
       controls: variablesStores ?? {},
       state,
       subscriber: subscriber ?? {},
+      context: context ?? {},
     };
 
     const workflowId = isStateful
@@ -134,18 +143,6 @@ export class ExecuteBridgeJob {
         jobId: command.job._id,
       },
     });
-
-    const executionDetailsCommand: CreateExecutionDetailsCommand = {
-      ...CreateExecutionDetailsCommand.getDetailsFromJob(command.job),
-      detail: DetailEnum.SUCCESSFUL_BRIDGE_RESPONSE_RECEIVED,
-      source: ExecutionDetailsSourceEnum.INTERNAL,
-      status: ExecutionDetailsStatusEnum.PENDING,
-      isTest: false,
-      isRetry: false,
-      raw: JSON.stringify(bridgeResponse.metadata),
-    };
-
-    await this.createExecutionDetails.execute(executionDetailsCommand);
 
     return bridgeResponse;
   }
@@ -303,9 +300,24 @@ export class ExecuteBridgeJob {
           } satisfies InAppResult;
         }
       }
-      default: {
-        return {};
+      case 'throttle': {
+        const stepOutput = job.stepOutput as ThrottleResult | undefined;
+
+        if (!stepOutput) {
+          return {
+            throttled: false,
+          } satisfies ThrottleResult;
+        }
+
+        return {
+          throttled: stepOutput.throttled,
+          executionCount: stepOutput.executionCount,
+          threshold: stepOutput.threshold,
+          windowStart: stepOutput.windowStart,
+        } satisfies ThrottleResult;
       }
+      default:
+        return {};
     }
   }
 

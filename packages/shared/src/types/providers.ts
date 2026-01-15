@@ -49,6 +49,9 @@ export enum CredentialsKeyEnum {
   ApiVersion = 'apiVersion',
   AppSid = 'appSid',
   SenderId = 'senderId',
+  AppIOBaseUrl = 'AppIOBaseUrl',
+  ServicePlanId = 'servicePlanId',
+  TenantId = 'tenantId',
 }
 
 export type ConfigurationKey = keyof IConfigurations;
@@ -115,6 +118,8 @@ export enum SmsProviderIdEnum {
   // cspell:disable-next-line
   Smsmode = 'smsmode',
   IMedia = 'imedia',
+  Sinch = 'sinch',
+  ISendProSms = 'isendpro-sms',
 }
 
 export enum ChatProviderIdEnum {
@@ -140,6 +145,7 @@ export enum PushProviderIdEnum {
   Pushpad = 'pushpad',
   PushWebhook = 'push-webhook',
   PusherBeams = 'pusher-beams',
+  AppIO = 'appio',
 }
 
 export enum InAppProviderIdEnum {

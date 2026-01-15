@@ -32,7 +32,7 @@ interface UsageMetric {
 }
 
 const USAGE_METRICS: UsageMetric[] = [
-  { type: 'events', icon: RiCalendarEventLine, label: 'Events' },
+  { type: 'events', icon: RiCalendarEventLine, label: 'Workflow Runs' },
   { type: 'workflows', icon: RiRouteFill, label: 'Workflows' },
   { type: 'teammates', icon: RiTeamLine, label: 'Teammates' },
 ];
@@ -57,10 +57,10 @@ function getEventsTooltipContent(
   const isFreePlan = currentPlan === ApiServiceLevelEnum.FREE;
 
   const limitMessage = isFreePlan
-    ? "Further events won't be allowed after the free limit is exceeded."
+    ? "Further workflow runs won't be allowed after the free limit is exceeded."
     : 'Pay as you grow. No hard limit.';
 
-  return `Includes ${formatLimit(usageData.included)} events — ${limitMessage}`;
+  return `Includes ${formatLimit(usageData.included)} workflow runs — ${limitMessage}`;
 }
 
 function formatDateRange(
@@ -196,7 +196,12 @@ function UsageMetricRow({ metric, subscription, workflowsData, organization }: U
           </span>
         </span>
       </div>
-      <Progress value={usageData.current} max={usageData.included} variant="error" className="h-0.5" />
+      <Progress
+        value={Math.min(usageData.current, usageData.included)}
+        max={usageData.included}
+        variant="primary"
+        className="h-0.5"
+      />
     </div>
   );
 }

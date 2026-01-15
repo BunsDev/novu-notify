@@ -1,9 +1,8 @@
-import { PatchWorkflowDto, StepCreateDto, StepResponseDto, UpdateWorkflowDto, WorkflowResponseDto } from '@novu/shared';
+import { PatchWorkflowDto, StepResponseDto, UpdateWorkflowDto, WorkflowResponseDto } from '@novu/shared';
 import { CheckCircleIcon } from 'lucide-react';
 import { createContext, ReactNode, useCallback, useEffect, useLayoutEffect, useMemo, useState } from 'react';
 import { RiAlertFill, RiCloseFill } from 'react-icons/ri';
 import { useBlocker, useNavigate, useParams } from 'react-router-dom';
-import { toast } from 'sonner';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -13,6 +12,7 @@ import {
 } from '@/components/primitives/alert-dialog';
 import { useEnvironment } from '@/context/environment/hooks';
 import { useBeforeUnload } from '@/hooks/use-before-unload';
+import { useDataRef } from '@/hooks/use-data-ref';
 import { useFetchWorkflow } from '@/hooks/use-fetch-workflow';
 import { useInvocationQueue } from '@/hooks/use-invocation-queue';
 import { usePatchWorkflow } from '@/hooks/use-patch-workflow';
@@ -20,14 +20,14 @@ import { useUpdateWorkflow } from '@/hooks/use-update-workflow';
 import { createContextHook } from '@/utils/context';
 import { getIdFromSlug, STEP_DIVIDER } from '@/utils/id-utils';
 import { buildRoute, ROUTES } from '@/utils/routes';
-import { showErrorToast, showSavingToast, showSuccessToast } from './toasts';
-import { useOptimisticWorkflow } from './use-optimistic-workflow';
+import { showErrorToast } from './toasts';
 import { WorkflowSchemaProvider } from './workflow-schema-provider';
 
 export type UpdateWorkflowFn = (
   data: UpdateWorkflowDto,
   options?: {
     onSuccess?: (workflow: WorkflowResponseDto) => void;
+    onError?: (error: unknown) => void;
   }
 ) => void;
 
@@ -35,23 +35,11 @@ export type WorkflowContextType = {
   isPending: boolean;
   isUpdatePatchPending: boolean;
   workflow?: WorkflowResponseDto;
-  optimisticWorkflow?: WorkflowResponseDto;
   step?: StepResponseDto;
   update: UpdateWorkflowFn;
   patch: (data: PatchWorkflowDto) => void;
   digestStepBeforeCurrent?: StepResponseDto;
-  optimisticAddStep: (
-    stepType: string,
-    insertIndex: number,
-    createStepFn: () => StepCreateDto,
-    options?: { onSuccess?: (workflow: WorkflowResponseDto) => void }
-  ) => void;
-  optimisticRemoveStep: (stepSlug: string, options?: { onSuccess?: () => void }) => void;
-  optimisticReorderSteps: (
-    newSteps: StepResponseDto[],
-    options?: { onSuccess?: (workflow: WorkflowResponseDto) => void }
-  ) => void;
-  hasPendingOperations: boolean;
+  lastSaveError: unknown | null;
 };
 
 export const WorkflowContext = createContext<WorkflowContextType>({} as WorkflowContextType);
@@ -59,12 +47,13 @@ export const WorkflowContext = createContext<WorkflowContextType>({} as Workflow
 export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
   const { currentEnvironment } = useEnvironment();
   const { workflowSlug = '', stepSlug = '' } = useParams<{ workflowSlug?: string; stepSlug?: string }>();
-  const [toastId, setToastId] = useState<string | number>('');
   const navigate = useNavigate();
+  const [lastSaveError, setLastSaveError] = useState<unknown | null>(null);
 
   const { workflow, isPending, error } = useFetchWorkflow({
     workflowSlug,
   });
+  const workflowRef = useDataRef<WorkflowResponseDto | undefined>(workflow);
 
   const getStep = useCallback(() => {
     return workflow?.steps.find(
@@ -115,48 +104,55 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
 
   const { patchWorkflow, isPending: isPatchPending } = usePatchWorkflow({
     onMutate: () => {
-      showSavingToast(setToastId);
-    },
-    onSuccess: async () => {
-      showSuccessToast(toastId);
+      // Clear error state when a new save starts
+      setLastSaveError(null);
     },
     onError: (error) => {
-      showErrorToast(toastId, error);
+      setLastSaveError(error);
+      showErrorToast(undefined, error);
+    },
+    onSuccess: () => {
+      setLastSaveError(null);
     },
   });
 
   const { updateWorkflow, isPending: isUpdatePending } = useUpdateWorkflow({
     onMutate: () => {
-      showSavingToast(setToastId);
-    },
-    onSuccess: async () => {
-      showSuccessToast(toastId);
+      // Clear error state when a new save starts
+      setLastSaveError(null);
     },
     onError: (error) => {
-      showErrorToast(toastId, error);
+      setLastSaveError(error);
+      showErrorToast(undefined, error);
+    },
+    onSuccess: () => {
+      setLastSaveError(null);
     },
   });
 
   const update = useCallback(
-    (data: UpdateWorkflowDto, options?: { onSuccess?: (workflow: WorkflowResponseDto) => void }) => {
-      if (workflow) {
+    (
+      data: UpdateWorkflowDto,
+      options?: { onSuccess?: (workflow: WorkflowResponseDto) => void; onError?: (error: unknown) => void }
+    ) => {
+      const currentWorkflow = workflowRef.current;
+      if (currentWorkflow) {
         enqueue(async () => {
-          const res = await updateWorkflow({ workflowSlug: workflow.slug, workflow: { ...data } });
-          options?.onSuccess?.(res);
-          return res;
+          try {
+            const res = await updateWorkflow({ workflowSlug: currentWorkflow.slug, workflow: { ...data } });
+            options?.onSuccess?.(res);
+          } catch (error) {
+            setLastSaveError(error);
+            options?.onError?.(error);
+            showErrorToast(undefined, error);
+          }
         });
       }
     },
-    [enqueue, updateWorkflow, workflow]
+    [enqueue, updateWorkflow, workflowRef]
   );
 
-  const { optimisticWorkflow, optimisticAddStep, optimisticRemoveStep, optimisticReorderSteps, hasPendingOperations } =
-    useOptimisticWorkflow({
-      workflow,
-      onUpdate: update,
-    });
-
-  const isUpdatePatchPending = isPatchPending || isUpdatePending || hasPendingItems || hasPendingOperations;
+  const isUpdatePatchPending = isPatchPending || isUpdatePending || hasPendingItems;
 
   const blocker = useBlocker(({ nextLocation }) => {
     const workflowEditorBasePath = buildRoute(ROUTES.EDIT_WORKFLOW, {
@@ -179,11 +175,12 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
 
   const patch = useCallback(
     (data: PatchWorkflowDto) => {
-      if (workflow) {
-        enqueue(() => patchWorkflow({ workflowSlug: workflow.slug, workflow: { ...data } }));
+      const currentWorkflow = workflowRef.current;
+      if (currentWorkflow) {
+        enqueue(() => patchWorkflow({ workflowSlug: currentWorkflow.slug, workflow: { ...data } }));
       }
     },
-    [enqueue, patchWorkflow, workflow]
+    [enqueue, patchWorkflow, workflowRef]
   );
 
   useLayoutEffect(() => {
@@ -210,7 +207,6 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
    */
   useEffect(() => {
     if (isAllowedToUnblock) {
-      toast.dismiss();
       setTimeout(() => {
         blocker.proceed?.();
       }, 500);
@@ -223,29 +219,12 @@ export const WorkflowProvider = ({ children }: { children: ReactNode }) => {
       patch,
       isPending,
       workflow,
-      optimisticWorkflow,
       step: getStep(),
       digestStepBeforeCurrent,
       isUpdatePatchPending,
-      optimisticAddStep,
-      optimisticRemoveStep,
-      optimisticReorderSteps,
-      hasPendingOperations,
+      lastSaveError,
     }),
-    [
-      update,
-      patch,
-      isPending,
-      workflow,
-      optimisticWorkflow,
-      getStep,
-      digestStepBeforeCurrent,
-      isUpdatePatchPending,
-      optimisticAddStep,
-      optimisticRemoveStep,
-      optimisticReorderSteps,
-      hasPendingOperations,
-    ]
+    [update, patch, isPending, workflow, getStep, digestStepBeforeCurrent, isUpdatePatchPending, lastSaveError]
   );
 
   return (
@@ -276,7 +255,7 @@ const SavingChangesDialog = ({
       <AlertDialogContent className="w-[26rem]">
         <AlertDialogHeader className="flex flex-row items-start gap-4">
           <div
-            className={`rounded-lg p-3 transition-all duration-300 ${
+            className={`rounded-md p-3 transition-all duration-300 ${
               isUpdatePatchPending ? 'bg-warning/10' : 'bg-success/10 scale-110'
             }`}
           >

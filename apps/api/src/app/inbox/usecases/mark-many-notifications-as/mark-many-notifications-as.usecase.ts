@@ -15,7 +15,7 @@ import {
   WebSocketsQueueService,
 } from '@novu/application-generic';
 import { EnvironmentEntity, EnvironmentRepository, MessageEntity, MessageRepository } from '@novu/dal';
-import { WebhookEventEnum, WebhookObjectTypeEnum, WebSocketEventEnum } from '@novu/shared';
+import { DeliveryLifecycleStatusEnum, WebhookEventEnum, WebhookObjectTypeEnum, WebSocketEventEnum } from '@novu/shared';
 
 import { GetSubscriber } from '../../../subscribers/usecases/get-subscriber';
 import { MarkManyNotificationsAsCommand } from './mark-many-notifications-as.command';
@@ -62,13 +62,6 @@ export class MarkManyNotificationsAs {
     });
 
     await this.invalidateCacheService.invalidateQuery({
-      key: buildFeedKey().invalidate({
-        subscriberId: subscriber.subscriberId,
-        _environmentId: command.environmentId,
-      }),
-    });
-
-    await this.invalidateCacheService.invalidateQuery({
       key: buildMessageCountKey().invalidate({
         subscriberId: subscriber.subscriberId,
         _environmentId: command.environmentId,
@@ -111,6 +104,7 @@ export class MarkManyNotificationsAs {
         event: WebSocketEventEnum.UNREAD,
         userId: subscriber._id,
         _environmentId: subscriber._environmentId,
+        ...(command.contextKeys && { contextKeys: command.contextKeys }),
       },
       groupId: subscriber._organizationId,
     });
@@ -224,7 +218,7 @@ export class MarkManyNotificationsAs {
 
     if (allTraceData.length > 0) {
       try {
-        await this.messageInteractionService.trace(allTraceData);
+        await this.messageInteractionService.trace(allTraceData, DeliveryLifecycleStatusEnum.INTERACTED);
       } catch (error) {
         this.logger.warn({ err: error }, `Failed to create engagement traces for ${allTraceData.length} messages`);
       }
@@ -260,7 +254,8 @@ function createTraceLog({
     entity_type: 'step_run',
     entity_id: message._jobId,
     step_run_type: message.channel as StepType,
-    workflow_run_identifier: message.templateIdentifier,
+    workflow_run_identifier: '',
     _notificationId: message._notificationId,
+    workflow_id: message._templateId,
   };
 }

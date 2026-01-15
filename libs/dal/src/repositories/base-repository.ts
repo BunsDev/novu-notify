@@ -44,10 +44,29 @@ export class BaseRepository<T_DBModel, T_MappedEntity, T_Enforcement> {
     return new Types.ObjectId(value);
   }
 
-  async count(query: FilterQuery<T_DBModel> & T_Enforcement, limit?: number): Promise<number> {
+  async count(
+    query: FilterQuery<T_DBModel> & T_Enforcement,
+    limit?: number,
+    readPreference?: 'secondaryPreferred' | 'primary'
+  ): Promise<number> {
     return this.MongooseModel.countDocuments(query, {
       limit,
+      readPreference: readPreference || 'primary',
     });
+  }
+
+  private async getCountWithLimit(
+    query: FilterQuery<T_DBModel> & T_Enforcement,
+    maxLimit: number = 50001
+  ): Promise<{ count: number; hasMore: boolean }> {
+    const result = await this.count(query, maxLimit, 'secondaryPreferred');
+    const count = result;
+    const hasMore = count === maxLimit;
+
+    return {
+      count: hasMore ? maxLimit - 1 : count,
+      hasMore,
+    };
   }
 
   async estimatedDocumentCount(): Promise<number> {
@@ -402,9 +421,10 @@ export class BaseRepository<T_DBModel, T_MappedEntity, T_Enforcement> {
       return await (await this._model.db.startSession()).withTransaction(fn);
     } catch (error) {
       // Check if the error is related to replica set requirement
+      const errorMessage = error?.message?.toLowerCase() || '';
       if (
-        error.message?.includes('replica set') ||
-        error.message?.includes('transaction') ||
+        errorMessage.includes('replica set') ||
+        errorMessage.includes('transaction') ||
         error.codeName === 'IllegalOperation'
       ) {
         // MongoDB is not running in replica set mode, execute without transaction
@@ -435,7 +455,13 @@ export class BaseRepository<T_DBModel, T_MappedEntity, T_Enforcement> {
     paginateField: string;
     enhanceQuery?: (query: QueryWithHelpers<Array<T_DBModel>, T_DBModel>) => any;
     includeCursor?: boolean;
-  }): Promise<{ data: T_MappedEntity[]; next: string | null; previous: string | null }> {
+  }): Promise<{
+    data: T_MappedEntity[];
+    next: string | null;
+    previous: string | null;
+    totalCount: number;
+    totalCountCapped: boolean;
+  }> {
     if (before && after) {
       throw new DalException('Cannot specify both "before" and "after" cursors at the same time.');
     }
@@ -498,8 +524,12 @@ export class BaseRepository<T_DBModel, T_MappedEntity, T_Enforcement> {
       builder = enhanceQuery(builder);
     }
 
-    const rawResults = await builder.exec();
+    // Run find query and count aggregation in parallel
+    const [rawResults, countResult] = await Promise.all([builder.exec(), this.getCountWithLimit(query, 50001)]);
+
     const hasExtraItem = rawResults.length > limit;
+    const totalCount = countResult.count;
+    const hasMore = countResult.hasMore;
 
     let startIndex = 0;
     let endIndex = limit;
@@ -523,6 +553,8 @@ export class BaseRepository<T_DBModel, T_MappedEntity, T_Enforcement> {
         data: [],
         next: null,
         previous: null,
+        totalCount: totalCount,
+        totalCountCapped: hasMore,
       };
     }
 
@@ -594,6 +626,8 @@ export class BaseRepository<T_DBModel, T_MappedEntity, T_Enforcement> {
       data: this.mapEntities(pageResults),
       next: nextCursor,
       previous: prevCursor,
+      totalCount: totalCount,
+      totalCountCapped: hasMore,
     };
   }
 

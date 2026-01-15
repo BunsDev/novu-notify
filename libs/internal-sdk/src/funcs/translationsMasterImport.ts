@@ -29,7 +29,7 @@ import { Result } from "../types/fp.js";
  * Import master translations JSON
  *
  * @remarks
- * Import translations from master JSON format for a specific locale
+ * Import translations for multiple workflows from master JSON format for a specific locale
  */
 export function translationsMasterImport(
   client: NovuCore,
@@ -119,7 +119,7 @@ async function $do(
     options: client._options,
     baseURL: options?.serverURL ?? client._baseURL ?? "",
     operationID: "TranslationController_importMasterJsonEndpoint",
-    oAuth2Scopes: [],
+    oAuth2Scopes: null,
 
     resolvedSecurity: requestSecurity,
 

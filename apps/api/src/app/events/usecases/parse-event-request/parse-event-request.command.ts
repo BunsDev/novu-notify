@@ -1,6 +1,8 @@
+import { IsValidContextPayload } from '@novu/application-generic';
 import { NotificationTemplateEntity } from '@novu/dal';
 import {
   AddressingTypeEnum,
+  ContextPayload,
   StatelessControls,
   TriggerOverrides,
   TriggerRecipientSubscriber,
@@ -9,7 +11,6 @@ import {
   TriggerTenantContext,
 } from '@novu/shared';
 import { IsDefined, IsEnum, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
-
 import { EnvironmentWithUserCommand } from '../../../shared/commands/project.command';
 
 export class ParseEventRequestBaseCommand extends EnvironmentWithUserCommand {
@@ -57,7 +58,14 @@ export class ParseEventRequestBaseCommand extends EnvironmentWithUserCommand {
   requestId: string;
 
   @IsOptional()
-  workflow?: NotificationTemplateEntity;
+  workflow?: Pick<NotificationTemplateEntity, '_id' | 'active' | 'payloadSchema' | 'validatePayload'>;
+
+  @IsOptional()
+  @IsValidContextPayload({ maxCount: 5 })
+  context?: ContextPayload;
+
+  @IsOptional()
+  skipQueueInsertion?: boolean;
 }
 
 export class ParseEventRequestMulticastCommand extends ParseEventRequestBaseCommand {

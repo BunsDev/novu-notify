@@ -8,7 +8,9 @@ export type ActivityFiltersData = {
   transactionId: string;
   subscriberId: string;
   topicKey: string;
+  subscriptionId: string;
   severity: SeverityLevelEnum[];
+  contextKeys: string;
 };
 
 export type ActivityUrlState = {

@@ -11,9 +11,6 @@ describe('Create/update translation - /v2/translations (POST) #novu-v2', async (
   let workflowId: string;
 
   beforeEach(async () => {
-    // Enable translation feature for testing
-    (process.env as any).IS_TRANSLATION_ENABLED = 'true';
-
     session = new UserSession();
     await session.initialize();
 
@@ -41,11 +38,6 @@ describe('Create/update translation - /v2/translations (POST) #novu-v2', async (
     workflowId = workflow.workflowId;
   });
 
-  afterEach(() => {
-    // Disable translation feature after each test
-    (process.env as any).IS_TRANSLATION_ENABLED = 'false';
-  });
-
   it('should create new translation successfully', async () => {
     const requestBody = {
       resourceId: workflowId,
@@ -58,16 +50,14 @@ describe('Create/update translation - /v2/translations (POST) #novu-v2', async (
       },
     };
 
-    const { body } = await session.testAgent.post('/v2/translations').send(requestBody).expect(200);
+    const response = await novuClient.translations.create(requestBody);
 
-    console.log(body);
-
-    expect(body.data.locale).to.equal('en_US');
-    expect(body.data.resourceId).to.equal(workflowId);
-    expect(body.data.resourceType).to.equal(LocalizationResourceEnum.WORKFLOW);
-    expect(body.data.content).to.deep.equal(requestBody.content);
-    expect(body.data.createdAt).to.be.a('string');
-    expect(body.data.updatedAt).to.be.a('string');
+    expect(response.locale).to.equal('en_US');
+    expect(response.resourceId).to.equal(workflowId);
+    expect(response.resourceType).to.equal(LocalizationResourceEnum.WORKFLOW);
+    expect(response.content).to.deep.equal(requestBody.content);
+    expect(response.createdAt).to.be.a('string');
+    expect(response.updatedAt).to.be.a('string');
   });
 
   it('should update existing translation', async () => {
@@ -81,39 +71,35 @@ describe('Create/update translation - /v2/translations (POST) #novu-v2', async (
     };
 
     // Create initial translation
-    await session.testAgent
-      .post('/v2/translations')
-      .send({
-        resourceId: workflowId,
-        resourceType: LocalizationResourceEnum.WORKFLOW,
-        locale: 'en_US',
-        content: originalContent,
-      })
-      .expect(200);
+    await novuClient.translations.create({
+      resourceId: workflowId,
+      resourceType: LocalizationResourceEnum.WORKFLOW,
+      locale: 'en_US',
+      content: originalContent,
+    });
 
     // Update the translation
-    const { body } = await session.testAgent
-      .post('/v2/translations')
-      .send({
-        resourceId: workflowId,
-        resourceType: LocalizationResourceEnum.WORKFLOW,
-        locale: 'en_US',
-        content: updatedContent,
-      })
-      .expect(200);
+    const response = await novuClient.translations.create({
+      resourceId: workflowId,
+      resourceType: LocalizationResourceEnum.WORKFLOW,
+      locale: 'en_US',
+      content: updatedContent,
+    });
 
-    expect(body.data.content).to.deep.equal(updatedContent);
+    expect(response.content).to.deep.equal(updatedContent);
   });
 
   it('should validate locale format', async () => {
-    await session.testAgent
-      .post('/v2/translations')
-      .send({
+    try {
+      await novuClient.translations.create({
         resourceId: workflowId,
         resourceType: LocalizationResourceEnum.WORKFLOW,
         locale: '123',
         content: { key: 'value' },
-      })
-      .expect(422);
+      });
+      throw new Error('Should have thrown an error');
+    } catch (error: any) {
+      expect(error.statusCode).to.equal(422);
+    }
   });
 });

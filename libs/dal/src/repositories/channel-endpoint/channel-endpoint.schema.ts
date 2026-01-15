@@ -35,9 +35,14 @@ const channelEndpointSchema = new Schema<ChannelEndpointDBModel>(
       type: Schema.Types.String,
       required: true,
     },
-    resource: {
+    subscriberId: {
       type: Schema.Types.String,
       required: true,
+    },
+    contextKeys: {
+      type: [Schema.Types.String],
+      required: true,
+      default: [],
     },
     type: {
       type: Schema.Types.String,
@@ -52,15 +57,8 @@ const channelEndpointSchema = new Schema<ChannelEndpointDBModel>(
   schemaOptions
 );
 
-channelEndpointSchema.index(
-  {
-    _environmentId: 1,
-    identifier: 1,
-  },
-  {
-    unique: true,
-  }
-);
+channelEndpointSchema.index({ _environmentId: 1, identifier: 1 }, { unique: true });
+channelEndpointSchema.index({ _environmentId: 1, subscriberId: 1, channel: 1 });
 
 export const ChannelEndpoint =
   (mongoose.models.ChannelEndpoint as mongoose.Model<ChannelEndpointDBModel>) ||

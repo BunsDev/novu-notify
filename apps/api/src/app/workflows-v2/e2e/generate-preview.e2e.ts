@@ -8,7 +8,6 @@ import {
   GeneratePreviewResponseDto,
   PreviewPayloadDto,
   ResourceOriginEnum,
-  StepTypeEnum,
   UpdateWorkflowDto,
   UpdateWorkflowDtoSteps,
   WorkflowCreationSourceEnum,
@@ -16,12 +15,13 @@ import {
 } from '@novu/api/models/components';
 import { EmailControlType } from '@novu/application-generic';
 import { EnvironmentRepository, NotificationTemplateEntity, NotificationTemplateRepository } from '@novu/dal';
-import { CronExpressionEnum, RedirectTargetEnum, slugify } from '@novu/shared';
+import { CronExpressionEnum, RedirectTargetEnum, StepTypeEnum, slugify } from '@novu/shared';
 import { UserSession } from '@novu/testing';
 import { expect } from 'chai';
 import { beforeEach } from 'mocha';
 import { initNovuClassSdkInternalAuth } from '../../shared/helpers/e2e/sdk/e2e-sdk.helper';
 import { DEFAULT_ARRAY_ELEMENTS } from '../../shared/usecases/create-variables-object/create-variables-object.usecase';
+import { buildWorkflowSchema } from '../../shared/utils/create-schema';
 import { fullCodeSnippet, previewPayloadExample } from '../maily-test-data';
 import { buildWorkflow } from '../workflow.controller.e2e';
 
@@ -129,63 +129,89 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
           },
           subscriber: {
             type: 'object',
+            description: 'Schema representing the subscriber entity',
             properties: {
-              subscriberId: {
-                type: 'string',
-              },
               firstName: {
                 type: 'string',
+                description: "Subscriber's first name",
               },
               lastName: {
                 type: 'string',
+                description: "Subscriber's last name",
               },
               email: {
                 type: 'string',
-                format: 'email',
+                description: "Subscriber's email address",
               },
               phone: {
                 type: 'string',
+                description: "Subscriber's phone number (optional)",
               },
               avatar: {
                 type: 'string',
+                description: "URL to the subscriber's avatar image (optional)",
               },
               locale: {
                 type: 'string',
+                description: 'Locale for the subscriber (optional)',
               },
               timezone: {
                 type: 'string',
+                description: 'Timezone for the subscriber (optional)',
+              },
+              subscriberId: {
+                type: 'string',
+                description: 'Unique identifier for the subscriber',
+              },
+              isOnline: {
+                type: 'boolean',
+                description: 'Indicates if the subscriber is online (optional)',
+              },
+              lastOnlineAt: {
+                type: 'string',
+                format: 'date-time',
+                description: 'The last time the subscriber was online (optional)',
               },
               data: {
                 type: 'object',
+                properties: {},
+                required: [],
                 additionalProperties: true,
               },
             },
-            additionalProperties: true,
+            required: ['subscriberId'],
+            additionalProperties: false,
           },
           steps: {
             type: 'object',
-            description: 'Steps data from previous workflow executions',
+            properties: {},
+            required: [],
+            additionalProperties: false,
+            description: 'Previous Steps Results',
+          },
+          workflow: buildWorkflowSchema(),
+          context: {
+            type: 'object',
+            description: 'Context data passed at trigger time following ContextPayload structure',
+            properties: {},
+            required: [],
             additionalProperties: {
               type: 'object',
+              description: 'Context value - can be accessed as string or object',
               properties: {
-                eventCount: {
-                  type: 'number',
+                id: {
+                  type: 'string',
+                  description: 'Context identifier',
                 },
-                events: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      payload: {
-                        type: 'object',
-                        additionalProperties: true,
-                      },
-                    },
-                    additionalProperties: true,
-                  },
+                data: {
+                  type: 'object',
+                  description: 'Additional context data',
+                  properties: {},
+                  additionalProperties: true,
                 },
               },
-              additionalProperties: true,
+              required: [],
+              additionalProperties: false,
             },
           },
         },
@@ -377,64 +403,90 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
             type: 'object',
           },
           subscriber: {
-            additionalProperties: true,
+            additionalProperties: false,
+            description: 'Schema representing the subscriber entity',
             properties: {
-              avatar: {
-                type: 'string',
-              },
-              data: {
-                additionalProperties: true,
-                type: 'object',
-              },
-              email: {
-                format: 'email',
-                type: 'string',
-              },
               firstName: {
                 type: 'string',
+                description: "Subscriber's first name",
               },
               lastName: {
                 type: 'string',
+                description: "Subscriber's last name",
               },
-              locale: {
+              email: {
                 type: 'string',
+                description: "Subscriber's email address",
               },
               phone: {
                 type: 'string',
+                description: "Subscriber's phone number (optional)",
               },
-              subscriberId: {
+              avatar: {
                 type: 'string',
+                description: "URL to the subscriber's avatar image (optional)",
+              },
+              locale: {
+                type: 'string',
+                description: 'Locale for the subscriber (optional)',
               },
               timezone: {
                 type: 'string',
+                description: 'Timezone for the subscriber (optional)',
+              },
+              subscriberId: {
+                type: 'string',
+                description: 'Unique identifier for the subscriber',
+              },
+              isOnline: {
+                type: 'boolean',
+                description: 'Indicates if the subscriber is online (optional)',
+              },
+              lastOnlineAt: {
+                type: 'string',
+                format: 'date-time',
+                description: 'The last time the subscriber was online (optional)',
+              },
+              data: {
+                additionalProperties: true,
+                properties: {},
+                required: [],
+                type: 'object',
               },
             },
+            required: ['subscriberId'],
             type: 'object',
           },
           steps: {
             type: 'object',
-            description: 'Steps data from previous workflow executions',
+            properties: {},
+            required: [],
+            additionalProperties: false,
+            description: 'Previous Steps Results',
+          },
+          workflow: buildWorkflowSchema(),
+          context: {
+            type: 'object',
+            description: 'Context data passed at trigger time following ContextPayload structure',
+            properties: {},
+            required: [],
             additionalProperties: {
               type: 'object',
+              description: 'Context value - can be accessed as string or object',
               properties: {
-                eventCount: {
-                  type: 'number',
+                id: {
+                  type: 'string',
+                  description: 'Context identifier',
                 },
-                events: {
-                  type: 'array',
-                  items: {
-                    type: 'object',
-                    properties: {
-                      payload: {
-                        type: 'object',
-                        additionalProperties: true,
-                      },
-                    },
-                    additionalProperties: true,
-                  },
+                data: {
+                  type: 'object',
+                  description: 'Additional context data',
+                  properties: {},
+                  additionalProperties: true,
                 },
               },
-              additionalProperties: true,
+              required: [],
+              additionalProperties: false,
             },
           },
         },
@@ -545,7 +597,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       steps: [
         {
           name: 'Email Test Step',
-          type: StepTypeEnum.Email,
+          type: StepTypeEnum.EMAIL,
           controlValues: {
             subject: 'Test Email Subject',
             body: 'Hello, {{subscriber.firstName}}!',
@@ -847,8 +899,9 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
   });
 
   it('should allow using the static text and variables as a link on the email editor components', async () => {
-    const { workflowId, emailStepDatabaseId } =
-      await createWorkflowWithEmailLookingAtDigestResult(linkPayloadSchemaWithExamples);
+    const { workflowId, emailStepDatabaseId } = await createWorkflowWithEmailLookingAtDigestResult(
+      linkPayloadSchemaWithExamples as any
+    );
 
     const controlValues = {
       body: '{"type":"doc","content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Just the paragraph"}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"payload.paragraph_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":null}},{"type":"underline"}],"text":"Paragraph variable link"}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"https://paragraph.static.link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":false,"aliasFor":null}},{"type":"underline"}],"text":"Paragraph static link"}]},{"type":"heading","attrs":{"textAlign":null,"level":1,"showIfKey":null},"content":[{"type":"text","text":"Just the heading"}]},{"type":"heading","attrs":{"textAlign":null,"level":1,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"payload.heading_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":null}},{"type":"underline"}],"text":"Heading text link"}]},{"type":"heading","attrs":{"textAlign":null,"level":1,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"https://heading.static.link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":false,"aliasFor":null}},{"type":"underline"}],"text":"Heading static link"}]},{"type":"blockquote","content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Just the blockquote"}]}]},{"type":"blockquote","content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"payload.blockquote_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":null}},{"type":"underline"}],"text":"Blockquote text link"}]}]},{"type":"blockquote","content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"https://blockquote.static.link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":false,"aliasFor":null}},{"type":"underline"}],"text":"Blockquote static link"}]}]},{"type":"bulletList","content":[{"type":"listItem","attrs":{"color":null},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Just the bullet"}]}]},{"type":"listItem","attrs":{"color":null},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"payload.bullet_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":null}},{"type":"underline"}],"text":"Bullet text link"}]}]},{"type":"listItem","attrs":{"color":null},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"https://bullet.static.link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":false,"aliasFor":null}},{"type":"underline"}],"text":"Bullet static link"}]}]}]},{"type":"button","attrs":{"text":"Just the button","isTextVariable":false,"url":"","isUrlVariable":false,"alignment":"left","variant":"filled","borderRadius":"smooth","buttonColor":"#000000","textColor":"#ffffff","showIfKey":null,"paddingTop":10,"paddingRight":32,"paddingBottom":10,"paddingLeft":32,"width":"auto","aliasFor":null}},{"type":"button","attrs":{"text":"Button link","isTextVariable":false,"url":"payload.button_link","isUrlVariable":true,"alignment":"left","variant":"filled","borderRadius":"smooth","buttonColor":"#000000","textColor":"#ffffff","showIfKey":null,"paddingTop":10,"paddingRight":32,"paddingBottom":10,"paddingLeft":32,"width":"auto","aliasFor":null}},{"type":"button","attrs":{"text":"Button static link","isTextVariable":false,"url":"https://button.static.link","isUrlVariable":false,"alignment":"left","variant":"filled","borderRadius":"smooth","buttonColor":"#000000","textColor":"#ffffff","showIfKey":null,"paddingTop":10,"paddingRight":32,"paddingBottom":10,"paddingLeft":32,"width":"auto","aliasFor":null}},{"type":"image","attrs":{"src":"https://prod-novu-app-bucket.s3.us-east-1.amazonaws.com/assets/email-editor/header-hero-image.webp","alt":null,"title":null,"width":568,"height":153.79061371841155,"alignment":"center","externalLink":null,"isExternalLinkVariable":false,"borderRadius":0,"isSrcVariable":false,"aspectRatio":3.6933333333333334,"lockAspectRatio":true,"showIfKey":null,"aliasFor":null}},{"type":"image","attrs":{"src":"payload.image_variable","alt":null,"title":null,"width":"auto","height":"auto","alignment":"center","externalLink":null,"isExternalLinkVariable":false,"borderRadius":0,"isSrcVariable":true,"aspectRatio":null,"lockAspectRatio":true,"showIfKey":null,"aliasFor":null}},{"type":"image","attrs":{"src":"https://prod-novu-app-bucket.s3.us-east-1.amazonaws.com/assets/email-editor/header-hero-image.webp","alt":null,"title":null,"width":568,"height":153.79061371841155,"alignment":"center","externalLink":"payload.image_link","isExternalLinkVariable":true,"borderRadius":0,"isSrcVariable":false,"aspectRatio":3.6933333333333334,"lockAspectRatio":true,"showIfKey":null,"aliasFor":null}},{"type":"image","attrs":{"src":"https://prod-novu-app-bucket.s3.us-east-1.amazonaws.com/assets/email-editor/header-hero-image.webp","alt":null,"title":null,"width":568,"height":153.79061371841155,"alignment":"center","externalLink":"https://image.static.link","isExternalLinkVariable":false,"borderRadius":0,"isSrcVariable":false,"aspectRatio":3.6933333333333334,"lockAspectRatio":true,"showIfKey":null,"aliasFor":null}},{"type":"horizontalRule"},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"inlineImage","attrs":{"height":20,"width":20,"src":"https://maily.to/brand/logo.png","isSrcVariable":false,"alt":null,"title":null,"externalLink":null,"isExternalLinkVariable":false,"aliasFor":null}}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"inlineImage","attrs":{"height":20,"width":20,"src":"https://maily.to/brand/logo.png","isSrcVariable":false,"alt":null,"title":null,"externalLink":"payload.inline_image_link","isExternalLinkVariable":true,"aliasFor":null}}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"inlineImage","attrs":{"height":20,"width":20,"src":"https://maily.to/brand/logo.png","isSrcVariable":false,"alt":null,"title":null,"externalLink":"https://inline_image.static.link","isExternalLinkVariable":false,"aliasFor":null}}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"inlineImage","attrs":{"height":20,"width":20,"src":"payload.inline_image_url","isSrcVariable":true,"alt":null,"title":null,"externalLink":null,"isExternalLinkVariable":false,"aliasFor":null}}]},{"type":"orderedList","attrs":{"start":1},"content":[{"type":"listItem","attrs":{"color":null},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Just the numbered list"}]}]},{"type":"listItem","attrs":{"color":null},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"payload.numbered_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":null}},{"type":"underline"}],"text":"Numbered text link"}]}]},{"type":"listItem","attrs":{"color":null},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"https://numbered.static.link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":false,"aliasFor":null}},{"type":"underline"}],"text":"Numbered static link"}]}]}]}]}',
@@ -1138,8 +1191,9 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       },
     };
 
-    const { workflowId, emailStepDatabaseId } =
-      await createWorkflowWithEmailLookingAtDigestResult(enhancedPayloadSchema);
+    const { workflowId, emailStepDatabaseId } = await createWorkflowWithEmailLookingAtDigestResult(
+      enhancedPayloadSchema as any
+    );
 
     const controlValues = {
       body: '{"type":"doc","content":[{"type":"repeat","attrs":{"each":"payload.items","isUpdatingKey":false,"showIfKey":null,"iterations":0},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Just the paragraph"}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"payload.items.paragraph_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":null}},{"type":"underline"}],"text":"Paragraph variable link"}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"current.paragraph_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":"payload.items.paragraph_link"}},{"type":"underline"}],"text":"Paragraph current variable link"}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"https://paragraph.static.link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":false,"aliasFor":null}},{"type":"underline"}],"text":"Paragraph static link"}]},{"type":"heading","attrs":{"textAlign":null,"level":1,"showIfKey":null},"content":[{"type":"text","text":"Just the heading"}]},{"type":"heading","attrs":{"textAlign":null,"level":1,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"payload.items.heading_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":null}},{"type":"underline"}],"text":"Heading variable link"}]},{"type":"heading","attrs":{"textAlign":null,"level":1,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"current.heading_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":"payload.items.heading_link"}},{"type":"underline"}],"text":"Heading current variable link"}]},{"type":"heading","attrs":{"textAlign":null,"level":1,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"https://heading.static.link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":false,"aliasFor":null}},{"type":"underline"}],"text":"Heading static link"}]},{"type":"blockquote","content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Just the blockquote"}]}]},{"type":"blockquote","content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"payload.items.blockquote_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":null}},{"type":"underline"}],"text":"Blockquote variable link"}]}]},{"type":"blockquote","content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"current.blockquote_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":"payload.items.blockquote_link"}},{"type":"underline"}],"text":"Blockquote current variable link"}]}]},{"type":"blockquote","content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"https://blockquote.static.link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":false,"aliasFor":null}},{"type":"underline"}],"text":"Blockquote static link"}]}]},{"type":"bulletList","content":[{"type":"listItem","attrs":{"color":""},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Just the bullet"}]}]},{"type":"listItem","attrs":{"color":""},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"payload.items.bullet_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":null}},{"type":"underline"}],"text":"Bullet variable link"}]}]},{"type":"listItem","attrs":{"color":""},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"current.bullet_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":"payload.items.bullet_link"}},{"type":"underline"}],"text":"Bullet current variable link"}]}]},{"type":"listItem","attrs":{"color":""},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"https://bullet.static.link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":false,"aliasFor":null}},{"type":"underline"}],"text":"Bullet static link"}]}]}]},{"type":"button","attrs":{"text":"Just the button","isTextVariable":false,"url":"","isUrlVariable":false,"alignment":"left","variant":"filled","borderRadius":"smooth","buttonColor":"#000000","textColor":"#ffffff","showIfKey":null,"paddingTop":10,"paddingRight":32,"paddingBottom":10,"paddingLeft":32,"width":"auto","aliasFor":null}},{"type":"button","attrs":{"text":"Button variable link","isTextVariable":false,"url":"payload.items.button_link","isUrlVariable":true,"alignment":"left","variant":"filled","borderRadius":"smooth","buttonColor":"#000000","textColor":"#ffffff","showIfKey":null,"paddingTop":10,"paddingRight":32,"paddingBottom":10,"paddingLeft":32,"width":"auto","aliasFor":null}},{"type":"button","attrs":{"text":"Button current variable link","isTextVariable":false,"url":"current.button_link","isUrlVariable":true,"alignment":"left","variant":"filled","borderRadius":"smooth","buttonColor":"#000000","textColor":"#ffffff","showIfKey":null,"paddingTop":10,"paddingRight":32,"paddingBottom":10,"paddingLeft":32,"width":"auto","aliasFor":"payload.items.button_link"}},{"type":"button","attrs":{"text":"Button static link","isTextVariable":false,"url":"https://button.static.link","isUrlVariable":false,"alignment":"left","variant":"filled","borderRadius":"smooth","buttonColor":"#000000","textColor":"#ffffff","showIfKey":null,"paddingTop":10,"paddingRight":32,"paddingBottom":10,"paddingLeft":32,"width":"auto","aliasFor":null}},{"type":"horizontalRule"},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Just the image"}]},{"type":"image","attrs":{"src":"https://prod-novu-app-bucket.s3.us-east-1.amazonaws.com/assets/email-editor/header-hero-image.webp","alt":null,"title":null,"width":566,"height":153.24909747292418,"alignment":"center","externalLink":null,"isExternalLinkVariable":false,"borderRadius":0,"isSrcVariable":false,"aspectRatio":3.6933333333333334,"lockAspectRatio":true,"showIfKey":null,"aliasFor":null}},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Image variable"}]},{"type":"image","attrs":{"src":"payload.items.image","alt":null,"title":null,"width":"auto","height":"auto","alignment":"center","externalLink":null,"isExternalLinkVariable":false,"borderRadius":0,"isSrcVariable":true,"aspectRatio":null,"lockAspectRatio":true,"showIfKey":null,"aliasFor":null}},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Image current variable"}]},{"type":"image","attrs":{"src":"current.image","alt":null,"title":null,"width":"auto","height":"auto","alignment":"center","externalLink":null,"isExternalLinkVariable":false,"borderRadius":0,"isSrcVariable":true,"aspectRatio":null,"lockAspectRatio":true,"showIfKey":null,"aliasFor":"payload.items.image"}},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Image link variable"}]},{"type":"image","attrs":{"src":"https://prod-novu-app-bucket.s3.us-east-1.amazonaws.com/assets/email-editor/header-hero-image.webp","alt":null,"title":null,"width":566,"height":153.24909747292418,"alignment":"center","externalLink":"payload.items.image_link","isExternalLinkVariable":true,"borderRadius":0,"isSrcVariable":false,"aspectRatio":3.6933333333333334,"lockAspectRatio":true,"showIfKey":null,"aliasFor":null}},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Image current link variable"}]},{"type":"image","attrs":{"src":"https://prod-novu-app-bucket.s3.us-east-1.amazonaws.com/assets/email-editor/header-hero-image.webp","alt":null,"title":null,"width":566,"height":153.24909747292418,"alignment":"center","externalLink":"current.image_link","isExternalLinkVariable":true,"borderRadius":0,"isSrcVariable":false,"aspectRatio":3.6933333333333334,"lockAspectRatio":true,"showIfKey":null,"aliasFor":"payload.items.image_link"}},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Image static link"}]},{"type":"image","attrs":{"src":"https://prod-novu-app-bucket.s3.us-east-1.amazonaws.com/assets/email-editor/header-hero-image.webp","alt":null,"title":null,"width":566,"height":153.24909747292418,"alignment":"center","externalLink":"https://image.static.link","isExternalLinkVariable":false,"borderRadius":0,"isSrcVariable":false,"aspectRatio":3.6933333333333334,"lockAspectRatio":true,"showIfKey":null,"aliasFor":null}},{"type":"horizontalRule"},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Inline image"}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"inlineImage","attrs":{"height":20,"width":20,"src":"https://maily.to/brand/logo.png","isSrcVariable":false,"alt":null,"title":null,"externalLink":null,"isExternalLinkVariable":false,"aliasFor":null}}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Inline image variable"}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"inlineImage","attrs":{"height":20,"width":20,"src":"payload.items.inline_image","isSrcVariable":true,"alt":null,"title":null,"externalLink":null,"isExternalLinkVariable":false,"aliasFor":null}}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Inline image current variable"}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"inlineImage","attrs":{"height":20,"width":20,"src":"current.inline_image","isSrcVariable":true,"alt":null,"title":null,"externalLink":null,"isExternalLinkVariable":false,"aliasFor":"payload.items.inline_image"}}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Inline image link variable"}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"inlineImage","attrs":{"height":20,"width":20,"src":"https://maily.to/brand/logo.png","isSrcVariable":false,"alt":null,"title":null,"externalLink":"payload.items.inline_image_link","isExternalLinkVariable":true,"aliasFor":null}}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Inline image current link variable"}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"inlineImage","attrs":{"height":20,"width":20,"src":"https://maily.to/brand/logo.png","isSrcVariable":false,"alt":null,"title":null,"externalLink":"current.inline_image_link","isExternalLinkVariable":true,"aliasFor":"payload.items.inline_image_link"}}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Inline image static link"}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"inlineImage","attrs":{"height":20,"width":20,"src":"https://maily.to/brand/logo.png","isSrcVariable":false,"alt":null,"title":null,"externalLink":"https://inline_image.static.link","isExternalLinkVariable":false,"aliasFor":null}}]},{"type":"horizontalRule"},{"type":"orderedList","attrs":{"start":1},"content":[{"type":"listItem","attrs":{"color":null},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","text":"Just the numbered list"}]}]},{"type":"listItem","attrs":{"color":null},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"payload.items.numbered_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":null}},{"type":"underline"}],"text":"Numbered variable link"}]}]},{"type":"listItem","attrs":{"color":null},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"current.numbered_link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":true,"aliasFor":"payload.items.numbered_link"}},{"type":"underline"}],"text":"Numbered current variable link"}]}]},{"type":"listItem","attrs":{"color":null},"content":[{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null},"content":[{"type":"text","marks":[{"type":"link","attrs":{"href":"https://numbered.static.link","target":"_blank","rel":"noopener noreferrer nofollow","class":null,"isUrlVariable":false,"aliasFor":null}},{"type":"underline"}],"text":"Numbered static link"}]}]}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null}}]},{"type":"paragraph","attrs":{"textAlign":null,"showIfKey":null}}]}',
@@ -1217,7 +1271,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
     it.skip(` should hydrate previous step in iterator email --> digest`, async () => {
       const { workflowId, emailStepDatabaseId, digestStepId } = await createWorkflowWithEmailLookingAtDigestResult();
       const requestDto = {
-        controlValues: getTestControlValues(digestStepId)[StepTypeEnum.Email],
+        controlValues: getTestControlValues(digestStepId)[StepTypeEnum.EMAIL],
         previewPayload: { payload: { subject: PLACEHOLDER_SUBJECT_INAPP_PAYLOAD_VALUE } },
       };
       const previewResponseDto = await generatePreview(novuClient, workflowId, emailStepDatabaseId, requestDto);
@@ -1233,7 +1287,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
 
     it(` should hydrate previous step in iterator sms looking at inApp`, async () => {
       const { workflowId, smsDatabaseStepId, inAppStepId } = await createWorkflowWithSmsLookingAtInAppResult();
-      const requestDto = buildDtoNoPayload(StepTypeEnum.Sms, inAppStepId);
+      const requestDto = buildDtoNoPayload(StepTypeEnum.SMS, inAppStepId);
       const previewResponseDto = await generatePreview(novuClient, workflowId, smsDatabaseStepId, requestDto);
       expect(previewResponseDto.result!.preview).to.exist;
       expect(previewResponseDto.previewPayloadExample).to.exist;
@@ -1245,7 +1299,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
   });
 
   it(`IN_APP :should match the body in the preview response`, async () => {
-    const { stepDatabaseId, workflowId, stepId } = await createWorkflowAndReturnId(novuClient, StepTypeEnum.InApp);
+    const { stepDatabaseId, workflowId, stepId } = await createWorkflowAndReturnId(novuClient, StepTypeEnum.IN_APP);
     const controlValues = buildInAppControlValues();
     const requestDto = {
       controlValues,
@@ -1268,7 +1322,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
   describe('Happy Path, no payload, expected same response as requested', () => {
     // TODO: this test is not working as expected
     it('in_app: should match the body in the preview response', async () => {
-      const previewResponseDto = await createWorkflowAndPreview(StepTypeEnum.InApp, 'InApp');
+      const previewResponseDto = await createWorkflowAndPreview(StepTypeEnum.IN_APP, 'InApp');
 
       expect(previewResponseDto.result).to.exist;
       if (!previewResponseDto.result) {
@@ -1288,7 +1342,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
     });
 
     it('sms: should match the body in the preview response', async () => {
-      const previewResponseDto = await createWorkflowAndPreview(StepTypeEnum.Sms, 'SMS');
+      const previewResponseDto = await createWorkflowAndPreview(StepTypeEnum.SMS, 'SMS');
 
       expect(previewResponseDto.result!.preview).to.exist;
       expect(previewResponseDto.previewPayloadExample).to.exist;
@@ -1299,7 +1353,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
     });
 
     it('push: should match the body in the preview response', async () => {
-      const previewResponseDto = await createWorkflowAndPreview(StepTypeEnum.Push, 'Push');
+      const previewResponseDto = await createWorkflowAndPreview(StepTypeEnum.PUSH, 'Push');
 
       expect(previewResponseDto.result!.preview).to.exist;
       expect(previewResponseDto.previewPayloadExample).to.exist;
@@ -1313,7 +1367,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
     });
 
     it('chat: should match the body in the preview response', async () => {
-      const previewResponseDto = await createWorkflowAndPreview(StepTypeEnum.Chat, 'Chat');
+      const previewResponseDto = await createWorkflowAndPreview(StepTypeEnum.CHAT, 'Chat');
 
       expect(previewResponseDto.result!.preview).to.exist;
       expect(previewResponseDto.previewPayloadExample).to.exist;
@@ -1324,10 +1378,10 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
     });
 
     it('email: should match the body in the preview response', async () => {
-      const previewResponseDto = await createWorkflowAndPreview(StepTypeEnum.Email, 'Email');
+      const previewResponseDto = await createWorkflowAndPreview(StepTypeEnum.EMAIL, 'Email');
       const preview = previewResponseDto.result.preview as EmailRenderOutput;
 
-      expect(previewResponseDto.result.type).to.equal(StepTypeEnum.Email);
+      expect(previewResponseDto.result.type).to.equal(StepTypeEnum.EMAIL);
 
       expect(preview).to.exist;
       expect(preview.body).to.exist;
@@ -1338,7 +1392,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       expect(previewResponseDto.previewPayloadExample).to.have.property('payload');
       expect(previewResponseDto.previewPayloadExample).to.have.property('subscriber');
       expect(previewResponseDto.previewPayloadExample.payload).to.have.property('subject');
-      expect(previewResponseDto.previewPayloadExample.payload.subject.test).to.have.property('payload');
+      expect(previewResponseDto.previewPayloadExample.payload?.subject.test).to.have.property('payload');
     });
 
     async function createWorkflowAndPreview(type: StepTypeEnum, description: string) {
@@ -1351,7 +1405,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
 
   describe('payload sanitation', () => {
     it('Should produce a correct payload when pipe is used etc {{payload.variable | upper}}', async () => {
-      const { stepDatabaseId, workflowId } = await createWorkflowAndReturnId(novuClient, StepTypeEnum.Sms);
+      const { stepDatabaseId, workflowId } = await createWorkflowAndReturnId(novuClient, StepTypeEnum.SMS);
       const requestDto = {
         controlValues: {
           body: 'This is a legal placeholder with a pipe [{{payload.variableName | upcase}}the pipe should show in the preview]',
@@ -1367,7 +1421,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
     });
 
     it('Should not fail if inApp is providing partial URL in redirect', async () => {
-      const steps = [{ name: 'IN_APP_STEP_SHOULD_NOT_FAIL', type: StepTypeEnum.InApp }];
+      const steps = [{ name: 'IN_APP_STEP_SHOULD_NOT_FAIL', type: 'in_app' as const }];
       const createDto = buildWorkflow({
         steps,
         payloadSchema: {
@@ -1409,7 +1463,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
         ...mapResponseToUpdateDto(novuRestResult.result),
         steps: [
           {
-            type: novuRestResult.result.steps[0].type,
+            type: novuRestResult.result.steps[0].type as any,
             name: novuRestResult.result.steps[0].name,
             id: novuRestResult.result.steps[0].id,
             ...buildInAppControlValueWithAPlaceholderInTheUrl(),
@@ -1501,7 +1555,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
   });
 
   describe('Missing Required ControlValues', () => {
-    const channelTypes = [{ type: StepTypeEnum.InApp, description: 'InApp' }];
+    const channelTypes = [{ type: StepTypeEnum.IN_APP, description: 'InApp' }];
 
     channelTypes.forEach(({ type }) => {
       // TODO: We need to get back to the drawing board on this one to make the preview action of the framework more forgiving
@@ -1698,7 +1752,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       steps: [
         {
           name: 'DigestStep',
-          type: StepTypeEnum.Digest,
+          type: StepTypeEnum.DIGEST,
           controlValues: {
             amount: 1,
             unit: 'hours',
@@ -1706,7 +1760,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
         },
         {
           name: 'Email Test Step',
-          type: StepTypeEnum.Email,
+          type: StepTypeEnum.EMAIL,
           controlValues: {
             subject: 'Test Email Subject',
             body: 'Test Email Body',
@@ -1735,7 +1789,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       steps: [
         {
           name: 'InAppStep',
-          type: StepTypeEnum.InApp,
+          type: StepTypeEnum.IN_APP,
           controlValues: {
             subject: 'Test Subject',
             body: 'Test Body',
@@ -1743,7 +1797,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
         },
         {
           name: 'SmsStep',
-          type: StepTypeEnum.Sms,
+          type: StepTypeEnum.SMS,
           controlValues: {
             body: 'Test SMS Body',
           },
@@ -1773,7 +1827,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
       steps: [
         {
           name: 'In-App Test Step',
-          type: StepTypeEnum.InApp,
+          type: StepTypeEnum.IN_APP,
           controlValues: {
             subject: 'Test Subject',
             body: 'Test Body',
@@ -1781,7 +1835,7 @@ describe('Workflow Step Preview - POST /:workflowId/step/:stepId/preview #novu-v
         },
         {
           name: 'Email Test Step',
-          type: StepTypeEnum.Email,
+          type: StepTypeEnum.EMAIL,
           controlValues: {
             subject: 'Test Email Subject',
             body: 'Test Email Body',
@@ -1924,12 +1978,12 @@ function buildDigestControlValuesPayload() {
 }
 
 export const getTestControlValues = (stepId?: string) => ({
-  [StepTypeEnum.Sms]: buildSmsControlValuesPayload(stepId),
-  [StepTypeEnum.Email]: buildEmailControlValuesPayload(),
-  [StepTypeEnum.Push]: buildPushControlValuesPayload(),
-  [StepTypeEnum.Chat]: buildChatControlValuesPayload(),
-  [StepTypeEnum.InApp]: buildInAppControlValues(),
-  [StepTypeEnum.Digest]: buildDigestControlValuesPayload(),
+  [StepTypeEnum.SMS]: buildSmsControlValuesPayload(stepId),
+  [StepTypeEnum.EMAIL]: buildEmailControlValuesPayload(),
+  [StepTypeEnum.PUSH]: buildPushControlValuesPayload(),
+  [StepTypeEnum.CHAT]: buildChatControlValuesPayload(),
+  [StepTypeEnum.IN_APP]: buildInAppControlValues(),
+  [StepTypeEnum.DIGEST]: buildDigestControlValuesPayload(),
 });
 
 export async function createWorkflowAndReturnId(workflowsClient: Novu, type: StepTypeEnum) {
@@ -2042,7 +2096,7 @@ export async function generatePreview(
 
 function buildDtoWithMissingControlValues(stepTypeEnum: StepTypeEnum, stepId: string): GeneratePreviewRequestDto {
   const stepTypeToElement = getTestControlValues(stepId)[stepTypeEnum];
-  if (stepTypeEnum === StepTypeEnum.Email) {
+  if (stepTypeEnum === StepTypeEnum.EMAIL) {
     delete stepTypeToElement.subject;
   } else {
     delete stepTypeToElement.body;

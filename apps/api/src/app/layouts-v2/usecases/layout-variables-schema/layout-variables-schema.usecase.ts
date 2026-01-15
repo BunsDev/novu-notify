@@ -6,7 +6,7 @@ import { LAYOUT_CONTENT_VARIABLE } from '@novu/shared';
 import { JSONSchemaDto } from '../../../shared/dtos/json-schema.dto';
 import { CreateVariablesObjectCommand } from '../../../shared/usecases/create-variables-object/create-variables-object.command';
 import { CreateVariablesObject } from '../../../shared/usecases/create-variables-object/create-variables-object.usecase';
-import { buildSubscriberSchema } from '../../../shared/utils/create-schema';
+import { buildContextSchema, buildSubscriberSchema } from '../../../shared/utils/create-schema';
 import { LayoutVariablesSchemaCommand } from './layout-variables-schema.command';
 
 @Injectable()
@@ -17,7 +17,7 @@ export class LayoutVariablesSchemaUseCase {
   async execute(command: LayoutVariablesSchemaCommand): Promise<JSONSchemaDto> {
     const { controlValues } = command;
 
-    const { subscriber } = await this.createVariablesObject.execute(
+    const { subscriber, context } = await this.createVariablesObject.execute(
       CreateVariablesObjectCommand.create({
         environmentId: command.environmentId,
         organizationId: command.organizationId,
@@ -32,6 +32,7 @@ export class LayoutVariablesSchemaUseCase {
         [LAYOUT_CONTENT_VARIABLE]: {
           type: JsonSchemaTypeEnum.STRING,
         },
+        context: buildContextSchema(context),
       },
       additionalProperties: false,
     };

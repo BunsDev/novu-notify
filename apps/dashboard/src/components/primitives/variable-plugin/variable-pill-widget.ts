@@ -16,7 +16,8 @@ export class VariablePillWidget extends WidgetType {
     private filters: string[],
     private onSelect?: (value: string, from: number, to: number) => void,
     private isDigestEventsVariable?: (variableName: string) => boolean,
-    private isNotInSchema: boolean = false
+    private isNotInSchema: boolean = false,
+    private errorMessage?: string
   ) {
     super();
 
@@ -94,7 +95,7 @@ export class VariablePillWidget extends WidgetType {
       textOverflow: 'ellipsis',
       whiteSpace: 'nowrap',
 
-      // @ts-ignore
+      // @ts-expect-error
       '-webkit-font-smoothing': 'antialiased',
       '-moz-osx-font-smoothing': 'grayscale',
     };
@@ -112,7 +113,7 @@ export class VariablePillWidget extends WidgetType {
       lineHeight: '1.2',
       color: 'hsl(var(--text-soft))',
 
-      // @ts-ignore
+      // @ts-expect-error
       '-webkit-font-smoothing': 'antialiased',
       '-moz-osx-font-smoothing': 'grayscale',
     };
@@ -167,10 +168,10 @@ export class VariablePillWidget extends WidgetType {
             type: 'error',
           });
           this.tooltipElement.setAttribute('data-state', 'open');
-        } else if (this.isNotInSchema) {
+        } else if (this.isNotInSchema && this.errorMessage) {
           this.tooltipElement = this.renderTooltip({
             parent: span,
-            content: "Variable schema doesn't exist",
+            content: this.errorMessage,
             type: 'error',
           });
           this.tooltipElement.setAttribute('data-state', 'open');
@@ -189,10 +190,7 @@ export class VariablePillWidget extends WidgetType {
         this.tooltipElement.setAttribute('data-state', 'closed');
 
         setTimeout(() => {
-          if (this.tooltipElement) {
-            document.body.removeChild(this.tooltipElement);
-            this.tooltipElement = null;
-          }
+          this.destroyTooltip();
         }, 150);
       }
 
@@ -250,10 +248,7 @@ export class VariablePillWidget extends WidgetType {
             this.tooltipElement.setAttribute('data-state', 'closed');
 
             setTimeout(() => {
-              if (this.tooltipElement) {
-                document.body.removeChild(this.tooltipElement);
-                this.tooltipElement = null;
-              }
+              this.destroyTooltip();
             }, 150);
           }
         });
@@ -317,6 +312,14 @@ export class VariablePillWidget extends WidgetType {
     return tooltip;
   }
 
+  destroyTooltip() {
+    if (this.tooltipElement) {
+      this.tooltipElement.replaceChildren();
+      document.body.removeChild(this.tooltipElement);
+      this.tooltipElement = null;
+    }
+  }
+
   getVariableIssues() {
     if (this.isDigestEventsVariable && this.isDigestEventsVariable(this.variableName)) {
       const issues = validateEnhancedDigestFilters(this.filters);
@@ -332,7 +335,13 @@ export class VariablePillWidget extends WidgetType {
    * Used by CodeMirror to optimize re-rendering.
    */
   eq(other: VariablePillWidget) {
-    return other.fullVariableName === this.fullVariableName && other.start === this.start && other.end === this.end;
+    return (
+      other.fullVariableName === this.fullVariableName &&
+      other.start === this.start &&
+      other.end === this.end &&
+      other.isNotInSchema === this.isNotInSchema &&
+      other.errorMessage === this.errorMessage
+    );
   }
 
   /**
@@ -340,6 +349,7 @@ export class VariablePillWidget extends WidgetType {
    * Removes event listeners to prevent memory leaks.
    */
   destroy(dom: HTMLElement) {
+    this.destroyTooltip();
     dom.removeEventListener('mousedown', this.clickHandler);
   }
 

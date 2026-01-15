@@ -38,13 +38,13 @@ export class NotificationsController {
   @ApiOperation({
     summary: 'List all events',
     description: `List all notification events (triggered events) for the current environment. 
-    This API supports filtering by **channels**, **templates**, **emails**, **subscriberIds**, **transactionId**, **topicKey**. 
+    This API supports filtering by **channels**, **templates**, **emails**, **subscriberIds**, **transactionId**, **topicKey**, **severity**, **contextKeys**. 
     Checkout all available filters in the query section.
     This API returns event triggers, to list each channel notifications, check messages APIs.`,
   })
   @ExternalApiAccessible()
   @RequirePermissions(PermissionsEnum.NOTIFICATION_READ)
-  listNotifications(
+  async listNotifications(
     @UserSession() user: UserSessionData,
     @Query() query: ActivitiesRequestDto
   ): Promise<ActivitiesResponseDto> {
@@ -92,9 +92,11 @@ export class NotificationsController {
         subscriberIds: subscribersQuery,
         transactionId: transactionIdQuery,
         topicKey: query.topicKey,
+        subscriptionId: query.subscriptionId,
         severity: severityQuery,
         after: query.after,
         before: query.before,
+        contextKeys: query.contextKeys,
       })
     );
   }

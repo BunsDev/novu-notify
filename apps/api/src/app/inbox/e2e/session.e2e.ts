@@ -1,33 +1,21 @@
-import {
-  buildIntegrationKey,
-  CacheInMemoryProviderService,
-  CacheService,
-  createHash,
-  InvalidateCacheService,
-} from '@novu/application-generic';
-import { IntegrationRepository, SubscriberRepository } from '@novu/dal';
-import { ChannelTypeEnum, InAppProviderIdEnum, SeverityLevelEnum, StepTypeEnum } from '@novu/shared';
+import { createContextHash, createHash } from '@novu/application-generic';
+import { ContextRepository, IntegrationRepository, SubscriberRepository } from '@novu/dal';
+import { ChannelTypeEnum, ContextPayload, InAppProviderIdEnum, SeverityLevelEnum, StepTypeEnum } from '@novu/shared';
 import { UserSession } from '@novu/testing';
 import { expect } from 'chai';
 import { randomBytes } from 'crypto';
 import { initNovuClassSdk } from '../../shared/helpers/e2e/sdk/e2e-sdk.helper';
 
 const integrationRepository = new IntegrationRepository();
+const contextRepository = new ContextRepository();
 const mockSubscriberId = '12345';
-const isNotificationSeverityEnabled = process.env.IS_NOTIFICATION_SEVERITY_ENABLED;
 
 describe('Session - /inbox/session (POST) #novu-v2', async () => {
   let session: UserSession;
-  let cacheService: CacheService;
-  let invalidateCache: InvalidateCacheService;
   let subscriberRepository: SubscriberRepository;
-  const isSubscribersScheduleEnabled = process.env.IS_SUBSCRIBERS_SCHEDULE_ENABLED;
+  const isSubscribersScheduleEnabled = (process.env as Record<string, string>).IS_SUBSCRIBERS_SCHEDULE_ENABLED;
 
   before(async () => {
-    const cacheInMemoryProviderService = new CacheInMemoryProviderService();
-    cacheService = new CacheService(cacheInMemoryProviderService);
-    await cacheService.initialize();
-    invalidateCache = new InvalidateCacheService(cacheService);
     subscriberRepository = new SubscriberRepository();
   });
 
@@ -35,24 +23,15 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
     session = new UserSession();
     await session.initialize();
 
-    await setIntegrationConfig(
-      {
-        _environmentId: session.environment._id,
-        _organizationId: session.environment._organizationId,
-      },
-      invalidateCache
-    );
-    // @ts-expect-error
-    process.env.IS_NOTIFICATION_SEVERITY_ENABLED = 'true';
-    // @ts-expect-error
-    process.env.IS_SUBSCRIBERS_SCHEDULE_ENABLED = 'true';
+    await setIntegrationConfig({
+      _environmentId: session.environment._id,
+      _organizationId: session.environment._organizationId,
+    });
+    (process.env as Record<string, string>).IS_SUBSCRIBERS_SCHEDULE_ENABLED = 'true';
   });
 
   afterEach(() => {
-    // @ts-expect-error
-    process.env.IS_NOTIFICATION_SEVERITY_ENABLED = isNotificationSeverityEnabled;
-    // @ts-expect-error
-    process.env.IS_SUBSCRIBERS_SCHEDULE_ENABLED = isSubscribersScheduleEnabled;
+    (process.env as Record<string, string>).IS_SUBSCRIBERS_SCHEDULE_ENABLED = isSubscribersScheduleEnabled;
   });
 
   const initializeSession = async ({
@@ -62,6 +41,8 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
     subscriber,
     origin,
     defaultSchedule,
+    context,
+    contextHash,
   }: {
     applicationIdentifier: string;
     subscriberId?: string;
@@ -69,6 +50,8 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
     subscriber?: Record<string, unknown>;
     origin?: string;
     defaultSchedule?: Record<string, unknown>;
+    context?: ContextPayload;
+    contextHash?: string;
   }) => {
     const request = session.testAgent.post('/v1/inbox/session');
 
@@ -82,6 +65,8 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
       subscriberHash,
       subscriber,
       defaultSchedule,
+      context,
+      contextHash,
     });
   };
 
@@ -92,7 +77,6 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
         _organizationId: session.environment._organizationId,
         hmac: false,
       },
-      invalidateCache
     );
     const { body, status } = await initializeSession({
       applicationIdentifier: session.environment.identifier,
@@ -126,7 +110,6 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
         _organizationId: session.environment._organizationId,
         hmac: false,
       },
-      invalidateCache
     );
 
     const subscriber = {
@@ -153,7 +136,6 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
         _organizationId: session.environment._organizationId,
         hmac: false,
       },
-      invalidateCache
     );
     const subscriberId = `user-subscriber-id-${`${randomBytes(4).toString('hex')}`}`;
 
@@ -193,7 +175,6 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
         _organizationId: session.environment._organizationId,
         hmac: false,
       },
-      invalidateCache
     );
     const subscriberId = `user-subscriber-id-${`${randomBytes(4).toString('hex')}`}`;
 
@@ -290,7 +271,6 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
         _organizationId: session.environment._organizationId,
         hmac: false,
       },
-      invalidateCache
     );
 
     const origin = 'https://example.com';
@@ -322,7 +302,6 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
         _organizationId: session.environment._organizationId,
         active: false,
       },
-      invalidateCache
     );
 
     const { body, status } = await initializeSession({
@@ -348,6 +327,131 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
     expect(body.message).to.contain('Please provide a valid HMAC hash');
   });
 
+  it('should initialize session with valid context and contextHash when HMAC enabled', async () => {
+    const secretKey = session.environment.apiKeys[0].key;
+    const subscriberHash = createHash(secretKey, mockSubscriberId);
+    const context: ContextPayload = { tenant: 'acme', app: 'dashboard' };
+    const contextHash = createContextHash(secretKey, context);
+
+    const { body, status } = await initializeSession({
+      applicationIdentifier: session.environment.identifier,
+      subscriberId: mockSubscriberId,
+      subscriberHash,
+      context,
+      contextHash,
+    });
+
+    expect(status).to.equal(201);
+    expect(body.data.token).to.be.ok;
+    expect(body.data.totalUnreadCount).to.equal(0);
+  });
+
+  it('should throw error when invalid contextHash provided', async () => {
+    const secretKey = session.environment.apiKeys[0].key;
+    const subscriberHash = createHash(secretKey, mockSubscriberId);
+    const context: ContextPayload = { tenant: 'acme', app: 'dashboard' };
+    const invalidContextHash = 'invalid-context-hash';
+
+    const { body, status } = await initializeSession({
+      applicationIdentifier: session.environment.identifier,
+      subscriberId: mockSubscriberId,
+      subscriberHash,
+      context,
+      contextHash: invalidContextHash,
+    });
+
+    expect(status).to.equal(400);
+    expect(body.message).to.contain('Please provide a valid context HMAC hash');
+  });
+
+  it('should throw error when context provided without contextHash when HMAC enabled', async () => {
+    const secretKey = session.environment.apiKeys[0].key;
+    const subscriberHash = createHash(secretKey, mockSubscriberId);
+    const context: ContextPayload = { tenant: 'acme', app: 'dashboard' };
+
+    const { body, status } = await initializeSession({
+      applicationIdentifier: session.environment.identifier,
+      subscriberId: mockSubscriberId,
+      subscriberHash,
+      context,
+    });
+
+    expect(status).to.equal(400);
+    expect(body.message).to.contain('Please provide a valid context HMAC hash');
+  });
+
+  it('should handle context with different key orders - hash should match', async () => {
+    const secretKey = session.environment.apiKeys[0].key;
+    const subscriberHash = createHash(secretKey, mockSubscriberId);
+
+    // Create context with keys in one order
+    const context1: ContextPayload = { tenant: 'acme', app: 'dashboard', env: 'prod' };
+    const contextHash1 = createContextHash(secretKey, context1);
+
+    // Create context with keys in different order - should produce same hash
+    const context2: ContextPayload = { env: 'prod', tenant: 'acme', app: 'dashboard' };
+    const contextHash2 = createContextHash(secretKey, context2);
+
+    // Verify hashes match
+    expect(contextHash1).to.equal(contextHash2);
+
+    // Use context2 with contextHash1 (from different order) - should succeed
+    const { body, status } = await initializeSession({
+      applicationIdentifier: session.environment.identifier,
+      subscriberId: mockSubscriberId,
+      subscriberHash,
+      context: context2,
+      contextHash: contextHash1,
+    });
+
+    expect(status).to.equal(201);
+    expect(body.data.token).to.be.ok;
+  });
+
+  it('should accept context without contextHash when HMAC disabled', async () => {
+    await setIntegrationConfig(
+      {
+        _environmentId: session.environment._id,
+        _organizationId: session.environment._organizationId,
+        hmac: false,
+      },
+    );
+
+    const context: ContextPayload = { tenant: 'acme', app: 'dashboard' };
+
+    const { body, status } = await initializeSession({
+      applicationIdentifier: session.environment.identifier,
+      subscriberId: mockSubscriberId,
+      context,
+    });
+
+    expect(status).to.equal(201);
+    expect(body.data.token).to.be.ok;
+  });
+
+  it('should detect context tampering - different context should fail validation', async () => {
+    const secretKey = session.environment.apiKeys[0].key;
+    const subscriberHash = createHash(secretKey, mockSubscriberId);
+
+    // Create hash for one context
+    const originalContext: ContextPayload = { tenant: 'acme', app: 'dashboard' };
+    const contextHash = createContextHash(secretKey, originalContext);
+
+    // Try to use hash with different context (tampering attempt)
+    const tamperedContext: ContextPayload = { tenant: 'malicious', app: 'dashboard' };
+
+    const { body, status } = await initializeSession({
+      applicationIdentifier: session.environment.identifier,
+      subscriberId: mockSubscriberId,
+      subscriberHash,
+      context: tamperedContext,
+      contextHash,
+    });
+
+    expect(status).to.equal(400);
+    expect(body.message).to.contain('Please provide a valid context HMAC hash');
+  });
+
   it('should throw an error when subscriber object is missing subscriberId', async () => {
     await setIntegrationConfig(
       {
@@ -355,7 +459,6 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
         _organizationId: session.environment._organizationId,
         hmac: false,
       },
-      invalidateCache
     );
     const subscriber = {
       firstName: 'John',
@@ -379,7 +482,6 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
         _organizationId: session.environment._organizationId,
         hmac: false,
       },
-      invalidateCache
     );
 
     const novuClient = initNovuClassSdk(session);
@@ -464,7 +566,6 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
         _organizationId: session.environment._organizationId,
         hmac: false,
       },
-      invalidateCache
     );
 
     const { body, status } = await session.testAgent.post('/v1/inbox/session').send({
@@ -489,7 +590,6 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
         _organizationId: session.environment._organizationId,
         hmac: false,
       },
-      invalidateCache
     );
 
     const novuClient = initNovuClassSdk(session);
@@ -565,7 +665,6 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
         _organizationId: session.environment._organizationId,
         hmac: false,
       },
-      invalidateCache
     );
 
     const novuClient = initNovuClassSdk(session);
@@ -606,7 +705,6 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
         _organizationId: session.environment._organizationId,
         hmac: false,
       },
-      invalidateCache
     );
 
     const novuClient = initNovuClassSdk(session);
@@ -651,8 +749,7 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
           _environmentId: session.environment._id,
           _organizationId: session.environment._organizationId,
           hmac: false,
-        },
-        invalidateCache
+        }
       );
 
       const defaultSchedule = {
@@ -711,8 +808,7 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
           _environmentId: session.environment._id,
           _organizationId: session.environment._organizationId,
           hmac: false,
-        },
-        invalidateCache
+        }
       );
 
       const defaultSchedule = {
@@ -738,8 +834,7 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
           _environmentId: session.environment._id,
           _organizationId: session.environment._organizationId,
           hmac: false,
-        },
-        invalidateCache
+        }
       );
 
       const defaultSchedule = {
@@ -765,8 +860,7 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
           _environmentId: session.environment._id,
           _organizationId: session.environment._organizationId,
           hmac: false,
-        },
-        invalidateCache
+        }
       );
 
       const defaultSchedule = {
@@ -796,8 +890,7 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
           _environmentId: session.environment._id,
           _organizationId: session.environment._organizationId,
           hmac: false,
-        },
-        invalidateCache
+        }
       );
 
       const defaultSchedule = {
@@ -830,8 +923,7 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
           _environmentId: session.environment._id,
           _organizationId: session.environment._organizationId,
           hmac: false,
-        },
-        invalidateCache
+        }
       );
 
       const defaultSchedule = {
@@ -864,8 +956,7 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
           _environmentId: session.environment._id,
           _organizationId: session.environment._organizationId,
           hmac: false,
-        },
-        invalidateCache
+        }
       );
 
       const subscriberId = `existing-schedule-${randomBytes(4).toString('hex')}`;
@@ -917,8 +1008,7 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
           _environmentId: session.environment._id,
           _organizationId: session.environment._organizationId,
           hmac: false,
-        },
-        invalidateCache
+        }
       );
 
       const defaultSchedule = {
@@ -956,8 +1046,7 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
           _environmentId: session.environment._id,
           _organizationId: session.environment._organizationId,
           hmac: false,
-        },
-        invalidateCache
+        }
       );
 
       const defaultSchedule = {
@@ -989,16 +1078,15 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
 
     it('should not create schedule when feature flag is disabled', async () => {
       // Disable the feature flag
-      // @ts-expect-error process.env is not typed
-      process.env.IS_SUBSCRIBERS_SCHEDULE_ENABLED = 'false';
+
+      (process.env as Record<string, string>).IS_SUBSCRIBERS_SCHEDULE_ENABLED = 'false';
 
       await setIntegrationConfig(
         {
           _environmentId: session.environment._id,
           _organizationId: session.environment._organizationId,
           hmac: false,
-        },
-        invalidateCache
+        }
       );
 
       const defaultSchedule = {
@@ -1022,27 +1110,118 @@ describe('Session - /inbox/session (POST) #novu-v2', async () => {
       expect(body.data.schedule).to.not.exist;
 
       // Re-enable the feature flag for other tests
-      // @ts-expect-error process.env is not typed
-      process.env.IS_SUBSCRIBERS_SCHEDULE_ENABLED = 'true';
+
+      (process.env as Record<string, string>).IS_SUBSCRIBERS_SCHEDULE_ENABLED = 'true';
     });
+  });
+
+  it('should create contexts in database and return contextKeys in session', async () => {
+    await setIntegrationConfig(
+      {
+        _environmentId: session.environment._id,
+        _organizationId: session.environment._organizationId,
+        hmac: false,
+      },
+    );
+
+    const context: ContextPayload = { teamId: 'team-123', projectId: 'project-456' };
+
+    const { body, status } = await initializeSession({
+      applicationIdentifier: session.environment.identifier,
+      subscriberId: mockSubscriberId,
+      context,
+    });
+
+    expect(status).to.equal(201);
+    expect(body.data.contextKeys).to.be.an('array');
+    expect(body.data.contextKeys).to.have.lengthOf(2);
+    expect(body.data.contextKeys).to.include('teamId:team-123');
+    expect(body.data.contextKeys).to.include('projectId:project-456');
+
+    const contexts = await contextRepository.find({
+      _environmentId: session.environment._id,
+      _organizationId: session.organization._id,
+    });
+
+    expect(contexts).to.have.lengthOf(2);
+    const contextKeys = contexts.map((c) => c.key);
+    expect(contextKeys).to.include('teamId:team-123');
+    expect(contextKeys).to.include('projectId:project-456');
+  });
+
+  it('should reuse existing contexts on subsequent sessions', async () => {
+    await setIntegrationConfig(
+      {
+        _environmentId: session.environment._id,
+        _organizationId: session.environment._organizationId,
+        hmac: false,
+      },
+    );
+
+    const context: ContextPayload = { teamId: 'team-789' };
+
+    const firstSession = await initializeSession({
+      applicationIdentifier: session.environment.identifier,
+      subscriberId: mockSubscriberId,
+      context,
+    });
+
+    expect(firstSession.status).to.equal(201);
+    expect(firstSession.body.data.contextKeys).to.deep.equal(['teamId:team-789']);
+
+    const contextsBefore = await contextRepository.find({
+      _environmentId: session.environment._id,
+      _organizationId: session.organization._id,
+    });
+
+    const secondSession = await initializeSession({
+      applicationIdentifier: session.environment.identifier,
+      subscriberId: mockSubscriberId,
+      context,
+    });
+
+    expect(secondSession.status).to.equal(201);
+    expect(secondSession.body.data.contextKeys).to.deep.equal(['teamId:team-789']);
+
+    const contextsAfter = await contextRepository.find({
+      _environmentId: session.environment._id,
+      _organizationId: session.organization._id,
+    });
+
+    expect(contextsAfter.length).to.equal(contextsBefore.length);
+  });
+
+  it('should return empty contextKeys array when no context provided', async () => {
+    await setIntegrationConfig(
+      {
+        _environmentId: session.environment._id,
+        _organizationId: session.environment._organizationId,
+        hmac: false,
+      },
+    );
+
+    const { body, status } = await initializeSession({
+      applicationIdentifier: session.environment.identifier,
+      subscriberId: mockSubscriberId,
+    });
+
+    expect(status).to.equal(201);
+    expect(body.data.contextKeys).to.be.an('array');
+    expect(body.data.contextKeys).to.have.lengthOf(0);
   });
 });
 
-async function setIntegrationConfig(
-  {
-    _environmentId,
-    _organizationId,
-    hmac = true,
-    active = true,
-  }: { _environmentId: string; _organizationId: string; active?: boolean; hmac?: boolean },
-  invalidateCache: InvalidateCacheService
-) {
-  await invalidateCache.invalidateQuery({
-    key: buildIntegrationKey().invalidate({
-      _organizationId,
-    }),
-  });
-
+async function setIntegrationConfig({
+  _environmentId,
+  _organizationId,
+  hmac = true,
+  active = true,
+}: {
+  _environmentId: string;
+  _organizationId: string;
+  active?: boolean;
+  hmac?: boolean;
+}) {
   await integrationRepository.update(
     {
       _environmentId,

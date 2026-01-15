@@ -1,17 +1,24 @@
 import { forwardRef, Module } from '@nestjs/common';
-import { ChannelFactory, CompileTemplate, CreateExecutionDetails } from '@novu/application-generic';
-import { CommunityOrganizationRepository } from '@novu/dal';
+import {
+  CalculateLimitNovuIntegration,
+  ChannelFactory,
+  CompileTemplate,
+  GetNovuProviderCredentials,
+} from '@novu/application-generic';
+import { CommunityOrganizationRepository, CommunityUserRepository } from '@novu/dal';
 import { AuthModule } from '../auth/auth.module';
+import { ChannelConnectionsModule } from '../channel-connections/channel-connections.module';
+import { ChannelEndpointsModule } from '../channel-endpoints/channel-endpoints.module';
 import { SharedModule } from '../shared/shared.module';
 import { IntegrationsController } from './integrations.controller';
 import { USE_CASES } from './usecases';
 
-const PROVIDERS = [ChannelFactory, CompileTemplate];
+const PROVIDERS = [ChannelFactory, CompileTemplate, GetNovuProviderCredentials, CalculateLimitNovuIntegration];
 
 @Module({
-  imports: [SharedModule, forwardRef(() => AuthModule)],
+  imports: [SharedModule, forwardRef(() => AuthModule), ChannelConnectionsModule, ChannelEndpointsModule],
   controllers: [IntegrationsController],
-  providers: [...USE_CASES, CreateExecutionDetails, CommunityOrganizationRepository, ...PROVIDERS],
+  providers: [...USE_CASES, CommunityOrganizationRepository, CommunityUserRepository, ...PROVIDERS],
   exports: [...USE_CASES],
 })
 export class IntegrationModule {}

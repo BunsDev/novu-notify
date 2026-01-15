@@ -91,6 +91,7 @@ export class ActivityController {
         organizationId: user.organizationId,
         environmentId: user.environmentId,
         userId: user._id,
+        contextKeys: query.contextKeys,
       })
     );
   }

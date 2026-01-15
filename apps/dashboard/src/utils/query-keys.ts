@@ -31,4 +31,7 @@ export const QueryKeys = Object.freeze({
   diffEnvironments: 'diff-environments',
   previewStep: 'preview-step',
   fetchCharts: 'fetchCharts',
+  fetchContexts: 'fetchContexts',
+  fetchContext: 'fetchContext',
+  fetchSubscriberSubscriptions: 'fetchSubscriberSubscriptions',
 });

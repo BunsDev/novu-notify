@@ -1,5 +1,13 @@
-import { ChannelTypeEnum, IIntegration, IProviderConfig, PermissionsEnum } from '@novu/shared';
-import { useEffect } from 'react';
+import {
+  ChannelTypeEnum,
+  ChatProviderIdEnum,
+  FeatureFlagsKeysEnum,
+  IIntegration,
+  IProviderConfig,
+  PermissionsEnum,
+  slackConfig,
+} from '@novu/shared';
+import { useEffect, useMemo } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { RiInputField } from 'react-icons/ri';
 import { useNavigate } from 'react-router-dom';
@@ -7,6 +15,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Form, FormRoot } from '@/components/primitives/form/form';
 import { Label } from '@/components/primitives/label';
 import { useEnvironment } from '@/context/environment/hooks';
+import { useFeatureFlag } from '@/hooks/use-feature-flag';
 import { Protect } from '@/utils/protect';
 import { ROUTES } from '@/utils/routes';
 import { cn } from '../../../utils/ui';
@@ -106,6 +115,30 @@ export function IntegrationSettings({
   }, [name, mode, setValue]);
 
   const isDemo = integration && isDemoIntegration(integration.providerId);
+  const isSlackTeamsEnabled = useFeatureFlag(FeatureFlagsKeysEnum.IS_SLACK_TEAMS_ENABLED, false);
+
+  // Filter credentials based on provider and feature flag
+  const providerCredentials = useMemo(() => {
+    // MS Teams: only show OAuth credentials when feature flag is enabled
+    if (provider.id === ChatProviderIdEnum.MsTeams) {
+      return isSlackTeamsEnabled ? provider.credentials : [];
+    }
+
+    // Slack: hide HMAC for new integrations when feature flag is enabled
+    // But keep HMAC visible for existing integrations (backward compatibility)
+    if (provider.id === ChatProviderIdEnum.Slack && isSlackTeamsEnabled) {
+      // For existing integrations (update mode), show HMAC if it is true in credentials
+      if (mode === 'update' && integration?.credentials?.hmac === true) {
+        return provider.credentials;
+      }
+
+      // For new integrations (create mode), use config without HMAC
+      return slackConfig;
+    }
+
+    // Default: return all credentials
+    return provider.credentials;
+  }, [provider.id, provider.credentials, isSlackTeamsEnabled, mode, integration?.credentials]);
 
   return (
     <Form {...form}>
@@ -182,7 +215,7 @@ export function IntegrationSettings({
           </div>
         )}
 
-        {!isDemo && (
+        {!isDemo && providerCredentials.length > 0 && (
           <div className="p-3">
             <Protect permission={PermissionsEnum.INTEGRATION_WRITE}>
               <Accordion type="single" collapsible defaultValue="credentials">
@@ -194,13 +227,21 @@ export function IntegrationSettings({
                     </div>
                   </AccordionTrigger>
                   <AccordionContent>
+                    {provider?.id === ChatProviderIdEnum.MsTeams && isSlackTeamsEnabled && (
+                      <InlineToast
+                        variant="tip"
+                        className="mb-3"
+                        description="These credentials are only required for Bot App authentication and are not needed for incoming webhook functionality."
+                      />
+                    )}
                     <div className="border-neutral-alpha-200 bg-background text-foreground-600 mx-0 mt-0 flex flex-col gap-2 rounded-lg border p-3">
-                      {provider.credentials.map((credential) => (
+                      {providerCredentials.map((credential) => (
                         <CredentialSection
-                          key={credential.key}
+                          key={`${credential.key}-${integration?._id || 'no-id'}`}
                           credential={credential}
                           control={control}
                           isReadOnly={isReadOnly}
+                          integrationId={integration?._id}
                         />
                       ))}
                     </div>

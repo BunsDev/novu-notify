@@ -43,6 +43,10 @@ export class GetWorkflowRunsCommand extends EnvironmentWithUserCommand {
   topicKey?: string;
 
   @IsOptional()
+  @IsString()
+  subscriptionId?: string;
+
+  @IsOptional()
   @IsISO8601()
   createdGte?: string;
 
@@ -55,4 +59,9 @@ export class GetWorkflowRunsCommand extends EnvironmentWithUserCommand {
   @IsString({ each: true })
   @IsIn(Object.values(SeverityLevelEnum), { each: true })
   severity?: SeverityLevelEnum[];
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  contextKeys?: string[];
 }

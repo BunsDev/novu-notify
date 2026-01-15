@@ -6,12 +6,12 @@ import { AuthProvider } from '@/context/auth/auth-provider';
 import { ClerkProvider } from '@/context/clerk-provider';
 import { EscapeKeyManagerProvider } from '@/context/escape-key-manager/escape-key-manager';
 import { IdentityProvider } from '@/context/identity-provider';
+import { RegionProvider } from '@/context/region';
 import { SegmentProvider } from '@/context/segment';
 import { ErrorBoundary, withProfiler } from '@sentry/react';
 import { QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { HelmetProvider } from 'react-helmet-async';
 import { Outlet } from 'react-router-dom';
-
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -67,15 +67,17 @@ const RootRouteInternal = () => {
         <ClerkProvider>
           <SegmentProvider>
             <AuthProvider>
-              <IdentityProvider>
-                <HelmetProvider>
-                  <TooltipProvider delayDuration={100}>
-                    <EscapeKeyManagerProvider>
-                      <Outlet />
-                    </EscapeKeyManagerProvider>
-                  </TooltipProvider>
-                </HelmetProvider>
-              </IdentityProvider>
+              <RegionProvider>
+                <IdentityProvider>
+                  <HelmetProvider>
+                    <TooltipProvider delayDuration={100}>
+                      <EscapeKeyManagerProvider>
+                        <Outlet />
+                      </EscapeKeyManagerProvider>
+                    </TooltipProvider>
+                  </HelmetProvider>
+                </IdentityProvider>
+              </RegionProvider>
             </AuthProvider>
           </SegmentProvider>
         </ClerkProvider>

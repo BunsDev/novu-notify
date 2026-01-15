@@ -1,7 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { ChannelTypeEnum, SeverityLevelEnum } from '@novu/shared';
-import { Type } from 'class-transformer';
-import { IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Transform, Type } from 'class-transformer';
+import { IsArray, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { IsEnumOrArray } from '../../shared/validators/is-enum-or-array';
 
 export class ActivitiesRequestDto {
@@ -94,6 +94,35 @@ export class ActivitiesRequestDto {
   @IsOptional()
   @IsString()
   topicKey?: string;
+
+  @ApiPropertyOptional({
+    type: String,
+    description: 'Subscription ID for filtering notifications by subscription',
+  })
+  @IsOptional()
+  @IsString()
+  subscriptionId?: string;
+
+  @ApiPropertyOptional({
+    type: String,
+    isArray: true,
+    description: 'Filter by exact context keys, order insensitive (format: "type:id")',
+  })
+  @IsOptional()
+  @Transform(({ value }) => {
+    // No parameter = no filter
+    if (value === undefined) return undefined;
+
+    // Empty string = filter for records with no context
+    if (value === '') return [];
+
+    // Normalize to array and remove empty strings
+    const array = Array.isArray(value) ? value : [value];
+    return array.filter((v) => v !== '');
+  })
+  @IsArray()
+  @IsString({ each: true })
+  contextKeys?: string[];
 
   @ApiPropertyOptional({
     type: String,

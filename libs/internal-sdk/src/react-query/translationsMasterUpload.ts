@@ -12,11 +12,14 @@ import { translationsMasterUpload } from "../funcs/translationsMasterUpload.js";
 import { combineSignals } from "../lib/primitives.js";
 import { RequestOptions } from "../lib/sdks.js";
 import * as components from "../models/components/index.js";
+import * as operations from "../models/operations/index.js";
 import { unwrapAsync } from "../types/fp.js";
 import { useNovuContext } from "./_context.js";
 import { MutationHookOptions } from "./_types.js";
 
 export type TranslationsMasterUploadMutationVariables = {
+  requestBody:
+    operations.TranslationControllerUploadMasterJsonEndpointRequestBody;
   idempotencyKey?: string | undefined;
   options?: RequestOptions;
 };
@@ -28,7 +31,7 @@ export type TranslationsMasterUploadMutationData =
  * Upload master translations JSON file
  *
  * @remarks
- * Upload a master JSON file containing translations. Locale is automatically detected from filename (e.g., en_US.json)
+ * Upload a master JSON file containing translations for multiple workflows. Locale is automatically detected from filename (e.g., en_US.json)
  */
 export function useTranslationsMasterUploadMutation(
   options?: MutationHookOptions<
@@ -64,6 +67,7 @@ export function buildTranslationsMasterUploadMutation(
   return {
     mutationKey: mutationKeyTranslationsMasterUpload(),
     mutationFn: function translationsMasterUploadMutationFn({
+      requestBody,
       idempotencyKey,
       options,
     }): Promise<TranslationsMasterUploadMutationData> {
@@ -81,6 +85,7 @@ export function buildTranslationsMasterUploadMutation(
       };
       return unwrapAsync(translationsMasterUpload(
         client$,
+        requestBody,
         idempotencyKey,
         mergedOptions,
       ));

@@ -2,6 +2,7 @@ import { ApiServiceLevelEnum, FeatureFlagsKeysEnum, GetSubscriptionDto, Permissi
 import { ReactNode } from 'react';
 import {
   RiBarChartBoxLine,
+  RiBuildingLine,
   RiDatabase2Line,
   RiDiscussLine,
   RiGroup2Line,
@@ -88,7 +89,6 @@ export const SideNavigation = () => {
   const isFreeTier = subscription?.apiServiceLevel === ApiServiceLevelEnum.FREE;
   const isWebhooksManagementEnabled = useFeatureFlag(FeatureFlagsKeysEnum.IS_WEBHOOKS_MANAGEMENT_ENABLED);
   const isHttpLogsPageEnabled = useFeatureFlag(FeatureFlagsKeysEnum.IS_HTTP_LOGS_PAGE_ENABLED, false);
-  const isTranslationEnabled = useFeatureFlag(FeatureFlagsKeysEnum.IS_TRANSLATION_ENABLED, false);
   const isAnalyticsPageEnabled = useFeatureFlag(FeatureFlagsKeysEnum.IS_ANALYTICS_PAGE_ENABLED, false);
 
   const { currentEnvironment, environments, switchEnvironment } = useEnvironment();
@@ -124,19 +124,15 @@ export const SideNavigation = () => {
                 </NavigationLink>
               </Protect>
 
-              {isTranslationEnabled && (
-                <NavigationLink
-                  to={buildRoute(ROUTES.TRANSLATIONS, { environmentSlug: currentEnvironment?.slug ?? '' })}
-                >
-                  <RiTranslate2 className="size-4" />
-                  <span>
-                    Translations{' '}
-                    <Badge variant="lighter" className="text-xs">
-                      BETA
-                    </Badge>
-                  </span>
-                </NavigationLink>
-              )}
+              <NavigationLink to={buildRoute(ROUTES.TRANSLATIONS, { environmentSlug: currentEnvironment?.slug ?? '' })}>
+                <RiTranslate2 className="size-4" />
+                <span>
+                  Translations{' '}
+                  <Badge variant="lighter" className="text-xs">
+                    BETA
+                  </Badge>
+                </span>
+              </NavigationLink>
             </NavigationGroup>
             <NavigationGroup label="Data">
               <Protect permission={PermissionsEnum.SUBSCRIBER_READ}>
@@ -151,6 +147,17 @@ export const SideNavigation = () => {
                 <NavigationLink to={buildRoute(ROUTES.TOPICS, { environmentSlug: currentEnvironment?.slug ?? '' })}>
                   <RiDiscussLine className="size-4" />
                   <span>Topics</span>
+                </NavigationLink>
+              </Protect>
+              <Protect permission={PermissionsEnum.WORKFLOW_READ}>
+                <NavigationLink to={buildRoute(ROUTES.CONTEXTS, { environmentSlug: currentEnvironment?.slug ?? '' })}>
+                  <RiBuildingLine className="size-4" />
+                  <span>
+                    Contexts{' '}
+                    <Badge variant="lighter" className="text-xs">
+                      BETA
+                    </Badge>
+                  </span>
                 </NavigationLink>
               </Protect>
             </NavigationGroup>
@@ -172,12 +179,7 @@ export const SideNavigation = () => {
                       to={buildRoute(ROUTES.ANALYTICS, { environmentSlug: currentEnvironment?.slug ?? '' })}
                     >
                       <RiLineChartLine className="size-4" />
-                      <span>
-                        Analytics{' '}
-                        <Badge variant="lighter" className="text-xs">
-                          BETA
-                        </Badge>
-                      </span>
+                      <span>Usage</span>
                     </NavigationLink>
                   </Protect>
                 )}

@@ -1,16 +1,22 @@
 import { Injectable } from '@nestjs/common';
-import { FeatureFlagsService, Instrument, InstrumentUsecase } from '@novu/application-generic';
+import { Instrument, InstrumentUsecase } from '@novu/application-generic';
 import {
   ControlValuesRepository,
   JsonSchemaTypeEnum,
   NotificationStepEntity,
   NotificationTemplateEntity,
 } from '@novu/dal';
-import { ControlValuesLevelEnum, FeatureFlagsKeysEnum, StepTypeEnum } from '@novu/shared';
+import { ControlValuesLevelEnum, StepTypeEnum } from '@novu/shared';
 import { JSONSchemaDto } from '../../../shared/dtos/json-schema.dto';
 import { CreateVariablesObjectCommand } from '../../../shared/usecases/create-variables-object/create-variables-object.command';
 import { CreateVariablesObject } from '../../../shared/usecases/create-variables-object/create-variables-object.usecase';
-import { buildSubscriberSchema, buildVariablesSchema, buildWorkflowSchema } from '../../../shared/utils/create-schema';
+import {
+  buildContextSchema,
+  buildSubscriberSchema,
+  buildVariablesSchema,
+  buildWorkflowSchema,
+} from '../../../shared/utils/create-schema';
+import { PreviewPayloadDto } from '../../dtos';
 import { computeResultSchema } from '../../shared';
 import { parsePayloadSchema } from '../../shared/parse-payload-schema';
 import { emptyJsonSchema } from '../../util/jsonToSchema';
@@ -20,13 +26,12 @@ import { BuildVariableSchemaCommand, IOptimisticStepInfo } from './build-availab
 export class BuildVariableSchemaUsecase {
   constructor(
     private readonly createVariablesObject: CreateVariablesObject,
-    private readonly controlValuesRepository: ControlValuesRepository,
-    private readonly featureFlagsService: FeatureFlagsService
+    private readonly controlValuesRepository: ControlValuesRepository
   ) {}
 
   @InstrumentUsecase()
   async execute(command: BuildVariableSchemaCommand): Promise<JSONSchemaDto> {
-    const { workflow, stepInternalId, optimisticSteps } = command;
+    const { workflow, stepInternalId, optimisticSteps, previewData } = command;
 
     let workflowControlValues: unknown[] = [];
     if (workflow) {
@@ -50,7 +55,7 @@ export class BuildVariableSchemaUsecase {
     }
 
     const optimisticControlValues = Object.values(command.optimisticControlValues || {});
-    const { payload, subscriber } = await this.createVariablesObject.execute(
+    const { payload, subscriber, context } = await this.createVariablesObject.execute(
       CreateVariablesObjectCommand.create({
         environmentId: command.environmentId,
         organizationId: command.organizationId,
@@ -58,29 +63,31 @@ export class BuildVariableSchemaUsecase {
       })
     );
 
+    // Merge preview data with extracted variables if available
+    const {
+      payload: finalPayload,
+      subscriber: finalSubscriber,
+      context: finalContext,
+    } = previewData
+      ? this.mergePreviewData({ payload, subscriber, context }, previewData)
+      : { payload: payload || {}, subscriber: subscriber || {}, context: context || {} };
+
     // Build effective steps by combining persisted steps with optimistic steps
     const effectiveSteps = this.buildEffectiveSteps(workflow, optimisticSteps);
 
     const previousSteps = effectiveSteps?.slice(0, this.findStepIndex(effectiveSteps, stepInternalId));
 
-    const isNotificationSeverityEnabled = await this.featureFlagsService.getFlag({
-      key: FeatureFlagsKeysEnum.IS_NOTIFICATION_SEVERITY_ENABLED,
-      organization: { _id: command.organizationId },
-      environment: { _id: command.environmentId },
-      user: { _id: command.userId },
-      defaultValue: false,
-    });
-
     return {
       type: JsonSchemaTypeEnum.OBJECT,
       properties: {
-        ...(isNotificationSeverityEnabled ? { workflow: buildWorkflowSchema() } : {}),
-        subscriber: buildSubscriberSchema(subscriber),
+        workflow: buildWorkflowSchema(),
+        subscriber: buildSubscriberSchema(finalSubscriber),
         steps: buildPreviousStepsSchema({
           previousSteps,
           payloadSchema: workflow?.payloadSchema,
         }),
-        payload: await this.resolvePayloadSchema(workflow, payload),
+        payload: await this.resolvePayloadSchema(workflow, finalPayload),
+        context: buildContextSchema(finalContext),
       },
       additionalProperties: false,
     } as const satisfies JSONSchemaDto;
@@ -150,6 +157,20 @@ export class BuildVariableSchemaUsecase {
     }
 
     return buildVariablesSchema(payload);
+  }
+
+  /**
+   * Merges preview data with extracted variables for preview scenarios
+   */
+  private mergePreviewData(
+    extracted: { payload?: unknown; subscriber?: unknown; context?: unknown },
+    previewData?: PreviewPayloadDto
+  ): { payload: Record<string, unknown>; subscriber: Record<string, unknown>; context: Record<string, unknown> } {
+    return {
+      payload: { ...((extracted.payload as Record<string, unknown>) || {}), ...(previewData?.payload || {}) },
+      subscriber: { ...((extracted.subscriber as Record<string, unknown>) || {}), ...(previewData?.subscriber || {}) },
+      context: { ...((extracted.context as Record<string, unknown>) || {}), ...(previewData?.context || {}) },
+    };
   }
 }
 

@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { JSONSchema7 } from '@/components/schema-editor/json-schema';
 import { IsAllowedVariable, LiquidVariable } from '@/utils/parseStepVariables';
+import { getVariableErrorMessage } from '../utils/get-variable-error-message';
 
 export const extractVariableKey = (variableName: string): string => {
   return variableName?.replace(/^(current\.)?payload\./, '') || '';
@@ -18,6 +19,7 @@ export type VariableValidationState = {
   hasError: boolean;
   errorMessage: string;
   variableKey: string;
+  variableName: string;
 };
 
 export const useVariableValidation = (
@@ -36,19 +38,32 @@ export const useVariableValidation = (
         hasError: false,
         errorMessage: '',
         variableKey: '',
+        variableName: '',
       };
     }
 
     const isPayload = isPayloadVariable(variableName);
 
+    // Always validate with isAllowedVariable (it handles namespace-only variables)
+    const variableToCheck: LiquidVariable = { name: variableName, aliasFor };
+    const isAllowed = isAllowedVariable(variableToCheck);
+
     if (!isPayload) {
+      const hasError = !isAllowed;
+      const errorMessage = getVariableErrorMessage({
+        variableName,
+        isPayloadVariable: false,
+        isAllowed,
+      });
+
       return {
         isPayloadVariable: false,
         isInSchema: true,
-        isAllowed: true,
-        hasError: false,
-        errorMessage: '',
+        isAllowed,
+        hasError,
+        errorMessage,
         variableKey: variableName,
+        variableName: variableName,
       };
     }
 
@@ -57,12 +72,15 @@ export const useVariableValidation = (
 
     const isInSchema = !!schemaProperty;
 
-    // Create a variable object for validation
-    const variableToCheck: LiquidVariable = { name: variableName, aliasFor };
-    const isAllowed = isAllowedVariable(variableToCheck);
-
     const hasError = isPayload && !isInSchema && isPayloadSchemaEnabled ? true : !isAllowed;
-    const errorMessage = hasError ? "Variable schema doesn't exist" : '';
+
+    const errorMessage = getVariableErrorMessage({
+      variableName,
+      isPayloadVariable: isPayload,
+      isInSchema,
+      isAllowed,
+      isPayloadSchemaEnabled,
+    });
 
     return {
       isPayloadVariable: isPayload,
@@ -72,6 +90,7 @@ export const useVariableValidation = (
       hasError,
       errorMessage,
       variableKey,
+      variableName: variableName,
     };
-  }, [variableName, aliasFor, isAllowedVariable, getSchemaPropertyByKey]);
+  }, [variableName, aliasFor, isAllowedVariable, getSchemaPropertyByKey, isPayloadSchemaEnabled]);
 };

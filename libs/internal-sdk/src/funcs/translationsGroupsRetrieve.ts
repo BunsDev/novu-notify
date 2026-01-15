@@ -26,10 +26,10 @@ import { APICall, APIPromise } from "../types/async.js";
 import { Result } from "../types/fp.js";
 
 /**
- * Get translation group
+ * Retrieve a translation group
  *
  * @remarks
- * Retrieves a single translation group by resourceId and resourceType
+ * Retrieves a single translation group by resource type (workflow, layout) and resource ID (workflowId, layoutId)
  */
 export function translationsGroupsRetrieve(
   client: NovuCore,
@@ -135,7 +135,7 @@ async function $do(
     options: client._options,
     baseURL: options?.serverURL ?? client._baseURL ?? "",
     operationID: "TranslationController_getTranslationGroupEndpoint",
-    oAuth2Scopes: [],
+    oAuth2Scopes: null,
 
     resolvedSecurity: requestSecurity,
 

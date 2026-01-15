@@ -7,7 +7,7 @@ import {
 } from '@novu/dal';
 import {
   DeliveryLifecycleDetail,
-  DeliveryLifecycleStatus,
+  DeliveryLifecycleStatusEnum,
   FeatureFlagsKeysEnum,
   SeverityLevelEnum,
 } from '@novu/shared';
@@ -37,13 +37,14 @@ type QueryNotificationEntity = Pick<
   | 'createdAt'
   | 'severity'
   | 'critical'
+  | 'contextKeys'
 >;
 
 interface IWorkflowRunOptions {
   status?: WorkflowRunStatusEnum;
   userId?: string;
   externalSubscriberId?: string;
-  deliveryLifecycleStatus?: DeliveryLifecycleStatus;
+  deliveryLifecycleStatus?: DeliveryLifecycleStatusEnum;
   deliveryLifecycleDetail?: DeliveryLifecycleDetail;
 }
 
@@ -84,9 +85,9 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
     try {
       const isEnabled = await this.featureFlagsService.getFlag({
         key: FeatureFlagsKeysEnum.IS_WORKFLOW_RUN_LOGS_WRITE_ENABLED,
-        organization: { _id: notification._organizationId },
-        environment: { _id: notification._environmentId },
-        user: { _id: options.userId },
+        organization: { _id: String(notification._organizationId) },
+        environment: { _id: String(notification._environmentId) },
+        user: { _id: String(options.userId) },
         defaultValue: false,
       });
 
@@ -191,7 +192,7 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
       organizationId: string;
       environmentId: string;
     },
-    deliveryLifecycleStatus?: DeliveryLifecycleStatus,
+    deliveryLifecycleStatus?: DeliveryLifecycleStatusEnum,
     deliveryLifecycleDetail?: DeliveryLifecycleDetail
   ): Promise<void> {
     try {
@@ -229,6 +230,7 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
           createdAt: 1,
           severity: 1,
           critical: 1,
+          contextKeys: 1,
         }
       );
 
@@ -458,7 +460,7 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
       external_subscriber_id: options.externalSubscriberId || null,
 
       // Execution metadata
-      status: options.status || ('pending' as WorkflowRunStatusEnum),
+      status: options.status || WorkflowRunStatusEnum.PROCESSING,
       trigger_identifier: this.getTriggerIdentifier(workflow),
 
       // Correlation and grouping
@@ -471,7 +473,7 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
       control_values: notification.controls ? JSON.stringify(notification.controls) : null,
 
       // Topic information
-      topics: notification.topics ? JSON.stringify(notification.topics) : null,
+      topics: notification.topics ? notification.topics && JSON.stringify(notification.topics) : null,
 
       // Digest information
       is_digest: notification._digestedNotificationId ? 'true' : 'false',
@@ -483,6 +485,7 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
 
       severity: notification.severity || SeverityLevelEnum.NONE,
       critical: notification.critical || false,
+      context_keys: notification.contextKeys || [],
     };
   }
 
@@ -498,8 +501,12 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
     environmentId: string,
     organizationId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
+    workflowIds?: string[]
   ): Promise<Array<{ workflow_name: string; count: string }>> {
+    const workflowFilter =
+      workflowIds && workflowIds.length > 0 ? 'AND workflow_id IN {workflowIds:Array(String)}' : '';
+
     const query = `
       SELECT 
         workflow_name,
@@ -510,17 +517,22 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
         AND organization_id = {organizationId:String}
         AND created_at >= {startDate:DateTime64(3)}
         AND created_at <= {endDate:DateTime64(3)}
+        ${workflowFilter}
       GROUP BY workflow_name
       ORDER BY count DESC
       LIMIT 5
     `;
 
-    const params = {
+    const params: Record<string, unknown> = {
       environmentId,
       organizationId,
       startDate: LogRepository.formatDateTime64(startDate),
       endDate: LogRepository.formatDateTime64(endDate),
     };
+
+    if (workflowIds && workflowIds.length > 0) {
+      params.workflowIds = workflowIds;
+    }
 
     const result = await this.clickhouseService.query<{
       workflow_name: string;
@@ -539,8 +551,12 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
     startDate: Date,
     endDate: Date,
     previousStartDate: Date,
-    previousEndDate: Date
+    previousEndDate: Date,
+    workflowIds?: string[]
   ): Promise<{ currentPeriod: number; previousPeriod: number }> {
+    const workflowFilter =
+      workflowIds && workflowIds.length > 0 ? 'AND workflow_id IN {workflowIds:Array(String)}' : '';
+
     // Query for current period
     const currentPeriodQuery = `
       SELECT count(DISTINCT external_subscriber_id) as count
@@ -550,6 +566,7 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
         AND organization_id = {organizationId:String}
         AND created_at >= {startDate:DateTime64(3)}
         AND created_at <= {endDate:DateTime64(3)}
+        ${workflowFilter}
     `;
 
     // Query for previous period
@@ -561,12 +578,17 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
         AND organization_id = {organizationId:String}
         AND created_at >= {previousStartDate:DateTime64(3)}
         AND created_at <= {previousEndDate:DateTime64(3)}
+        ${workflowFilter}
     `;
 
-    const baseParams = {
+    const baseParams: Record<string, unknown> = {
       environmentId,
       organizationId,
     };
+
+    if (workflowIds && workflowIds.length > 0) {
+      baseParams.workflowIds = workflowIds;
+    }
 
     const [currentResult, previousResult] = await Promise.all([
       this.clickhouseService.query<{ count: string }>({
@@ -602,8 +624,12 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
     startDate: Date,
     endDate: Date,
     previousStartDate: Date,
-    previousEndDate: Date
+    previousEndDate: Date,
+    workflowIds?: string[]
   ): Promise<{ currentPeriod: number; previousPeriod: number }> {
+    const workflowFilter =
+      workflowIds && workflowIds.length > 0 ? 'AND workflow_id IN {workflowIds:Array(String)}' : '';
+
     // Query for current period
     const currentPeriodQuery = `
       SELECT count(*) as count
@@ -613,6 +639,7 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
         AND organization_id = {organizationId:String}
         AND created_at >= {startDate:DateTime64(3)}
         AND created_at <= {endDate:DateTime64(3)}
+        ${workflowFilter}
     `;
 
     // Query for previous period
@@ -624,12 +651,17 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
         AND organization_id = {organizationId:String}
         AND created_at >= {previousStartDate:DateTime64(3)}
         AND created_at <= {previousEndDate:DateTime64(3)}
+        ${workflowFilter}
     `;
 
-    const baseParams = {
+    const baseParams: Record<string, unknown> = {
       environmentId,
       organizationId,
     };
+
+    if (workflowIds && workflowIds.length > 0) {
+      baseParams.workflowIds = workflowIds;
+    }
 
     const [currentResult, previousResult] = await Promise.all([
       this.clickhouseService.query<{ count: string }>({
@@ -663,8 +695,12 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
     environmentId: string,
     organizationId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
+    workflowIds?: string[]
   ): Promise<Array<{ date: string; status: string; count: string }>> {
+    const workflowFilter =
+      workflowIds && workflowIds.length > 0 ? 'AND workflow_id IN {workflowIds:Array(String)}' : '';
+
     const query = `
       SELECT 
         toDate(created_at) as date,
@@ -676,16 +712,21 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
         AND organization_id = {organizationId:String}
         AND created_at >= {startDate:DateTime64(3)}
         AND created_at <= {endDate:DateTime64(3)}
+        ${workflowFilter}
       GROUP BY date, status
       ORDER BY date, status
     `;
 
-    const params = {
+    const params: Record<string, unknown> = {
       environmentId,
       organizationId,
       startDate: LogRepository.formatDateTime64(startDate),
       endDate: LogRepository.formatDateTime64(endDate),
     };
+
+    if (workflowIds && workflowIds.length > 0) {
+      params.workflowIds = workflowIds;
+    }
 
     const result = await this.clickhouseService.query<{
       date: string;
@@ -703,8 +744,12 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
     environmentId: string,
     organizationId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
+    workflowIds?: string[]
   ): Promise<Array<{ date: string; count: string }>> {
+    const workflowFilter =
+      workflowIds && workflowIds.length > 0 ? 'AND workflow_id IN {workflowIds:Array(String)}' : '';
+
     const query = `
       SELECT 
         toDate(created_at) as date,
@@ -715,16 +760,21 @@ export class WorkflowRunRepository extends LogRepository<typeof workflowRunSchem
         AND organization_id = {organizationId:String}
         AND created_at >= {startDate:DateTime64(3)}
         AND created_at <= {endDate:DateTime64(3)}
+        ${workflowFilter}
       GROUP BY date
       ORDER BY date
     `;
 
-    const params = {
+    const params: Record<string, unknown> = {
       environmentId,
       organizationId,
       startDate: LogRepository.formatDateTime64(startDate),
       endDate: LogRepository.formatDateTime64(endDate),
     };
+
+    if (workflowIds && workflowIds.length > 0) {
+      params.workflowIds = workflowIds;
+    }
 
     const result = await this.clickhouseService.query<{
       date: string;

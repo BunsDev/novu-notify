@@ -1,5 +1,7 @@
 import { ApiExtraModels, ApiHideProperty, ApiProperty, ApiPropertyOptional, getSchemaPath } from '@nestjs/swagger';
+import { IsValidContextPayload } from '@novu/application-generic';
 import {
+  ContextPayload,
   ProvidersIdEnum,
   SeverityLevelEnum,
   TriggerRecipientSubscriber,
@@ -8,7 +10,17 @@ import {
   TriggerTenantContext,
 } from '@novu/shared';
 import { Type } from 'class-transformer';
-import { IsDefined, IsObject, IsOptional, IsString, ValidateIf, ValidateNested } from 'class-validator';
+import {
+  ArrayMaxSize,
+  IsArray,
+  IsDefined,
+  IsObject,
+  IsOptional,
+  IsString,
+  ValidateIf,
+  ValidateNested,
+} from 'class-validator';
+import { ApiContextPayload } from '../../shared/framework/swagger';
 import { SdkApiProperty } from '../../shared/framework/swagger/sdk.decorators';
 import { CreateSubscriberRequestDto } from '../../subscribers/dtos';
 import { UpdateTenantRequestDto } from '../../tenant/dtos';
@@ -45,6 +57,16 @@ export class TopicPayloadDto {
     enumName: 'TriggerRecipientsTypeEnum',
   })
   type: TriggerRecipientsTypeEnum;
+
+  @ApiPropertyOptional({
+    description: 'Optional array of subscriber IDs to exclude from the topic trigger',
+    type: [String],
+  })
+  @IsArray()
+  @ArrayMaxSize(100)
+  @IsString({ each: true })
+  @IsOptional()
+  exclude?: string[];
 }
 
 export class StepsOverrides {
@@ -248,7 +270,8 @@ export class TriggerEventRequestDto {
   overrides?: TriggerOverrides;
 
   @ApiProperty({
-    description: 'The recipients list of people who will receive the notification.',
+    description:
+      'The recipients list of people who will receive the notification. Maximum number of recipients can be 100.',
     oneOf: [
       {
         type: 'array',
@@ -324,6 +347,11 @@ export class TriggerEventRequestDto {
 
   @ApiHideProperty()
   controls?: WorkflowToStepControlValuesDto;
+
+  @ApiContextPayload()
+  @IsOptional()
+  @IsValidContextPayload({ maxCount: 5 })
+  context?: ContextPayload;
 }
 
 export class BulkTriggerEventDto {

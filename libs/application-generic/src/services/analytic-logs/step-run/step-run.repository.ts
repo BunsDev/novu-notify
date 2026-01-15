@@ -53,6 +53,8 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
         return 'chat';
       case StepTypeEnum.DIGEST:
         return 'digest';
+      case StepTypeEnum.THROTTLE:
+        return 'throttle';
       case StepTypeEnum.TRIGGER:
         return 'trigger';
       case StepTypeEnum.DELAY:
@@ -112,9 +114,8 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
       const firstJob = jobs[0];
       const isEnabled = await this.featureFlagsService.getFlag({
         key: FeatureFlagsKeysEnum.IS_STEP_RUN_LOGS_WRITE_ENABLED,
-        organization: { _id: firstJob._organizationId },
-        environment: { _id: firstJob._environmentId },
-        user: { _id: firstJob._userId },
+        organization: { _id: String(firstJob._organizationId) },
+        environment: { _id: String(firstJob._environmentId) },
         defaultValue: false,
       });
 
@@ -165,8 +166,12 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
     environmentId: string,
     organizationId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
+    workflowIds?: string[]
   ): Promise<Array<{ date: string; step_type: string; count: string }>> {
+    const workflowFilter =
+      workflowIds && workflowIds.length > 0 ? `AND workflow_id IN {workflowIds:Array(String)}` : '';
+
     // Use ClickHouse aggregation query to get counts by date and step_type
     const query = `
       SELECT 
@@ -181,16 +186,21 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
         AND created_at <= {endDate:DateTime64(3)}
         AND step_type IN ('in_app', 'email', 'sms', 'chat', 'push')
         AND status = 'completed'
+        ${workflowFilter}
       GROUP BY date, step_type
       ORDER BY date, step_type
     `;
 
-    const params = {
+    const params: Record<string, unknown> = {
       environmentId,
       organizationId,
       startDate: LogRepository.formatDateTime64(startDate),
       endDate: LogRepository.formatDateTime64(endDate),
     };
+
+    if (workflowIds && workflowIds.length > 0) {
+      params.workflowIds = workflowIds;
+    }
 
     const result = await this.clickhouseService.query<{
       date: string;
@@ -210,8 +220,12 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
     startDate: Date,
     endDate: Date,
     previousStartDate: Date,
-    previousEndDate: Date
+    previousEndDate: Date,
+    workflowIds?: string[]
   ): Promise<{ currentPeriod: number; previousPeriod: number }> {
+    const workflowFilter =
+      workflowIds && workflowIds.length > 0 ? `AND workflow_id IN {workflowIds:Array(String)}` : '';
+
     // Query for current period
     const currentPeriodQuery = `
       SELECT count(*) as count
@@ -223,6 +237,7 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
         AND created_at <= {endDate:DateTime64(3)}
         AND step_type IN ('in_app', 'email', 'sms', 'chat', 'push')
         AND status = 'completed'
+        ${workflowFilter}
     `;
 
     // Query for previous period
@@ -236,12 +251,17 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
         AND created_at <= {previousEndDate:DateTime64(3)}
         AND step_type IN ('in_app', 'email', 'sms', 'chat', 'push')
         AND status = 'completed'
+        ${workflowFilter}
     `;
 
-    const baseParams = {
+    const baseParams: Record<string, unknown> = {
       environmentId,
       organizationId,
     };
+
+    if (workflowIds && workflowIds.length > 0) {
+      baseParams.workflowIds = workflowIds;
+    }
 
     const [currentResult, previousResult] = await Promise.all([
       this.clickhouseService.query<{ count: string }>({
@@ -277,8 +297,12 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
     startDate: Date,
     endDate: Date,
     previousStartDate: Date,
-    previousEndDate: Date
+    previousEndDate: Date,
+    workflowIds?: string[]
   ): Promise<{ currentPeriod: number; previousPeriod: number }> {
+    const workflowFilter =
+      workflowIds && workflowIds.length > 0 ? `AND workflow_id IN {workflowIds:Array(String)}` : '';
+
     // Query for current period average
     const currentPeriodQuery = `
       SELECT 
@@ -292,6 +316,7 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
         AND created_at <= {endDate:DateTime64(3)}
         AND step_type IN ('in_app', 'email', 'sms', 'chat', 'push')
         AND status = 'completed'
+        ${workflowFilter}
     `;
 
     // Query for previous period average
@@ -307,12 +332,17 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
         AND created_at <= {previousEndDate:DateTime64(3)}
         AND step_type IN ('in_app', 'email', 'sms', 'chat', 'push')
         AND status = 'completed'
+        ${workflowFilter}
     `;
 
-    const baseParams = {
+    const baseParams: Record<string, unknown> = {
       environmentId,
       organizationId,
     };
+
+    if (workflowIds && workflowIds.length > 0) {
+      baseParams.workflowIds = workflowIds;
+    }
 
     const [currentResult, previousResult] = await Promise.all([
       this.clickhouseService.query<{ total_step_runs: string; unique_subscribers: string }>({
@@ -352,8 +382,12 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
     environmentId: string,
     organizationId: string,
     startDate: Date,
-    endDate: Date
+    endDate: Date,
+    workflowIds?: string[]
   ): Promise<Array<{ provider_id: string; count: string }>> {
+    const workflowFilter =
+      workflowIds && workflowIds.length > 0 ? `AND workflow_id IN {workflowIds:Array(String)}` : '';
+
     const query = `
       SELECT 
         provider_id,
@@ -366,17 +400,22 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
         AND created_at <= {endDate:DateTime64(3)}
         AND step_type IN ('in_app', 'email', 'sms', 'chat', 'push')
         AND status = 'completed'
+        ${workflowFilter}
       GROUP BY provider_id
       ORDER BY count DESC
       LIMIT 5
     `;
 
-    const params = {
+    const params: Record<string, unknown> = {
       environmentId,
       organizationId,
       startDate: LogRepository.formatDateTime64(startDate),
       endDate: LogRepository.formatDateTime64(endDate),
     };
+
+    if (workflowIds && workflowIds.length > 0) {
+      params.workflowIds = workflowIds;
+    }
 
     const result = await this.clickhouseService.query<{
       provider_id: string;
@@ -401,6 +440,7 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
       step_run_id: job._id,
       step_id: job.step._id || job.step.stepId || job._id,
       workflow_run_id: job._notificationId,
+      workflow_id: job._templateId,
 
       // Context
       organization_id: job._organizationId,
@@ -409,6 +449,7 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
       subscriber_id: job._subscriberId,
       external_subscriber_id: job.subscriberId,
       message_id: options?.message?._id || null,
+      context_keys: job.contextKeys || [],
 
       // Step metadata
       step_type: stepType,
@@ -430,6 +471,8 @@ export class StepRunRepository extends LogRepository<typeof stepRunSchema, StepR
 
       // Schedule extensions count
       schedule_extensions_count: job?.scheduleExtensionsCount || 0,
+
+      deferred_ms: null,
     };
   }
 }

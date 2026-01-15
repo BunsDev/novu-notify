@@ -129,14 +129,14 @@ export class GetActivityFeed {
 
   private parseAndValidateDate(dateString: string, parameterName: string): Date {
     const parsedDate = new Date(dateString);
-    
+
     if (Number.isNaN(parsedDate.getTime())) {
       throw new HttpException(
         `Invalid date format for parameter '${parameterName}': ${dateString}. Please provide a valid ISO 8601 date string.`,
         HttpStatus.BAD_REQUEST
       );
     }
-    
+
     return parsedDate;
   }
 
@@ -212,9 +212,11 @@ export class GetActivityFeed {
         subscriberIds: subscriberIds || [],
         transactionId: command.transactionId,
         topicKey: command.topicKey,
+        subscriptionId: command.subscriptionId,
         after: command.after,
         before: command.before,
         severity: command.severity,
+        contextKeys: command.contextKeys,
       },
       command.page * command.limit,
       command.limit

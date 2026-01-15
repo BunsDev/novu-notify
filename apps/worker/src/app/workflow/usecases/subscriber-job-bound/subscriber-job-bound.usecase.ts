@@ -51,6 +51,7 @@ export class SubscriberJobBound {
       transactionId: command.transactionId,
       environmentId: command.environmentId,
       organizationId: command.organizationId,
+      contextKeys: command.contextKeys,
     });
 
     const {
@@ -64,8 +65,8 @@ export class SubscriberJobBound {
       identifier,
       _subscriberSource,
       requestCategory,
-      environmentName,
       topics,
+      contextKeys,
     } = command;
 
     const template = command.bridge?.workflow
@@ -103,9 +104,9 @@ export class SubscriberJobBound {
       source: command.payload.__source || 'api',
       subscriberSource: _subscriberSource || null,
       requestCategory: requestCategory || null,
-      environmentName,
       statelessWorkflow: !!command.bridge?.url,
     });
+
     const subscriberProcessed = await this.createOrUpdateSubscriberUsecase.execute(
       CreateOrUpdateSubscriberCommand.create({
         environmentId,
@@ -117,6 +118,7 @@ export class SubscriberJobBound {
         phone: subscriber?.phone,
         avatar: subscriber?.avatar,
         locale: subscriber?.locale,
+        timezone: subscriber?.timezone,
         data: subscriber?.data,
         channels: subscriber?.channels,
         activeWorkerName: process.env.ACTIVE_WORKER,
@@ -186,6 +188,7 @@ export class SubscriberJobBound {
       }),
       severity,
       critical,
+      ...(contextKeys && { contextKeys }),
     };
 
     if (actor) {
@@ -244,20 +247,6 @@ export class SubscriberJobBound {
   }
 
   @Instrument()
-  private async getProviderId(environmentId: string, channelType: ChannelTypeEnum): Promise<ProvidersIdEnum> {
-    const integration = await this.integrationRepository.findOne(
-      {
-        _environmentId: environmentId,
-        active: true,
-        channel: channelType,
-      },
-      'providerId'
-    );
-
-    return integration?.providerId as ProvidersIdEnum;
-  }
-
-  @Instrument()
   private async validateSubscriberIdProperty(
     command: SubscriberJobBoundCommand,
     subscriber: ISubscribersDefine
@@ -289,6 +278,7 @@ export class SubscriberJobBound {
     template: NotificationTemplateEntity
   ): Promise<Record<ChannelTypeEnum, ProvidersIdEnum>> {
     const providers = {} as Record<ChannelTypeEnum, ProvidersIdEnum>;
+    const channelTypesToFetch: ChannelTypeEnum[] = [];
 
     for (const step of template?.steps) {
       const type = step.template?.type;
@@ -296,16 +286,28 @@ export class SubscriberJobBound {
 
       const channelType = STEP_TYPE_TO_CHANNEL_TYPE.get(type);
 
-      if (!channelType) continue;
-
-      if (providers[channelType] || !channelType) continue;
+      if (!channelType || providers[channelType]) continue;
 
       if (channelType === ChannelTypeEnum.IN_APP) {
         providers[channelType] = InAppProviderIdEnum.Novu;
       } else {
-        const provider = await this.getProviderId(environmentId, channelType);
-        if (provider) {
-          providers[channelType] = provider;
+        channelTypesToFetch.push(channelType);
+      }
+    }
+
+    if (channelTypesToFetch.length > 0) {
+      const integrations = await this.integrationRepository.find(
+        {
+          _environmentId: environmentId,
+          active: true,
+          channel: { $in: channelTypesToFetch },
+        },
+        'providerId channel'
+      );
+
+      for (const integration of integrations) {
+        if (!providers[integration.channel]) {
+          providers[integration.channel] = integration.providerId as ProvidersIdEnum;
         }
       }
     }
@@ -340,6 +342,7 @@ export class SubscriberJobBound {
         entity_type: 'request',
         entity_id: command.requestId,
         workflow_run_identifier: command.identifier,
+        workflow_id: command.templateId,
       };
 
       await this.traceLogRepository.createRequest([traceData]);

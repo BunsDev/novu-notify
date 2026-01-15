@@ -32,6 +32,7 @@ export class UpdateNotificationAction {
       _environmentId: command.environmentId,
       _subscriberId: subscriber._id,
       _id: command.notificationId,
+      contextKeys: command.contextKeys,
     });
     if (!message) {
       throw new NotFoundException(`Notification with id: ${command.notificationId} is not found.`);
@@ -55,13 +56,6 @@ export class UpdateNotificationAction {
       id: command.notificationId,
       actionType: command.actionType,
       actionStatus: command.actionStatus,
-    });
-
-    await this.invalidateCache.invalidateQuery({
-      key: buildFeedKey().invalidate({
-        subscriberId: subscriber.subscriberId,
-        _environmentId: command.environmentId,
-      }),
     });
 
     this.analyticsService.mixpanelTrack(AnalyticsEventsEnum.UPDATE_NOTIFICATION_ACTION, '', {

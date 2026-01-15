@@ -1,3 +1,4 @@
+import { FeatureFlagsKeysEnum } from '@novu/shared';
 import { EditorView } from '@uiw/react-codemirror';
 import { cva } from 'class-variance-authority';
 import { useMemo, useRef } from 'react';
@@ -8,8 +9,10 @@ import { useWorkflow } from '@/components/workflow-editor/workflow-provider';
 import { useWorkflowSchema } from '@/components/workflow-editor/workflow-schema-provider';
 import { useEditorTranslationOverlay } from '@/hooks/use-editor-translation-overlay';
 import { useEnhancedVariableValidation } from '@/hooks/use-enhanced-variable-validation';
+import { useFeatureFlag } from '@/hooks/use-feature-flag';
 import { IsAllowedVariable, LiquidVariable } from '@/utils/parseStepVariables';
 import { cn } from '@/utils/ui';
+import { LocalizationResourceEnum } from '../../../types/translations';
 
 const variants = cva('relative w-full', {
   variants: {
@@ -61,6 +64,8 @@ export function ControlInput({
   const viewRef = useRef<EditorView | null>(null);
   const lastCompletionRef = useRef<CompletionRange | null>(null);
   const { workflow, digestStepBeforeCurrent } = useWorkflow();
+  const resourceId = workflow?.workflowId || '';
+  const resourceType = LocalizationResourceEnum.WORKFLOW;
   const { getSchemaPropertyByKey, isPayloadSchemaEnabled, currentSchema } = useWorkflowSchema();
   const {
     handleCreateNewVariable,
@@ -84,8 +89,10 @@ export function ControlInput({
     viewRef,
     lastCompletionRef,
     onChange,
-    workflow,
+    resourceId,
+    resourceType,
     enableTranslations,
+    isTranslationEnabledOnResource: !!workflow?.isTranslationEnabled,
   });
 
   const { enhancedIsAllowedVariable } = useEnhancedVariableValidation({
@@ -119,6 +126,7 @@ export function ControlInput({
       completionSources={translationCompletionSource}
       isPayloadSchemaEnabled={isPayloadSchemaEnabled}
       isTranslationEnabled={shouldEnableTranslations}
+      isContextEnabled={true}
       getSchemaPropertyByKey={getSchemaPropertyByKey}
       extensions={extensions}
       digestStepName={digestStepBeforeCurrent?.stepId}
@@ -128,6 +136,8 @@ export function ControlInput({
       disabled={disabled}
     >
       <EditorOverlays
+        resourceId={resourceId}
+        resourceType={resourceType}
         isTranslationPopoverOpen={isTranslationPopoverOpen}
         selectedTranslation={selectedTranslation}
         onTranslationPopoverOpenChange={handleTranslationPopoverOpenChange}
@@ -145,6 +155,7 @@ export function ControlInput({
         }}
         highlightedVariableKey={highlightedVariableKey}
         enableTranslations={shouldEnableTranslations}
+        translationValueInput={ControlInput}
       />
     </VariableEditor>
   );

@@ -1,6 +1,6 @@
+import { TranslationGroupDto } from '@novu/api/models/components';
 import { EnvironmentTypeEnum, PermissionsEnum } from '@novu/shared';
 import { forwardRef, useCallback, useImperativeHandle, useState } from 'react';
-import { TranslationGroup } from '@/api/translations';
 import { InlineToast } from '@/components/primitives/inline-toast';
 import { PermissionButton } from '@/components/primitives/permission-button';
 import { UnsavedChangesAlertDialog } from '@/components/unsaved-changes-alert-dialog';
@@ -16,7 +16,7 @@ export type TranslationDrawerContentRef = {
 };
 
 type TranslationDrawerContentProps = {
-  translationGroup: TranslationGroup;
+  translationGroup: TranslationGroupDto;
   initialLocale?: string;
   onLocaleChange?: (locale: string) => void;
 };
@@ -94,7 +94,8 @@ export const TranslationDrawerContent = forwardRef<TranslationDrawerContentRef, 
           </div>
         )}
 
-        <div className="flex h-full">
+        {/* 109px is the height of the header and footer */}
+        <div className="flex flex-1 h-[calc(100%-109px)]">
           <LocaleList
             locales={translationGroup.locales}
             selectedLocale={selectedLocale}
@@ -109,7 +110,8 @@ export const TranslationDrawerContent = forwardRef<TranslationDrawerContentRef, 
             selectedTranslation={selectedTranslation}
             isLoadingTranslation={isLoadingTranslation}
             translationError={translationError}
-            modifiedContentString={editor.modifiedContentString}
+            content={editor.modifiedContentString ?? editor.originalContent}
+            modifiedContent={editor.modifiedContent}
             jsonError={editor.jsonError}
             onContentChange={editor.handleContentChange}
             outdatedLocales={translationGroup.outdatedLocales}

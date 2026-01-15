@@ -1,6 +1,6 @@
 import { Novu, NovuOptions } from '@novu/js';
 import { buildSubscriber } from '@novu/js/internal';
-import { createContext, ReactNode, useContext, useEffect, useMemo } from 'react';
+import { createContext, ReactNode, useContext, useMemo } from 'react';
 
 // @ts-expect-error
 const version = PACKAGE_VERSION;
@@ -16,7 +16,10 @@ const NovuContext = createContext<Novu | undefined>(undefined);
 
 export const NovuProvider = (props: NovuProviderProps) => {
   const { subscriberId, ...propsWithoutSubscriberId } = props;
-  const subscriberObj = buildSubscriber({ subscriberId, subscriber: props.subscriber });
+  const subscriberObj = useMemo(
+    () => buildSubscriber({ subscriberId, subscriber: props.subscriber }),
+    [subscriberId, props.subscriber]
+  );
   const applicationIdentifier = propsWithoutSubscriberId.applicationIdentifier
     ? propsWithoutSubscriberId.applicationIdentifier
     : '';
@@ -41,18 +44,22 @@ export const NovuProvider = (props: NovuProviderProps) => {
  */
 export const InternalNovuProvider = (props: NovuProviderProps & { userAgentType: 'components' | 'hooks' }) => {
   const applicationIdentifier = props.applicationIdentifier || '';
-  const subscriberObj = buildSubscriber({ subscriberId: props.subscriberId, subscriber: props.subscriber });
+  const subscriberObj = useMemo(
+    () => buildSubscriber({ subscriberId: props.subscriberId, subscriber: props.subscriber }),
+    [props.subscriberId, props.subscriber]
+  );
 
   const {
     children,
-    subscriberId,
     subscriberHash,
+    contextHash,
     backendUrl,
     apiUrl,
     socketUrl,
     useCache,
     userAgentType,
     defaultSchedule,
+    context,
   } = props;
 
   const novu = useMemo(
@@ -60,6 +67,7 @@ export const InternalNovuProvider = (props: NovuProviderProps & { userAgentType:
       new Novu({
         applicationIdentifier,
         subscriberHash,
+        contextHash,
         backendUrl,
         apiUrl,
         socketUrl,
@@ -67,16 +75,21 @@ export const InternalNovuProvider = (props: NovuProviderProps & { userAgentType:
         __userAgent: `${baseUserAgent} ${userAgentType}`,
         subscriber: subscriberObj,
         defaultSchedule,
+        context,
       }),
-    [applicationIdentifier, subscriberHash, backendUrl, apiUrl, socketUrl, useCache, userAgentType]
+    [
+      applicationIdentifier,
+      subscriberHash,
+      subscriberObj,
+      context,
+      contextHash,
+      backendUrl,
+      apiUrl,
+      socketUrl,
+      useCache,
+      userAgentType,
+    ]
   );
-
-  useEffect(() => {
-    novu.changeSubscriber({
-      subscriber: subscriberObj,
-      subscriberHash: props.subscriberHash,
-    });
-  }, [subscriberObj.subscriberId, props.subscriberHash, novu]);
 
   return <NovuContext.Provider value={novu}>{children}</NovuContext.Provider>;
 };

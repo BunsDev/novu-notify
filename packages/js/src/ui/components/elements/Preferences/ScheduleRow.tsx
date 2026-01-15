@@ -1,11 +1,11 @@
-import { Accessor, createMemo, createSignal, JSX, Setter, Show } from 'solid-js';
+import { Accessor, createMemo, createSignal, JSX, Setter } from 'solid-js';
 import { Schedule } from '../../../../preferences/schedule';
-import { Preference } from '../../../../types';
+import { Preference, WeeklySchedule } from '../../../../types';
 import { useLocalization } from '../../../context';
 import { useStyle } from '../../../helpers/useStyle';
 import { ArrowDropDown, CalendarSchedule } from '../../../icons';
 import { Info } from '../../../icons/Info';
-import { AppearanceCallback } from '../../../types';
+import { InboxAppearanceCallback } from '../../../types';
 import { Collapsible } from '../../primitives/Collapsible';
 import { Switch } from '../../primitives/Switch';
 import { Tooltip } from '../../primitives/Tooltip';
@@ -26,7 +26,7 @@ const ScheduleRowHeader = (props: {
         key: 'scheduleHeader',
         className:
           'nt-flex nt-w-full nt-p-1 nt-justify-between nt-flex-nowrap nt-self-stretch nt-cursor-pointer nt-items-center nt-overflow-hidden',
-        context: { schedule: props.schedule() } satisfies Parameters<AppearanceCallback['scheduleHeader']>[0],
+        context: { schedule: props.schedule() } satisfies Parameters<InboxAppearanceCallback['scheduleHeader']>[0],
       })}
       onClick={() => props.setIsOpened((prev) => !prev)}
       aria-label="Schedule"
@@ -47,8 +47,10 @@ const ScheduleRowLabel = (props: { schedule: Accessor<Schedule | undefined>; isO
     <div
       class={style({
         key: 'scheduleLabelContainer',
-        className: 'nt-overflow-hidden  nt-flex nt-items-center nt-gap-1',
-        context: { schedule: props.schedule() } satisfies Parameters<AppearanceCallback['scheduleLabelContainer']>[0],
+        className: 'nt-overflow-hidden  nt-flex nt-items-center nt-gap-1 nt-h-3.5',
+        context: { schedule: props.schedule() } satisfies Parameters<
+          InboxAppearanceCallback['scheduleLabelContainer']
+        >[0],
       })}
     >
       <IconRenderer
@@ -57,7 +59,7 @@ const ScheduleRowLabel = (props: { schedule: Accessor<Schedule | undefined>; isO
           key: 'scheduleLabelScheduleIcon',
           className: 'nt-text-foreground-alpha-600 nt-size-3.5',
           context: { schedule: props.schedule() } satisfies Parameters<
-            AppearanceCallback['scheduleLabelScheduleIcon']
+            InboxAppearanceCallback['scheduleLabelScheduleIcon']
           >[0],
         })}
         fallback={CalendarSchedule}
@@ -66,7 +68,7 @@ const ScheduleRowLabel = (props: { schedule: Accessor<Schedule | undefined>; isO
         class={style({
           key: 'scheduleLabel',
           className: 'nt-text-sm nt-font-semibold nt-truncate nt-text-start',
-          context: { schedule: props.schedule() } satisfies Parameters<AppearanceCallback['scheduleLabel']>[0],
+          context: { schedule: props.schedule() } satisfies Parameters<InboxAppearanceCallback['scheduleLabel']>[0],
         })}
         data-open={props.isOpened()}
         data-localization="preferences.schedule.title"
@@ -79,9 +81,9 @@ const ScheduleRowLabel = (props: { schedule: Accessor<Schedule | undefined>; isO
             iconKey="info"
             class={style({
               key: 'scheduleLabelInfoIcon',
-              className: 'nt-text-foreground-alpha-600 nt-size-4',
+              className: 'nt-text-foreground-alpha-600 nt-size-3.5',
               context: { schedule: props.schedule() } satisfies Parameters<
-                AppearanceCallback['scheduleLabelInfoIcon']
+                InboxAppearanceCallback['scheduleLabelInfoIcon']
               >[0],
             })}
             fallback={Info}
@@ -95,7 +97,35 @@ const ScheduleRowLabel = (props: { schedule: Accessor<Schedule | undefined>; isO
   );
 };
 
-const ScheduleRowActions = (props: { schedule: Accessor<Schedule | undefined>; isOpened: Accessor<boolean> }) => {
+const DEFAULT_HOURS = [{ start: '09:00 AM', end: '05:00 PM' }];
+const DEFAULT_WEEKLY_SCHEDULE: WeeklySchedule = {
+  monday: {
+    isEnabled: true,
+    hours: DEFAULT_HOURS,
+  },
+  tuesday: {
+    isEnabled: true,
+    hours: DEFAULT_HOURS,
+  },
+  wednesday: {
+    isEnabled: true,
+    hours: DEFAULT_HOURS,
+  },
+  thursday: {
+    isEnabled: true,
+    hours: DEFAULT_HOURS,
+  },
+  friday: {
+    isEnabled: true,
+    hours: DEFAULT_HOURS,
+  },
+};
+
+const ScheduleRowActions = (props: {
+  schedule: Accessor<Schedule | undefined>;
+  isOpened: Accessor<boolean>;
+  onChange: (isEnabled: boolean) => void;
+}) => {
   const style = useStyle();
 
   return (
@@ -103,16 +133,24 @@ const ScheduleRowActions = (props: { schedule: Accessor<Schedule | undefined>; i
       class={style({
         key: 'scheduleActionsContainer',
         className: 'nt-flex nt-items-center nt-gap-1',
-        context: { schedule: props.schedule() } satisfies Parameters<AppearanceCallback['scheduleActionsContainer']>[0],
+        context: { schedule: props.schedule() } satisfies Parameters<
+          InboxAppearanceCallback['scheduleActionsContainer']
+        >[0],
       })}
     >
       <Switch
         state={props.schedule()?.isEnabled ? 'enabled' : 'disabled'}
-        onChange={(state) =>
+        onChange={(state) => {
+          const isEnabled = state === 'enabled';
+          const hasNoWeeklySchedule = !props.schedule()?.weeklySchedule;
+
           props.schedule()?.update({
-            isEnabled: state === 'enabled',
-          })
-        }
+            isEnabled,
+            ...(isEnabled && hasNoWeeklySchedule && { weeklySchedule: DEFAULT_WEEKLY_SCHEDULE }),
+          });
+
+          props.onChange(isEnabled);
+        }}
       />
       <span
         class={style({
@@ -120,7 +158,7 @@ const ScheduleRowActions = (props: { schedule: Accessor<Schedule | undefined>; i
           className:
             'nt-text-foreground-alpha-600 nt-transition-all nt-duration-200 data-[open=true]:nt-transform data-[open=true]:nt-rotate-180',
           context: { schedule: props.schedule() } satisfies Parameters<
-            AppearanceCallback['scheduleActionsContainerRight']
+            InboxAppearanceCallback['scheduleActionsContainerRight']
           >[0],
         })}
         data-open={props.isOpened()}
@@ -148,15 +186,15 @@ const ScheduleRowBody = (props: { isOpened: Accessor<boolean>; globalPreference:
       class={style({
         key: 'scheduleBody',
         className:
-          'nt-flex nt-bg-background nt-border nt-border-neutral-alpha-200 nt-rounded-lg nt-p-2 nt-flex-col nt-gap-1 nt-overflow-hidden',
-        context: { schedule: schedule() } satisfies Parameters<AppearanceCallback['scheduleBody']>[0],
+          'nt-flex nt-bg-background nt-border nt-border-neutral-alpha-200 nt-rounded-lg nt-p-2 nt-flex-col nt-gap-2 nt-overflow-hidden',
+        context: { schedule: schedule() } satisfies Parameters<InboxAppearanceCallback['scheduleBody']>[0],
       })}
     >
       <span
         class={style({
           key: 'scheduleDescription',
           className: 'nt-text-sm nt-truncate nt-text-start',
-          context: { schedule: schedule() } satisfies Parameters<AppearanceCallback['scheduleDescription']>[0],
+          context: { schedule: schedule() } satisfies Parameters<InboxAppearanceCallback['scheduleDescription']>[0],
         })}
         data-localization="preferences.schedule.description"
       >
@@ -166,8 +204,8 @@ const ScheduleRowBody = (props: { isOpened: Accessor<boolean>; globalPreference:
       <div
         class={style({
           key: 'scheduleInfoContainer',
-          className: 'nt-flex nt-items-start nt-mt-2.5 nt-gap-1',
-          context: { schedule: schedule() } satisfies Parameters<AppearanceCallback['scheduleInfoContainer']>[0],
+          className: 'nt-flex nt-items-start nt-mt-1.5 nt-gap-1',
+          context: { schedule: schedule() } satisfies Parameters<InboxAppearanceCallback['scheduleInfoContainer']>[0],
         })}
       >
         <IconRenderer
@@ -175,7 +213,7 @@ const ScheduleRowBody = (props: { isOpened: Accessor<boolean>; globalPreference:
           class={style({
             key: 'scheduleInfoIcon',
             className: 'nt-size-4',
-            context: { schedule: schedule() } satisfies Parameters<AppearanceCallback['scheduleInfoIcon']>[0],
+            context: { schedule: schedule() } satisfies Parameters<InboxAppearanceCallback['scheduleInfoIcon']>[0],
           })}
           fallback={Info}
         />
@@ -199,30 +237,29 @@ type ScheduleRowProps = {
 
 export const ScheduleRow = (props: ScheduleRowProps) => {
   const style = useStyle();
-  const [isOpened, setIsOpened] = createSignal(false);
-
-  const channels = createMemo(() => Object.keys(props.globalPreference?.channels ?? {}));
   const schedule = createMemo(() => props.globalPreference?.schedule);
+  const [isOpened, setIsOpened] = createSignal(props.globalPreference?.schedule?.isEnabled ?? false);
 
   return (
-    <Show when={channels().length > 0}>
+    <>
       <div
         class={style({
           key: 'scheduleContainer',
           className: 'nt-p-1 nt-bg-neutral-alpha-25 nt-rounded-lg nt-border nt-border-neutral-alpha-50',
           context: {
             schedule: schedule(),
-          } satisfies Parameters<AppearanceCallback['scheduleContainer']>[0],
+          } satisfies Parameters<InboxAppearanceCallback['scheduleContainer']>[0],
         })}
       >
         <ScheduleRowHeader schedule={schedule} isOpened={isOpened} setIsOpened={setIsOpened}>
           <ScheduleRowLabel schedule={schedule} isOpened={isOpened} />
-          <ScheduleRowActions schedule={schedule} isOpened={isOpened} />
+          <ScheduleRowActions schedule={schedule} isOpened={isOpened} onChange={setIsOpened} />
         </ScheduleRowHeader>
         <Collapsible open={isOpened()}>
           <ScheduleRowBody globalPreference={props.globalPreference} isOpened={isOpened} />
         </Collapsible>
       </div>
-    </Show>
+      <div class="nt-w-full nt-border-t nt-border-neutral-alpha-100" />
+    </>
   );
 };

@@ -26,10 +26,10 @@ import { APICall, APIPromise } from "../types/async.js";
 import { Result } from "../types/fp.js";
 
 /**
- * Create or update translation
+ * Create a translation
  *
  * @remarks
- * Create or update a translation for a specific workflow and locale
+ * Create a translation for a specific workflow and locale, if the translation already exists, it will be updated
  */
 export function translationsCreate(
   client: NovuCore,
@@ -119,7 +119,7 @@ async function $do(
     options: client._options,
     baseURL: options?.serverURL ?? client._baseURL ?? "",
     operationID: "TranslationController_createTranslationEndpoint",
-    oAuth2Scopes: [],
+    oAuth2Scopes: null,
 
     resolvedSecurity: requestSecurity,
 

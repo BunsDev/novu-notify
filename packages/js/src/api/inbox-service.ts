@@ -1,16 +1,21 @@
+import type { RulesLogic } from 'json-logic-js';
+import type { PreferenceFilter } from '../subscriptions/types';
 import type {
   ActionTypeEnum,
   ChannelPreference,
+  Context,
   DefaultSchedule,
   InboxNotification,
   NotificationFilter,
   PreferencesResponse,
   Session,
-  SeverityLevelEnum,
   Subscriber,
+  SubscriptionPreferenceResponse,
+  SubscriptionResponse,
   WeeklySchedule,
   WorkflowCriticalityEnum,
 } from '../types';
+import { SeverityLevelEnum } from '../types';
 import { HttpClient, HttpClientOptions } from './http-client';
 
 export type InboxServiceOptions = HttpClientOptions;
@@ -29,19 +34,25 @@ export class InboxService {
   async initializeSession({
     applicationIdentifier,
     subscriberHash,
+    contextHash,
     subscriber,
     defaultSchedule,
+    context,
   }: {
     applicationIdentifier?: string;
     subscriberHash?: string;
+    contextHash?: string;
     subscriber?: Subscriber;
     defaultSchedule?: DefaultSchedule;
+    context?: Context;
   }): Promise<Session> {
     const response = (await this.#httpClient.post(`${INBOX_ROUTE}/session`, {
       applicationIdentifier,
       subscriberHash,
+      contextHash,
       subscriber,
       defaultSchedule,
+      context,
     })) as Session;
     this.#httpClient.setAuthorizationToken(response.token);
     this.#httpClient.setKeylessHeader(response.applicationIdentifier);
@@ -321,5 +332,89 @@ export class InboxService {
     };
 
     return this.#httpClient.post('/inbox/events', payload);
+  }
+
+  fetchSubscriptions(topicKey: string): Promise<SubscriptionResponse[]> {
+    return this.#httpClient.get(`${INBOX_ROUTE}/topics/${topicKey}/subscriptions`);
+  }
+
+  getSubscription({
+    topicKey,
+    identifier,
+  }: {
+    topicKey: string;
+    identifier: string;
+  }): Promise<SubscriptionResponse | undefined> {
+    return this.#httpClient.get(`${INBOX_ROUTE}/topics/${topicKey}/subscriptions/${identifier}`);
+  }
+
+  createSubscription({
+    identifier,
+    name,
+    topicKey,
+    topicName,
+    preferences,
+  }: {
+    identifier?: string;
+    name?: string;
+    topicKey: string;
+    topicName?: string;
+    preferences?: Array<PreferenceFilter>;
+  }): Promise<SubscriptionResponse> {
+    return this.#httpClient.post(`${INBOX_ROUTE}/topics/${topicKey}/subscriptions`, {
+      identifier,
+      name,
+      ...(topicName && { topic: { name: topicName } }),
+      ...(preferences !== undefined && { preferences }),
+    });
+  }
+
+  updateSubscription({
+    topicKey,
+    subscriptionId,
+    name,
+    preferences,
+  }: {
+    topicKey: string;
+    subscriptionId: string;
+    name?: string;
+    preferences?: Array<PreferenceFilter>;
+  }): Promise<SubscriptionResponse> {
+    return this.#httpClient.patch(`${INBOX_ROUTE}/topics/${topicKey}/subscriptions/${subscriptionId}`, {
+      name,
+      ...(preferences !== undefined && { preferences }),
+    });
+  }
+
+  updateSubscriptionPreference({
+    subscriptionId,
+    workflowId,
+    enabled,
+    condition,
+  }: {
+    subscriptionId: string;
+    workflowId: string;
+    enabled?: boolean;
+    condition?: RulesLogic;
+  }): Promise<SubscriptionPreferenceResponse> {
+    return this.#httpClient.patch(`${INBOX_ROUTE}/subscriptions/${subscriptionId}/preferences/${workflowId}`, {
+      enabled,
+      condition,
+    });
+  }
+
+  bulkUpdateSubscriptionPreferences(
+    preferences: Array<{
+      subscriptionIdOrIdentifier: string;
+      workflowId: string;
+      enabled?: boolean;
+      condition?: RulesLogic;
+    }>
+  ): Promise<SubscriptionPreferenceResponse[]> {
+    return this.#httpClient.patch(`${INBOX_ROUTE}/preferences/bulk`, { preferences });
+  }
+
+  deleteSubscription({ topicKey, subscriptionId }: { topicKey: string; subscriptionId: string }): Promise<void> {
+    return this.#httpClient.delete(`${INBOX_ROUTE}/topics/${topicKey}/subscriptions/${subscriptionId}`);
   }
 }

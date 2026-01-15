@@ -7,11 +7,13 @@ import { createVariableExtension } from '@/components/primitives/variable-plugin
 import { DEFAULT_VARIABLE_PILL_HEIGHT } from '@/components/primitives/variable-plugin/variable-pill-widget';
 import { variablePillTheme } from '@/components/primitives/variable-plugin/variable-theme';
 import { EditVariablePopover } from '@/components/variable/edit-variable-popover';
+import { isPayloadVariable } from '@/components/variable/hooks/use-variable-validation';
 import {
   DIGEST_VARIABLES_ENUM,
   DIGEST_VARIABLES_FILTER_MAP,
   getDynamicDigestVariable,
 } from '@/components/variable/utils/digest-variables';
+import { getVariableErrorMessage } from '@/components/variable/utils/get-variable-error-message';
 import { useTelemetry } from '@/hooks/use-telemetry';
 import { CompletionOption, createAutocompleteSource } from '@/utils/liquid-autocomplete';
 import { IsAllowedVariable, LiquidVariable } from '@/utils/parseStepVariables';
@@ -36,6 +38,7 @@ type VariableEditorProps = {
   completionSources?: CompletionSource[];
   isPayloadSchemaEnabled?: boolean;
   isTranslationEnabled?: boolean;
+  isContextEnabled?: boolean;
   digestStepName?: string;
   getSchemaPropertyByKey?: (key: string) => JSONSchema7 | undefined;
   onCreateNewVariable?: (variableName: string) => Promise<void>;
@@ -86,6 +89,7 @@ export function VariableEditor({
   completionSources,
   isPayloadSchemaEnabled = false,
   isTranslationEnabled = false,
+  isContextEnabled = false,
   digestStepName,
   skipContainerClick = false,
   getSchemaPropertyByKey = () => undefined,
@@ -113,8 +117,8 @@ export function VariableEditor({
 
   const onVariableSelect = useCallback(
     (completion: CompletionOption) => {
-      if (completion.isNewVariable && completion.label.startsWith('payload.')) {
-        onCreateNewVariable(completion.label.replace('payload.', ''));
+      if (completion.isNewVariable) {
+        onCreateNewVariable(completion.label);
       }
 
       if (completion.type === 'digest') {
@@ -158,6 +162,7 @@ export function VariableEditor({
     completionSources,
     isPayloadSchemaEnabled,
     isTranslationEnabled,
+    isContextEnabled,
     multiline,
     extensions,
   });
@@ -173,6 +178,7 @@ export function VariableEditor({
     completionSources,
     isPayloadSchemaEnabled,
     isTranslationEnabled,
+    isContextEnabled,
     multiline,
     extensions,
   };
@@ -188,6 +194,7 @@ export function VariableEditor({
     completionSources,
     isPayloadSchemaEnabled,
     isTranslationEnabled,
+    isContextEnabled,
     multiline,
     extensions,
   };
@@ -199,7 +206,8 @@ export function VariableEditor({
         (completion: CompletionOption) => callbacksRef.current.onVariableSelect(completion),
         async (variableName: string) => callbacksRef.current.onCreateNewVariable(variableName),
         callbacksRef.current.isPayloadSchemaEnabled,
-        callbacksRef.current.isTranslationEnabled
+        callbacksRef.current.isTranslationEnabled,
+        callbacksRef.current.isContextEnabled
       )(context);
     };
   }, []);
@@ -224,26 +232,50 @@ export function VariableEditor({
       return null;
     };
 
-    return autocompletion({
-      override: [dynamicCompletionSource],
-      closeOnBlur: true,
-      defaultKeymap: true,
-      activateOnTyping: true,
-      optionClass: (completion) => {
-        if (completion.type === 'new-variable') return 'cm-new-variable-option';
-        if (completion.type === 'new-translation-key') return 'cm-new-translation-option';
-        return '';
-      },
-    });
+    return [
+      autocompletion({
+        override: [dynamicCompletionSource],
+        closeOnBlur: true,
+        defaultKeymap: true,
+        activateOnTyping: true,
+        optionClass: (completion) => {
+          const classes = [];
+          if (completion.type === 'new-variable') classes.push('cm-new-variable-option');
+          if (completion.type === 'new-translation-key') classes.push('cm-new-translation-option');
+          return classes.join(' ');
+        },
+      }),
+      // Add native browser tooltips for long labels
+      EditorView.updateListener.of(() => {
+        document.querySelectorAll('li[role="option"]:not([title])').forEach((item) => {
+          const label = item.querySelector('.cm-completionLabel');
+          if (label?.textContent) item.setAttribute('title', label.textContent);
+        });
+      }),
+    ];
   }, []);
 
   const variablePluginExtension = useMemo(() => {
+    const getVariableError = (variableName: string, isAllowed: boolean): string | undefined => {
+      if (isAllowed) return undefined;
+
+      const isPayload = isPayloadVariable(variableName);
+      return getVariableErrorMessage({
+        variableName,
+        isPayloadVariable: isPayload,
+        isAllowed: false,
+        isInSchema: false,
+        isPayloadSchemaEnabled: isPayload ? callbacksRef.current.isPayloadSchemaEnabled : undefined,
+      });
+    };
+
     return createVariableExtension({
       viewRef,
       lastCompletionRef,
       onSelect: (value: string, from: number, to: number) => callbacksRef.current.handleVariableSelect(value, from, to),
       isAllowedVariable: (variable: LiquidVariable) => callbacksRef.current.isAllowedVariable(variable),
       isDigestEventsVariable: (variableName: string) => callbacksRef.current.isDigestEventsVariable(variableName),
+      getVariableErrorMessage: getVariableError,
     });
   }, []);
 
@@ -253,7 +285,7 @@ export function VariableEditor({
 
     // For props that rarely change, we can check them dynamically
     const baseExtensions = [...(callbacksRef.current.multiline ? [EditorView.lineWrapping] : []), variablePillTheme];
-    const allExtensions = [...baseExtensions, autocompletionExtension];
+    const allExtensions = [...baseExtensions, ...autocompletionExtension];
 
     // Add external extensions (including translation plugin) BEFORE variable plugin
     // This ensures translation patterns are processed first

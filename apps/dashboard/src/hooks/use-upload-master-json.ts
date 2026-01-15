@@ -1,11 +1,12 @@
+import { ImportMasterJsonResponseDto } from '@novu/api/models/components';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { UploadMasterJsonResponse, uploadMasterJson } from '@/api/translations';
+import { uploadMasterJson } from '@/api/translations';
 import { showErrorToast, showSuccessToast } from '@/components/primitives/sonner-helpers';
-import { useEnvironment } from '@/context/environment/hooks';
+import { requireEnvironment, useEnvironment } from '@/context/environment/hooks';
 import { QueryKeys } from '@/utils/query-keys';
 
 type UseUploadMasterJsonProps = {
-  onSuccess?: (result: UploadMasterJsonResponse['data']) => void;
+  onSuccess?: (result: ImportMasterJsonResponseDto) => void;
   onError?: (error: Error) => void;
 };
 
@@ -15,12 +16,10 @@ export function useUploadMasterJson({ onSuccess, onError }: UseUploadMasterJsonP
 
   const mutation = useMutation({
     mutationFn: async ({ file }: { file: File }) => {
-      if (!currentEnvironment) {
-        throw new Error('No environment selected');
-      }
+      const environment = requireEnvironment(currentEnvironment, 'No environment selected');
 
       return await uploadMasterJson({
-        environment: currentEnvironment,
+        environment,
         file,
       });
     },
@@ -86,7 +85,7 @@ export function useUploadMasterJson({ onSuccess, onError }: UseUploadMasterJsonP
   };
 }
 
-export function getImportSummary(result: UploadMasterJsonResponse['data']) {
+export function getImportSummary(result: ImportMasterJsonResponseDto) {
   const { successful = [], failed = [] } = result;
 
   return {

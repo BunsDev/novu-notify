@@ -30,6 +30,9 @@ const notificationSchema = new Schema<NotificationDBModel>(
         topicKey: {
           type: Schema.Types.String,
         },
+        preferenceEvaluation: {
+          type: Schema.Types.Mixed,
+        },
       },
     ],
     transactionId: {
@@ -62,6 +65,10 @@ const notificationSchema = new Schema<NotificationDBModel>(
     },
     critical: {
       type: Schema.Types.Boolean,
+    },
+    contextKeys: {
+      type: [Schema.Types.String],
+      default: undefined,
     },
   },
   schemaOptions
@@ -99,19 +106,6 @@ notificationSchema.virtual('jobs', {
   ref: 'Job',
   localField: '_id',
   foreignField: '_notificationId',
-});
-
-/*
- *
- * Path: libs/dal/src/repositories/notification/notification.repository.ts
- *    Context: findBySubscriberId()
- *        Query: find({_environmentId: environmentId,
- *                    _subscriberId: subscriberId,});
- *
- */
-notificationSchema.index({
-  _subscriberId: 1,
-  _environmentId: 1,
 });
 
 /*
@@ -172,6 +166,19 @@ notificationSchema.index({
   _environmentId: 1,
   createdAt: -1,
 });
+
+notificationSchema.index({
+  _environmentId: 1,
+  _templateId: 1,
+  createdAt: -1,
+});
+
+notificationSchema.index({
+  _environmentId: 1,
+  _subscriberId: 1,
+  createdAt: -1,
+});
+
 /*
  * There was no point indexing old records,
  * we are not searching anything more than a month back

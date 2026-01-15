@@ -4,8 +4,9 @@ import {
   chatWebhookConfig,
   getstreamConfig,
   grafanaOnCallConfig,
+  msTeamsConfig,
   rocketChatConfig,
-  slackConfig,
+  slackConfigLegacy,
   whatsAppBusinessConfig,
 } from '../credentials';
 import { IConfigCredential, IProviderConfig } from '../provider.interface';
@@ -23,7 +24,7 @@ export const chatProviders: IProviderConfig[] = [
     id: ChatProviderIdEnum.Slack,
     displayName: 'Slack',
     channel: ChannelTypeEnum.CHAT,
-    credentials: slackConfig,
+    credentials: slackConfigLegacy,
     docReference: `https://docs.novu.co/platform/integrations/chat/slack${UTM_CAMPAIGN_QUERY_PARAM}`,
     logoFileName: { light: 'slack.svg', dark: 'slack.svg' },
   },
@@ -47,7 +48,7 @@ export const chatProviders: IProviderConfig[] = [
     id: ChatProviderIdEnum.MsTeams,
     displayName: 'MSTeams',
     channel: ChannelTypeEnum.CHAT,
-    credentials: [] as IConfigCredential[],
+    credentials: msTeamsConfig,
     docReference: `https://docs.novu.co/platform/integrations/chat/ms-teams${UTM_CAMPAIGN_QUERY_PARAM}`,
     logoFileName: { light: 'msteams.svg', dark: 'msteams.svg' },
   },

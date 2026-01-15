@@ -1,4 +1,8 @@
-import { TranslationGroup, TranslationsFilter } from '@/api/translations';
+import { TranslationGroupDto } from '@novu/api/models/components';
+import { ApiServiceLevelEnum, DEFAULT_LOCALE, FeatureNameEnum, getFeatureForTierAsBoolean } from '@novu/shared';
+import { HTMLAttributes } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { TranslationsFilter } from '@/api/translations';
 import { DefaultPagination } from '@/components/default-pagination';
 import {
   Table,
@@ -9,15 +13,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/primitives/table';
-import { IS_SELF_HOSTED } from '@/config';
+import { IS_ENTERPRISE, IS_SELF_HOSTED } from '@/config';
 import { useEnvironment } from '@/context/environment/hooks';
 import { useFetchOrganizationSettings } from '@/hooks/use-fetch-organization-settings';
 import { useFetchSubscription } from '@/hooks/use-fetch-subscription';
 import { buildRoute, ROUTES } from '@/utils/routes';
 import { cn } from '@/utils/ui';
-import { ApiServiceLevelEnum, DEFAULT_LOCALE, FeatureNameEnum, getFeatureForTierAsBoolean } from '@novu/shared';
-import { HTMLAttributes } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { ListNoResults } from '../list-no-results';
 import { DEFAULT_TRANSLATIONS_LIMIT } from './constants';
 import { DeleteTranslationGroupDialog } from './delete-translation-modal';
@@ -28,8 +29,6 @@ import { TranslationListUpgradeCta } from './translation-list-upgrade-cta';
 import { TranslationOnboardingPage } from './translation-onboarding-page';
 import { TranslationRow, TranslationRowSkeleton } from './translation-row';
 import { TranslationsFilters } from './translations-filters';
-
-import { IS_ENTERPRISE } from '@/config';
 
 type TranslationListHeaderProps = HTMLAttributes<HTMLDivElement> &
   Pick<TranslationsUrlState, 'filterValues' | 'handleFiltersChange' | 'resetFilters'> & {
@@ -131,9 +130,9 @@ function TranslationSkeletonList({ count }: TranslationSkeletonListProps) {
 }
 
 type TranslationListContentProps = {
-  translations: TranslationGroup[];
-  onTranslationClick: (translation: TranslationGroup) => void;
-  onDeleteClick: (translation: TranslationGroup) => void;
+  translations: TranslationGroupDto[];
+  onTranslationClick: (translation: TranslationGroupDto) => void;
+  onDeleteClick: (translation: TranslationGroupDto) => void;
 };
 
 function TranslationListContent({ translations, onTranslationClick, onDeleteClick }: TranslationListContentProps) {
@@ -141,7 +140,7 @@ function TranslationListContent({ translations, onTranslationClick, onDeleteClic
     <>
       {translations.map((translation) => (
         <TranslationRow
-          key={translation.resourceId}
+          key={`${translation.resourceId}-${translation.resourceType}`}
           translation={translation}
           onTranslationClick={onTranslationClick}
           onDeleteClick={onDeleteClick}
@@ -200,7 +199,7 @@ export function TranslationList(props: TranslationListProps) {
   const { filterValues, handleFiltersChange, resetFilters, data, isPending, isFetching, areFiltersApplied } =
     useTranslationListLogic({ enabled: canUseTranslationFeature });
 
-  const handleTranslationClick = (translation: TranslationGroup) => {
+  const handleTranslationClick = (translation: TranslationGroupDto) => {
     if (currentEnvironment?.slug) {
       const orgDefaultLocale = organizationSettings?.data?.defaultLocale || DEFAULT_LOCALE;
       const selectedLocale = translation.locales.includes(orgDefaultLocale) ? orgDefaultLocale : translation.locales[0];

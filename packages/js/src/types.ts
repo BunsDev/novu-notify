@@ -1,3 +1,4 @@
+import type { RulesLogic } from 'json-logic-js';
 import { NovuError } from './utils/errors';
 
 export type { FiltersCountResponse, ListNotificationsResponse, Notification } from './notifications';
@@ -86,6 +87,7 @@ export type Session = {
   isDevelopmentMode: boolean;
   maxSnoozeDurationHours: number;
   applicationIdentifier?: string;
+  contextKeys?: string[];
 };
 
 export type Subscriber = {
@@ -204,9 +206,20 @@ export type DefaultSchedule = {
   weeklySchedule?: WeeklySchedule;
 };
 
+export type ContextValue =
+  | string
+  | {
+      id: string;
+      data?: Record<string, unknown>;
+    };
+
+export type Context = Partial<Record<string, ContextValue>>;
+
 export type PreferencesResponse = {
   level: PreferenceLevel;
   enabled: boolean;
+  condition?: RulesLogic;
+  subscriptionId?: string;
   channels: ChannelPreference;
   overrides?: IPreferenceOverride[];
   workflow?: Workflow;
@@ -227,7 +240,27 @@ export type IPreferenceOverride = {
   source: PreferenceOverrideSourceEnum;
 };
 
+export type SubscriptionPreferenceResponse = Omit<
+  PreferencesResponse,
+  'subscriptionId' | 'workflow' | 'schedule' | 'level' | 'channels'
+> & {
+  subscriptionId: string;
+  workflow: Workflow;
+};
+
+export type SubscriptionResponse = {
+  id: string;
+  identifier: string;
+  name?: string;
+  preferences?: Array<SubscriptionPreferenceResponse>;
+};
+
 export type TODO = any;
+
+export type Options = {
+  refetch?: boolean;
+  useCache?: boolean;
+};
 
 export type Result<D = undefined, E = NovuError> = Promise<{
   data?: D;
@@ -243,10 +276,12 @@ export type StandardNovuOptions = {
   __userAgent?: string;
   applicationIdentifier: string;
   subscriberHash?: string;
+  contextHash?: string;
   apiUrl?: string;
   socketUrl?: string;
   useCache?: boolean;
   defaultSchedule?: DefaultSchedule;
+  context?: Context;
 } & (
   | {
       // TODO: Backward compatibility support - remove in future versions (see NV-5801)

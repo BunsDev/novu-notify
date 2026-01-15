@@ -10,6 +10,7 @@ import {
   GetLayoutCommand,
   GetLayoutUseCase as GetLayoutUseCaseV1,
   GetNovuProviderCredentials,
+  Instrument,
   InstrumentUsecase,
   MailFactory,
   messageWebhookMapper,
@@ -32,7 +33,7 @@ import { EmailOutput } from '@novu/framework/internal';
 import {
   ChannelTypeEnum,
   DeliveryLifecycleDetail,
-  DeliveryLifecycleStatus,
+  DeliveryLifecycleStatusEnum,
   EmailProviderIdEnum,
   ExecutionDetailsSourceEnum,
   ExecutionDetailsStatusEnum,
@@ -212,6 +213,7 @@ export class SendMessageEmail extends SendMessageBase {
       _jobId: command.jobId,
       tags: command.tags,
       severity: command.severity,
+      ...(command.contextKeys && { contextKeys: command.contextKeys }),
     });
 
     let replyToAddress: string | undefined;
@@ -311,6 +313,8 @@ export class SendMessageEmail extends SendMessageBase {
           mime: attachment.mime,
           name: attachment.name,
           channels: attachment.channels,
+          cid: attachment.cid,
+          disposition: attachment.disposition,
         }
     );
 
@@ -427,7 +431,7 @@ export class SendMessageEmail extends SendMessageBase {
       return {
         status: SendMessageStatus.SKIPPED,
         deliveryLifecycleState: {
-          status: DeliveryLifecycleStatus.SKIPPED,
+          status: DeliveryLifecycleStatusEnum.SKIPPED,
           detail: DeliveryLifecycleDetail.USER_MISSING_EMAIL,
         },
       };
@@ -462,6 +466,7 @@ export class SendMessageEmail extends SendMessageBase {
     };
   }
 
+  @Instrument()
   private async sendMessage(
     integration: IntegrationEntity,
     mailData: IEmailOptions,
@@ -581,6 +586,7 @@ export class SendMessageEmail extends SendMessageBase {
     }
   }
 
+  @Instrument()
   private async getOverrideLayoutId(command: SendMessageChannelCommand, isBridge: boolean) {
     const { overrides, step } = command;
     let layoutId: string | null | undefined;

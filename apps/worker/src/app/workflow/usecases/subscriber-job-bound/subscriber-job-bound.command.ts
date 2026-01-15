@@ -1,5 +1,5 @@
 import { EnvironmentWithUserCommand } from '@novu/application-generic';
-import { SubscriberEntity, TopicEntity } from '@novu/dal';
+import { SubscriberEntity, TopicWithPreferences } from '@novu/dal';
 import { DiscoverWorkflowOutput } from '@novu/framework/internal';
 import {
   ISubscribersDefine,
@@ -9,7 +9,7 @@ import {
   TriggerOverrides,
   TriggerRequestCategoryEnum,
 } from '@novu/shared';
-import { IsDefined, IsEnum, IsMongoId, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsDefined, IsEnum, IsMongoId, IsOptional, IsString, ValidateNested } from 'class-validator';
 
 export class SubscriberJobBoundCommand extends EnvironmentWithUserCommand {
   @IsString()
@@ -38,6 +38,11 @@ export class SubscriberJobBoundCommand extends EnvironmentWithUserCommand {
   @IsOptional()
   actor?: SubscriberEntity;
 
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  contextKeys?: string[];
+
   @IsDefined()
   @IsMongoId()
   templateId: string;
@@ -46,7 +51,7 @@ export class SubscriberJobBoundCommand extends EnvironmentWithUserCommand {
   subscriber: ISubscribersDefine;
 
   @IsOptional()
-  topics?: Pick<TopicEntity, '_id' | 'key'>[];
+  topics?: TopicWithPreferences[];
 
   @IsDefined()
   @IsEnum(SubscriberSourceEnum)
@@ -59,8 +64,4 @@ export class SubscriberJobBoundCommand extends EnvironmentWithUserCommand {
   bridge?: { url: string; workflow: DiscoverWorkflowOutput };
 
   controls?: StatelessControls;
-
-  @IsDefined()
-  @IsString()
-  environmentName: string;
 }

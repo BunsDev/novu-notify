@@ -30,9 +30,15 @@ const channelConnectionSchema = new Schema<ChannelConnectionDBModel>(
       type: Schema.Types.String,
       required: true,
     },
-    resource: {
+    subscriberId: {
       type: Schema.Types.String,
+      required: false,
+      default: null,
+    },
+    contextKeys: {
+      type: [Schema.Types.String],
       required: true,
+      default: [],
     },
     workspace: {
       type: Schema.Types.Mixed,
@@ -45,6 +51,9 @@ const channelConnectionSchema = new Schema<ChannelConnectionDBModel>(
   },
   schemaOptions
 );
+
+channelConnectionSchema.index({ _environmentId: 1, identifier: 1 }, { unique: true });
+channelConnectionSchema.index({ _environmentId: 1, subscriberId: 1, integrationIdentifier: 1 });
 
 export const ChannelConnection =
   (mongoose.models.ChannelConnection as mongoose.Model<ChannelConnectionDBModel>) ||

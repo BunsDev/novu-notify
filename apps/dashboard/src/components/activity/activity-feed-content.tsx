@@ -134,7 +134,7 @@ export function ActivityFeedContent({
 
   return (
     <div className={cn('p-2.5', className)}>
-      <div className="flex items-center justify-between pb-2.5">
+      <div className="flex items-center justify-between pb-2.5 gap-2">
         <ActivityFilters
           filters={mergedFilterValues}
           onFiltersChange={handleFiltersChange}
@@ -147,7 +147,7 @@ export function ActivityFeedContent({
       </div>
       <div className={`relative flex ${contentHeight}`}>
         <ResizablePanelGroup direction="horizontal" className="gap-2">
-          <ResizablePanel defaultSize={50} minSize={35}>
+          <ResizablePanel defaultSize={50} minSize={35} className="h-full ">
             <ActivityTable
               selectedActivityId={activityItemId}
               onActivitySelect={handleActivitySelect}

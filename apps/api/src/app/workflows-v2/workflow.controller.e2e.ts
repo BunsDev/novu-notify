@@ -7,10 +7,8 @@ import {
   EmailStepUpsertDto,
   InAppStepResponseDto,
   InAppStepUpsertDto,
-  JSONSchemaDto,
   ListWorkflowResponse,
   ResourceOriginEnum,
-  StepTypeEnum,
   UpdateWorkflowDto,
   UpdateWorkflowDtoSteps,
   WorkflowCreationSourceEnum,
@@ -26,11 +24,13 @@ import {
   FeatureNameEnum,
   getFeatureForTierAsNumber,
   ShortIsPrefixEnum,
+  StepTypeEnum,
   slugify,
 } from '@novu/shared';
 import { UserSession } from '@novu/testing';
 import chai, { expect } from 'chai';
 import chaiSubset from 'chai-subset';
+import { JSONSchemaDto } from '../shared/dtos/json-schema.dto';
 import { buildSlug } from '../shared/helpers/build-slug';
 import {
   expectSdkExceptionGeneric,
@@ -1050,7 +1050,7 @@ describe('Workflow Controller E2E API Testing #novu-v2', () => {
             steps: [
               {
                 name: 'In-App Test Step',
-                type: StepTypeEnum.InApp,
+                type: StepTypeEnum.IN_APP,
                 controlValues: {
                   // body is missing on purpose
                   redirect: { url: 'not-good-url-please-replace', target: '_blank' },
@@ -1094,7 +1094,7 @@ describe('Workflow Controller E2E API Testing #novu-v2', () => {
             steps: [
               {
                 name: 'Email Test Step',
-                type: StepTypeEnum.Email,
+                type: StepTypeEnum.EMAIL,
                 controlValues: { body: 'Welcome {{}}', subject: 'Welcome {{}}' },
               },
             ],

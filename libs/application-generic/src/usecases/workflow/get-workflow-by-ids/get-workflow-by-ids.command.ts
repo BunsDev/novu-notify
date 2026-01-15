@@ -13,7 +13,9 @@ export class GetWorkflowByIdsCommand extends EnvironmentCommand {
   userId?: string;
 
   @IsOptional()
-  @IsString()
+  includeUpdatedBy?: boolean;
+
+  @IsOptional()
   @Exclude()
   session?: ClientSession | null;
 }

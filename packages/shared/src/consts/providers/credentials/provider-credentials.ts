@@ -372,6 +372,14 @@ export const bulkSmsConfig: IConfigCredential[] = [
     type: 'string',
     required: true,
   },
+  {
+    key: CredentialsKeyEnum.From,
+    displayName: 'Sender ID',
+    description:
+      'Sender Id is used for from field in the request. If not provided, from field will not be sent in the request',
+    type: 'string',
+    required: false,
+  },
 ];
 
 export const iSendSmsConfig: IConfigCredential[] = [
@@ -473,7 +481,7 @@ export const messagebirdConfig: IConfigCredential[] = [
   ...smsConfigBase,
 ];
 
-export const slackConfig: IConfigCredential[] = [
+export const slackConfigLegacy: IConfigCredential[] = [
   {
     key: CredentialsKeyEnum.ApplicationId,
     displayName: 'Application Id',
@@ -503,6 +511,65 @@ export const slackConfig: IConfigCredential[] = [
     key: CredentialsKeyEnum.Hmac,
     displayName: 'HMAC',
     type: 'switch',
+    required: false,
+  },
+];
+
+export const slackConfig: IConfigCredential[] = [
+  {
+    key: CredentialsKeyEnum.ApplicationId,
+    displayName: 'Application Id',
+    type: 'string',
+    required: true,
+  },
+  {
+    key: CredentialsKeyEnum.ClientId,
+    displayName: 'Client ID',
+    type: 'string',
+    required: true,
+  },
+  {
+    key: CredentialsKeyEnum.SecretKey,
+    displayName: 'Client Secret',
+    type: 'string',
+    required: true,
+  },
+  {
+    key: CredentialsKeyEnum.RedirectUrl,
+    displayName: 'Redirect URL',
+    description: 'Redirect after Slack OAuth flow finished (default behaviour will close the tab)',
+    type: 'string',
+    required: false,
+  },
+];
+
+export const msTeamsConfig: IConfigCredential[] = [
+  {
+    key: CredentialsKeyEnum.ClientId,
+    displayName: 'Client ID',
+    description: 'Azure Bot Application (client) ID',
+    type: 'string',
+    required: false,
+  },
+  {
+    key: CredentialsKeyEnum.SecretKey,
+    displayName: 'Client Secret',
+    description: 'Azure Bot Client Secret value',
+    type: 'string',
+    required: false,
+  },
+  {
+    key: CredentialsKeyEnum.TenantId,
+    displayName: 'Tenant ID',
+    description: 'Azure Bot Tenant ID',
+    type: 'string',
+    required: false,
+  },
+  {
+    key: CredentialsKeyEnum.RedirectUrl,
+    displayName: 'Redirect URL',
+    description: 'Redirect after Teams OAuth flow finished (default behaviour will close the tab)',
+    type: 'string',
     required: false,
   },
 ];
@@ -1256,6 +1323,7 @@ export const unifonicConfig: IConfigCredential[] = [
   },
   ...smsConfigBase,
 ];
+
 export const smsmodeProviderConfig: IConfigCredential[] = [
   {
     key: CredentialsKeyEnum.ApiKey,
@@ -1265,4 +1333,64 @@ export const smsmodeProviderConfig: IConfigCredential[] = [
     required: true,
   },
   ...smsConfigBase,
+];
+
+export const appIOConfig: IConfigCredential[] = [
+  {
+    key: CredentialsKeyEnum.AppIOBaseUrl,
+    displayName: 'Base URL',
+    description: 'Base URL of the App IO API (e.g., https://api.io.italia.it/api/v1)',
+    type: 'text',
+    required: true,
+  },
+  ...pushConfigBase,
+];
+
+export const sinchConfig: IConfigCredential[] = [
+  {
+    key: CredentialsKeyEnum.ServicePlanId,
+    displayName: 'Service Plan ID',
+    description: 'Your Sinch Service Plan ID',
+    type: 'string',
+    required: true,
+  },
+  {
+    key: CredentialsKeyEnum.ApiToken,
+    displayName: 'API Token',
+    type: 'string',
+    required: true,
+  },
+  {
+    key: CredentialsKeyEnum.Region,
+    displayName: 'Region',
+    description: 'Select your Sinch region',
+    type: 'dropdown',
+    required: true,
+    value: 'eu',
+    dropdown: [
+      { name: 'EU (Ireland, Sweden)', value: 'eu' },
+      { name: 'US', value: 'us' },
+      { name: 'Australia', value: 'au' },
+      { name: 'Brazil', value: 'br' },
+      { name: 'Canada', value: 'ca' },
+    ],
+  },
+  ...smsConfigBase,
+];
+
+export const ISendProProviderConfig: IConfigCredential[] = [
+  {
+    key: CredentialsKeyEnum.ApiKey,
+    displayName: 'API Key',
+    description: 'This is API key for example provider',
+    type: 'text',
+    required: true,
+  },
+  {
+    key: CredentialsKeyEnum.From,
+    displayName: 'Sender',
+    description: 'The sender of sms',
+    type: 'text',
+    required: false,
+  },
 ];
